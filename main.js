@@ -238,8 +238,8 @@ function initBuffers() {
       unpackedColors = unpackedColors.concat(color);
     }
   }
-  gl.bufferData(gl.ARRAY_BUFFER, 
-                new Float32Array(unpackedColors), 
+  gl.bufferData(gl.ARRAY_BUFFER,
+                new Float32Array(unpackedColors),
                 gl.STATIC_DRAW);
   cubeVertexColorBuffer.itemSize = 4;
   cubeVertexColorBuffer.numItems = 24;
@@ -254,14 +254,15 @@ function initBuffers() {
                            16, 17, 18,   16, 18, 19, // Right face
                            20, 21, 22,   20, 22, 23  // Left face
                            ];
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, 
-                new Uint16Array(cubeVertexIndices), 
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
+                new Uint16Array(cubeVertexIndices),
                 gl.STATIC_DRAW);
   cubeVertexIndexBuffer.itemSize = 1;
   cubeVertexIndexBuffer.numItems = 36;
 }
 
 
+// Rotation of the objects
 var rPyramid = 0;
 var rCube = 0;
 
@@ -271,26 +272,27 @@ function drawScene() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Set up the projection
-  mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, 
+  mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0,
                    pMatrix);
 
   mat4.identity(mvMatrix);
 
+  // Put pyramid to the left of center, back a ways
   mat4.translate(mvMatrix, [-1.5, 0.0, -8.0]);
 
   // Render the pyramid as triangles
 
-  mvPushMatrix(); 
+  mvPushMatrix();
   mat4.rotate(mvMatrix, degToRad(rPyramid), [0, 1, 0]);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
-  gl.vertexAttribPointer(gl.data.aVertexPosition, 
-                         pyramidVertexPositionBuffer.itemSize, 
+  gl.vertexAttribPointer(gl.data.aVertexPosition,
+                         pyramidVertexPositionBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer);
-  gl.vertexAttribPointer(gl.data.aVertexColor, 
-                         pyramidVertexColorBuffer.itemSize, 
+  gl.vertexAttribPointer(gl.data.aVertexColor,
+                         pyramidVertexColorBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
   setMatrixUniforms();
@@ -298,7 +300,7 @@ function drawScene() {
 
   mvPopMatrix();
 
-
+  // Cube goes to the right of the pyramid
   mat4.translate(mvMatrix, [3.0, 0.0, 0.0]);
 
   // Render the cube as triangles
@@ -307,18 +309,18 @@ function drawScene() {
   mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
-  gl.vertexAttribPointer(gl.data.aVertexPosition, 
-                         cubeVertexPositionBuffer.itemSize, 
+  gl.vertexAttribPointer(gl.data.aVertexPosition,
+                         cubeVertexPositionBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
-  gl.vertexAttribPointer(gl.data.aVertexColor, 
-                         cubeVertexColorBuffer.itemSize, 
+  gl.vertexAttribPointer(gl.data.aVertexColor,
+                         cubeVertexColorBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
   setMatrixUniforms();
-  gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, 
+  gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
                   gl.UNSIGNED_SHORT, 0);
 
   mvPopMatrix();
@@ -353,8 +355,8 @@ function webGLStart() {
   initShaders();
   initBuffers();
 
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
-  gl.enable(gl.DEPTH_TEST);
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear is blackness
+  gl.enable(gl.DEPTH_TEST);           // Enable Z-buffer
 
   tick();
 }
