@@ -4,6 +4,7 @@ var gl;
 function initGL(canvas) {
   try {
     gl = canvas.getContext("experimental-webgl");
+    gl.data = {};  // holds variables
     gl.viewportWidth = canvas.width;
     gl.viewportHeight = canvas.height;
   } catch (e) {
@@ -48,36 +49,34 @@ function getShader(gl, id) {
 }
 
 
-var shaderProgram;
-
 function initShaders() {
   var fragmentShader = getShader(gl, "shader-fs");
   var vertexShader   = getShader(gl, "shader-vs");
 
-  shaderProgram = gl.createProgram();
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-  gl.linkProgram(shaderProgram);
+  gl.data.shaderProgram = gl.createProgram();
+  gl.attachShader(gl.data.shaderProgram, vertexShader);
+  gl.attachShader(gl.data.shaderProgram, fragmentShader);
+  gl.linkProgram(gl.data.shaderProgram);
 
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+  if (!gl.getProgramParameter(gl.data.shaderProgram, gl.LINK_STATUS)) {
     alert("Could not initialise shaders");
   }
 
-  gl.useProgram(shaderProgram);
+  gl.useProgram(gl.data.shaderProgram);
 
+  function locate(variable) {
+    var type = { 'a': 'Attrib', 'u': 'Uniform' }[variable[0]];
+    gl.data[variable] = gl['get' + type + 'Location'](gl.data.shaderProgram, variable);
+  }
   locate('aVertexPosition');
   locate('aVertexColor');
   locate('uMVMatrix');
   locate('uPMatrix');
 
-  gl.enableVertexAttribArray(gl.aVertexPosition);
-  gl.enableVertexAttribArray(gl.aVertexColor);
+  gl.enableVertexAttribArray(gl.data.aVertexPosition);
+  gl.enableVertexAttribArray(gl.data.aVertexColor);
 }
 
-function locate(variable) {
-  var type = { 'a': 'Attrib', 'u': 'Uniform' }[variable[0]];
-  gl[variable] = gl['get' + type + 'Location'](shaderProgram, variable);
-}
 
 
 var mvMatrix = mat4.create();  // model-view matrix
@@ -99,8 +98,8 @@ function mvPopMatrix() {
 
 
 function setMatrixUniforms() {
-  gl.uniformMatrix4fv(gl.uPMatrix,  false,  pMatrix);
-  gl.uniformMatrix4fv(gl.uMVMatrix, false, mvMatrix);
+  gl.uniformMatrix4fv(gl.data.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
 }
 
 
@@ -285,12 +284,12 @@ function drawScene() {
   mat4.rotate(mvMatrix, degToRad(rPyramid), [0, 1, 0]);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
-  gl.vertexAttribPointer(gl.aVertexPosition, 
+  gl.vertexAttribPointer(gl.data.aVertexPosition, 
                          pyramidVertexPositionBuffer.itemSize, 
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer);
-  gl.vertexAttribPointer(gl.aVertexColor, 
+  gl.vertexAttribPointer(gl.data.aVertexColor, 
                          pyramidVertexColorBuffer.itemSize, 
                          gl.FLOAT, false, 0, 0);
 
@@ -308,12 +307,12 @@ function drawScene() {
   mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
-  gl.vertexAttribPointer(gl.aVertexPosition, 
+  gl.vertexAttribPointer(gl.data.aVertexPosition, 
                          cubeVertexPositionBuffer.itemSize, 
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
-  gl.vertexAttribPointer(gl.aVertexColor, 
+  gl.vertexAttribPointer(gl.data.aVertexColor, 
                          cubeVertexColorBuffer.itemSize, 
                          gl.FLOAT, false, 0, 0);
 
