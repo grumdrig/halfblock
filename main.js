@@ -65,18 +65,18 @@ function initShaders() {
 
   gl.useProgram(shaderProgram);
 
-  shaderProgram.vertexPositionAttribute = 
-    gl.getAttribLocation(shaderProgram, "aVertexPosition");
-  gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+  locate('aVertexPosition');
+  locate('aVertexColor');
+  locate('uMVMatrix');
+  locate('uPMatrix');
 
-  shaderProgram.vertexColorAttribute = 
-    gl.getAttribLocation(shaderProgram, "aVertexColor");
-  gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
+  gl.enableVertexAttribArray(gl.aVertexPosition);
+  gl.enableVertexAttribArray(gl.aVertexColor);
+}
 
-  shaderProgram.pMatrixUniform = 
-    gl.getUniformLocation(shaderProgram, "uPMatrix");
-  shaderProgram.mvMatrixUniform = 
-    gl.getUniformLocation(shaderProgram, "uMVMatrix");
+function locate(variable) {
+  var type = { 'a': 'Attrib', 'u': 'Uniform' }[variable[0]];
+  gl[variable] = gl['get' + type + 'Location'](shaderProgram, variable);
 }
 
 
@@ -99,8 +99,8 @@ function mvPopMatrix() {
 
 
 function setMatrixUniforms() {
-  gl.uniformMatrix4fv(shaderProgram.pMatrixUniform,  false,  pMatrix);
-  gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+  gl.uniformMatrix4fv(gl.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(gl.uMVMatrix, false, mvMatrix);
 }
 
 
@@ -285,12 +285,12 @@ function drawScene() {
   mat4.rotate(mvMatrix, degToRad(rPyramid), [0, 1, 0]);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
-  gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 
+  gl.vertexAttribPointer(gl.aVertexPosition, 
                          pyramidVertexPositionBuffer.itemSize, 
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer);
-  gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 
+  gl.vertexAttribPointer(gl.aVertexColor, 
                          pyramidVertexColorBuffer.itemSize, 
                          gl.FLOAT, false, 0, 0);
 
@@ -308,12 +308,12 @@ function drawScene() {
   mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
-  gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 
+  gl.vertexAttribPointer(gl.aVertexPosition, 
                          cubeVertexPositionBuffer.itemSize, 
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
-  gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 
+  gl.vertexAttribPointer(gl.aVertexColor, 
                          cubeVertexColorBuffer.itemSize, 
                          gl.FLOAT, false, 0, 0);
 
