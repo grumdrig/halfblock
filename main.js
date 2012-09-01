@@ -257,21 +257,8 @@ function drawScene() {
   // Rotate the world
   mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
 
-  // Render the cube as triangles
+  // Render the world as cubes
 
-  for (var i = 0; i < CCCHUNK; ++i) {
-    if (chunk(i)) {
-      var c = coords(i);
-      // if (!chunk(c.x-1, c.y, c.z)) {
-      mvPushMatrix();
-      mat4.translate(mvMatrix, [c.x - CHUNK/2, CHUNK/2 - c.y, c.z- CHUNK/2]);
-      drawCube();
-      mvPopMatrix();
-    }
-  }
-}
-
-function drawCube() {
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
   gl.vertexAttribPointer(gl.data.aVertexPosition,
                          cubeVertexPositionBuffer.itemSize,
@@ -283,9 +270,19 @@ function drawCube() {
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
-  setMatrixUniforms();
-  gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
-                  gl.UNSIGNED_SHORT, 0);
+
+  for (var i = 0; i < CCCHUNK; ++i) {
+    if (chunk(i)) {
+      var c = coords(i);
+      // if (!chunk(c.x-1, c.y, c.z)) {
+      mvPushMatrix();
+      mat4.translate(mvMatrix, [c.x - CHUNK/2, CHUNK/2 - c.y, c.z - CHUNK/2]);
+      setMatrixUniforms();
+      gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
+                      gl.UNSIGNED_SHORT, 0);
+      mvPopMatrix();
+    }
+  }
 }
 
 
