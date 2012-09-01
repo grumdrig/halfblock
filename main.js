@@ -108,8 +108,6 @@ function degToRad(degrees) {
 }
 
 
-var pyramidVertexPositionBuffer;
-var pyramidVertexColorBuffer;
 var cubeVertexPositionBuffer;
 var cubeVertexColorBuffer;
 var cubeVertexIndexBuffer;
@@ -117,70 +115,12 @@ var cubeVertexIndexBuffer;
 function initBuffers() {
 
   //
-  // Pyramid
-  //
-
-  pyramidVertexPositionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
-  var vertices = [
-                  // Front face
-                  0.0,  1.0,  0.0,
-                  -1.0, -1.0,  1.0,
-                  1.0, -1.0,  1.0,
-
-                  // Right face
-                  0.0,  1.0,  0.0,
-                  1.0, -1.0,  1.0,
-                  1.0, -1.0, -1.0,
-
-                  // Back face
-                  0.0,  1.0,  0.0,
-                  1.0, -1.0, -1.0,
-                  -1.0, -1.0, -1.0,
-
-                  // Left face
-                  0.0,  1.0,  0.0,
-                  -1.0, -1.0, -1.0,
-                  -1.0, -1.0,  1.0
-                  ];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-  pyramidVertexPositionBuffer.itemSize = 3;
-  pyramidVertexPositionBuffer.numItems = 12;
-
-  pyramidVertexColorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer);
-  var colors = [
-                // Front face
-                1.0, 0.0, 0.0, 1.0,
-                0.0, 1.0, 0.0, 1.0,
-                0.0, 0.0, 1.0, 1.0,
-
-                // Right face
-                1.0, 0.0, 0.0, 1.0,
-                0.0, 0.0, 1.0, 1.0,
-                0.0, 1.0, 0.0, 1.0,
-
-                // Back face
-                1.0, 0.0, 0.0, 1.0,
-                0.0, 1.0, 0.0, 1.0,
-                0.0, 0.0, 1.0, 1.0,
-
-                // Left face
-                1.0, 0.0, 0.0, 1.0,
-                0.0, 0.0, 1.0, 1.0,
-                0.0, 1.0, 0.0, 1.0
-                ];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-  pyramidVertexColorBuffer.itemSize = 4;
-  pyramidVertexColorBuffer.numItems = 12;
-
-  //
   // Cube
   //
 
   cubeVertexPositionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
-  vertices = [
+  var vertices = [
               // Front face
               -1.0, -1.0,  1.0,
               1.0, -1.0,  1.0,
@@ -217,6 +157,7 @@ function initBuffers() {
               -1.0,  1.0,  1.0,
               -1.0,  1.0, -1.0
               ];
+  for (var i = 0; i < vertices.length; ++i) vertices[i] /= 2;
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
   cubeVertexPositionBuffer.itemSize = 3;
   cubeVertexPositionBuffer.numItems = 24;
@@ -264,10 +205,11 @@ function initBuffers() {
 
 // The world
 var CHUNK = 16;  // Dimension of chunks
+var LOGCHUNK = 4;
 var CCCHUNK = CHUNK * CHUNK * CHUNK;
 var WORLD = Array(CCCHUNK);
 for (var i = 0; i < CCCHUNK; ++i)
-  WORLD[i] = !!choice();
+  WORLD[i] = !choice(12);
 var NOWHERE = false;
 
 function choice(n) {
@@ -275,7 +217,19 @@ function choice(n) {
   return Math.floor(Math.random() * n);
 }
 
+function coords(i) {
+    return {
+      z: i % CHUNK,
+      y: (i >> LOGCHUNK) % CHUNK,
+      x: (i >> (2*LOGCHUNK)) % CHUNK
+    }
+}
+
 function chunk(x, y, z) {
+  if (typeof y === 'undefined') {
+    var c = coords(x);
+    x = c.x; y = c.y; z = c.z;
+  }
   if (x < 0 || y < 0 || z < 0 ||
       x >= CHUNK || y >= CHUNK || z >= CHUNK) return NOWHERE;
   var i = x * CHUNK * CHUNK + y * CHUNK + z;
@@ -284,7 +238,6 @@ function chunk(x, y, z) {
 
 
 // Rotation of the objects
-var rPyramid = 0;
 var rCube = 0;
 
 function drawScene() {
@@ -299,41 +252,26 @@ function drawScene() {
   mat4.identity(mvMatrix);
 
   // Move camera back a ways
-  mat4.translate(mvMatrix, [0, 0, -50]);
+  mat4.translate(mvMatrix, [0, 0, -30]);
 
-  // Render the pyramid as triangles
-
-  mvPushMatrix();
-
-  // Put pyramid to the left of center
-  mat4.translate(mvMatrix, [-1.5, 0, 0]);
-
-  mat4.rotate(mvMatrix, degToRad(rPyramid), [0, 1, 0]);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
-  gl.vertexAttribPointer(gl.data.aVertexPosition,
-                         pyramidVertexPositionBuffer.itemSize,
-                         gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer);
-  gl.vertexAttribPointer(gl.data.aVertexColor,
-                         pyramidVertexColorBuffer.itemSize,
-                         gl.FLOAT, false, 0, 0);
-
-  setMatrixUniforms();
-  gl.drawArrays(gl.TRIANGLES, 0, pyramidVertexPositionBuffer.numItems);
-
-  mvPopMatrix();
+  // Rotate the world
+  mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
 
   // Render the cube as triangles
 
-  mvPushMatrix();
+  for (var i = 0; i < CCCHUNK; ++i) {
+    if (chunk(i)) {
+      var c = coords(i);
+      // if (!chunk(c.x-1, c.y, c.z)) {
+      mvPushMatrix();
+      mat4.translate(mvMatrix, [c.x - CHUNK/2, CHUNK/2 - c.y, c.z- CHUNK/2]);
+      drawCube();
+      mvPopMatrix();
+    }
+  }
+}
 
-   // Put cube right of center
-  mat4.translate(mvMatrix, [1.5, 0, 0]);
-
-  mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
-
+function drawCube() {
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
   gl.vertexAttribPointer(gl.data.aVertexPosition,
                          cubeVertexPositionBuffer.itemSize,
@@ -348,8 +286,6 @@ function drawScene() {
   setMatrixUniforms();
   gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
                   gl.UNSIGNED_SHORT, 0);
-
-  mvPopMatrix();
 }
 
 
@@ -360,7 +296,6 @@ function animate() {
   if (lastTime != 0) {
     var elapsed = timeNow - lastTime;
 
-    rPyramid += (90 * elapsed) / 1000.0;
     rCube -= (75 * elapsed) / 1000.0;
   }
   lastTime = timeNow;
