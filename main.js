@@ -262,6 +262,27 @@ function initBuffers() {
 }
 
 
+// The world
+var CHUNK = 16;  // Dimension of chunks
+var CCCHUNK = CHUNK * CHUNK * CHUNK;
+var WORLD = Array(CCCHUNK);
+for (var i = 0; i < CCCHUNK; ++i)
+  WORLD[i] = !!choice();
+var NOWHERE = false;
+
+function choice(n) {
+  if (!n) n = 2;
+  return Math.floor(Math.random() * n);
+}
+
+function chunk(x, y, z) {
+  if (x < 0 || y < 0 || z < 0 ||
+      x >= CHUNK || y >= CHUNK || z >= CHUNK) return NOWHERE;
+  var i = x * CHUNK * CHUNK + y * CHUNK + z;
+  return WORLD[i];
+}
+
+
 // Rotation of the objects
 var rPyramid = 0;
 var rCube = 0;
@@ -277,12 +298,16 @@ function drawScene() {
 
   mat4.identity(mvMatrix);
 
-  // Put pyramid to the left of center, back a ways
-  mat4.translate(mvMatrix, [-1.5, 0.0, -8.0]);
+  // Move camera back a ways
+  mat4.translate(mvMatrix, [0, 0, -50]);
 
   // Render the pyramid as triangles
 
   mvPushMatrix();
+
+  // Put pyramid to the left of center
+  mat4.translate(mvMatrix, [-1.5, 0, 0]);
+
   mat4.rotate(mvMatrix, degToRad(rPyramid), [0, 1, 0]);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
@@ -300,12 +325,13 @@ function drawScene() {
 
   mvPopMatrix();
 
-  // Cube goes to the right of the pyramid
-  mat4.translate(mvMatrix, [3.0, 0.0, 0.0]);
-
   // Render the cube as triangles
 
   mvPushMatrix();
+
+   // Put cube right of center
+  mat4.translate(mvMatrix, [1.5, 0, 0]);
+
   mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
