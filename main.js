@@ -238,10 +238,12 @@ function chunk(x, y, z) {
 
 
 // Rotation of the objects
-PLAYER = {
-  x: 0, y: 0, z: -30,
-  yaw: 0, pitch: 0, roll: 0
+var PLAYER = {
+  position: vec3.create([0,0,-30]),
+  facing: quat4.create([0,0,0,1])
 };
+
+
 var rCube = 0;
 
 function drawScene() {
@@ -254,10 +256,10 @@ function drawScene() {
                    pMatrix);
 
   mat4.identity(mvMatrix);
-
   // Position for player
-  mat4.rotate(mvMatrix, PLAYER.yaw, [0, 1, 0]);
-  mat4.translate(mvMatrix, [PLAYER.x, PLAYER.y, PLAYER.z]);
+  //  mat4.rotate(mvMatrix, PLAYER.yaw, [0, 1, 0]);
+  //mat4.translate(mvMatrix, [PLAYER.x(), PLAYER.y(), PLAYER.z()]);
+  mat4.fromRotationTranslation(PLAYER.facing, PLAYER.position, mvMatrix);
 
   // Rotate the world
   mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
@@ -298,18 +300,24 @@ function animate() {
   if (lastTime != 0) {
     var elapsed = timeNow - lastTime;
 
-    rCube -= (75 * elapsed) / 1000.0;
+    //rCube -= (75 * elapsed) / 1000.0;
 
     var d = elapsed * .01;
     var a = elapsed * .001;
-    if (KEYS.A) PLAYER.x += d;
-    if (KEYS.D) PLAYER.x -= d;
-    if (KEYS.W) PLAYER.z += d;
-    if (KEYS.S) PLAYER.z -= d;
-    if (KEYS[32]) PLAYER.y -= d;  // SPACE
-    if (KEYS[16]) PLAYER.y += d;  // SHIFT
-    if (KEYS.Q) PLAYER.yaw -= a;
-    if (KEYS.E) PLAYER.yaw += a;
+    var m = mat4.create();
+    mat4.identity(m);
+    if (KEYS.A) mat4.translate(m, [ d, 0, 0]);
+    if (KEYS.D) mat4.translate(m, [-d, 0, 0]);;
+    if (KEYS.W) mat4.translate(m, [ 0, 0, d]);
+    if (KEYS.S) mat4.translate(m, [ 0, 0,-d]);
+    if (KEYS[32]) mat4.translate(m, [ 0,-d, 0]);  // SPACE
+    if (KEYS[16]) mat4.translate(m, [ 0, d, 0]);  // SHIFT
+    mat4.multiplyVec3(m, PLAYER.position);
+
+    mat4.identity(m);
+    if (KEYS.Q) { mat4.rotateY(m, -a); console.log(m, PLAYER.facing) }
+    if (KEYS.E) mat4.rotateY(m,  a);
+    mat4.multiplyVec4(m, PLAYER.facing);
   }
   lastTime = timeNow;
 }
