@@ -243,8 +243,6 @@ var PLAYER = {
   facing: quat4.create([0,0,0,1])
 };
 
-var rCube = 0;
-
 function drawScene() {
   // Start from scratch
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
@@ -257,9 +255,6 @@ function drawScene() {
   // Position for player
   quat4.toMat4(quat4.inverse(PLAYER.facing, [0,0,0,0]), mvMatrix)
   mat4.translate(mvMatrix, PLAYER.position);
-
-  // Rotate the world
-  mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
 
   // Render the world as cubes
 
@@ -296,8 +291,6 @@ function animate() {
   var timeNow = new Date().getTime();
   if (lastTime != 0) {
     var elapsed = timeNow - lastTime;
-
-    //rCube -= (75 * elapsed) / 1000.0;
 
     var d = elapsed * .01;
     var a = elapsed * .001;
