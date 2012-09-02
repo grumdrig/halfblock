@@ -254,11 +254,9 @@ function drawScene() {
   mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0,
                    pMatrix);
 
-  mat4.identity(mvMatrix);
   // Position for player
-  //  mat4.rotate(mvMatrix, PLAYER.yaw, [0, 1, 0]);
-  //mat4.translate(mvMatrix, [PLAYER.x(), PLAYER.y(), PLAYER.z()]);
-  mat4.fromRotationTranslation(PLAYER.facing, PLAYER.position, mvMatrix);
+  quat4.toMat4(PLAYER.facing, mvMatrix)
+  mat4.translate(mvMatrix, PLAYER.position);
 
   // Rotate the world
   mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
