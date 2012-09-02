@@ -240,7 +240,8 @@ function chunk(x, y, z) {
 // Rotation of the objects
 var PLAYER = {
   position: vec3.create([0,0,-30]),
-  facing: quat4.create([0,0,0,1])
+  yaw: 0,
+  pitch: 0
 };
 
 function drawScene() {
@@ -253,7 +254,9 @@ function drawScene() {
                    pMatrix);
 
   // Position for player
-  quat4.toMat4(quat4.inverse(PLAYER.facing, [0,0,0,0]), mvMatrix)
+  mat4.identity(mvMatrix);
+  mat4.rotateY(mvMatrix, PLAYER.yaw);
+  mat4.rotateX(mvMatrix, PLAYER.pitch);
   mat4.translate(mvMatrix, PLAYER.position);
 
   // Render the world as cubes
@@ -285,6 +288,15 @@ function drawScene() {
 }
 
 
+quat4.rotateX = function (quat, angle, dest) {
+  if (!dest) dest = quat;
+  quat4.multiply(quat, [Math.sin(angle/2), 0, 0, Math.cos(angle/2)]);
+}
+quat4.rotateY = function (quat, angle, dest) {
+  if (!dest) dest = quat;
+  quat4.multiply(quat, [0, Math.sin(angle/2), 0, Math.cos(angle/2)]);
+}
+
 var lastTime = 0;
 
 function animate() {
@@ -296,18 +308,21 @@ function animate() {
     var a = elapsed * .001;
     var m = mat4.create();
 
-    if (KEYS.A) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [ d, 0, 0]));
-    if (KEYS.D) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [-d, 0, 0]));
-    if (KEYS.W) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [ 0, 0, d]));
-    if (KEYS.S) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [ 0, 0,-d]));
-    if (KEYS[32]) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [ 0,-d, 0]));
-    if (KEYS[16]) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [ 0, d, 0]));
+    var facing = quat4.create([0,0,0,1]);
+    quat4.rotateY(facing, -PLAYER.yaw);
+    quat4.rotateX(facing, -PLAYER.pitch);
+    if (KEYS.A)   vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ d, 0, 0]));
+    if (KEYS.D)   vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [-d, 0, 0]));
+    if (KEYS.W)   vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0, d]));
+    if (KEYS.S)   vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0,-d]));
+    if (KEYS[32]) vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0,-d, 0]));
+    if (KEYS[16]) vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, d, 0]));
 
     // http://content.gpwiki.org/index.php/OpenGL%3aTutorials%3aUsing_Quaternions_to_represent_rotation
-    if (KEYS.Q) quat4.multiply(PLAYER.facing, [0, Math.sin( a/2), 0, Math.cos( a/2)]);
-    if (KEYS.E) quat4.multiply(PLAYER.facing, [0, Math.sin(-a/2), 0, Math.cos(-a/2)]);
-    if (KEYS.Z) quat4.multiply(PLAYER.facing, [Math.sin(-a/2), 0, 0, Math.cos(-a/2)]);
-    if (KEYS.C) quat4.multiply(PLAYER.facing, [Math.sin( a/2), 0, 0, Math.cos( a/2)]);
+    if (KEYS.Q) PLAYER.yaw -= a;
+    if (KEYS.E) PLAYER.yaw += a;
+    if (KEYS.R) PLAYER.pitch += a;
+    if (KEYS.F) PLAYER.pitch -= a;
   }
   lastTime = timeNow;
 }
