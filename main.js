@@ -122,40 +122,40 @@ function initBuffers() {
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
   var vertices = [
               // Front face
-              -1.0, -1.0,  1.0,
-              1.0, -1.0,  1.0,
-              1.0,  1.0,  1.0,
-              -1.0,  1.0,  1.0,
+              -1, -1,  1,
+               1, -1,  1,
+               1,  1,  1,
+              -1,  1,  1,
 
               // Back face
-              -1.0, -1.0, -1.0,
-              -1.0,  1.0, -1.0,
-              1.0,  1.0, -1.0,
-              1.0, -1.0, -1.0,
+              -1, -1, -1,
+              -1,  1, -1,
+               1,  1, -1,
+               1, -1, -1,
 
               // Top face
-              -1.0,  1.0, -1.0,
-              -1.0,  1.0,  1.0,
-              1.0,  1.0,  1.0,
-              1.0,  1.0, -1.0,
+              -1,  1, -1,
+              -1,  1,  1,
+               1,  1,  1,
+               1,  1, -1,
 
               // Bottom face
-              -1.0, -1.0, -1.0,
-              1.0, -1.0, -1.0,
-              1.0, -1.0,  1.0,
-              -1.0, -1.0,  1.0,
+              -1, -1, -1,
+               1, -1, -1,
+               1, -1,  1,
+              -1, -1,  1,
 
-              // Right face
-              1.0, -1.0, -1.0,
-              1.0,  1.0, -1.0,
-              1.0,  1.0,  1.0,
-              1.0, -1.0,  1.0,
+              // Rig1t face
+               1, -1, -1,
+               1,  1, -1,
+               1,  1,  1,
+               1, -1,  1,
 
               // Left face
-              -1.0, -1.0, -1.0,
-              -1.0, -1.0,  1.0,
-              -1.0,  1.0,  1.0,
-              -1.0,  1.0, -1.0
+              -1, -1, -1,
+              -1, -1,  1,
+              -1,  1,  1,
+              -1,  1, -1
               ];
   for (var i = 0; i < vertices.length; ++i) vertices[i] /= 2;
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
@@ -219,9 +219,9 @@ function choice(n) {
 
 function coords(i) {
     return {
-      z: i % CHUNK,
+      x: i % CHUNK,
       y: (i >> LOGCHUNK) % CHUNK,
-      x: (i >> (2*LOGCHUNK)) % CHUNK
+      z: (i >> (2*LOGCHUNK)) % CHUNK
     }
 }
 
@@ -238,6 +238,10 @@ function chunk(x, y, z) {
 
 
 // Rotation of the objects
+PLAYER = {
+  x: 0, y: 0, z: -30,
+  yaw: 0, pitch: 0, roll: 0
+};
 var rCube = 0;
 
 function drawScene() {
@@ -251,8 +255,8 @@ function drawScene() {
 
   mat4.identity(mvMatrix);
 
-  // Move camera back a ways
-  mat4.translate(mvMatrix, [0, 0, -30]);
+  // Position for player
+  mat4.translate(mvMatrix, [PLAYER.x, PLAYER.y, PLAYER.z]);
 
   // Rotate the world
   mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
