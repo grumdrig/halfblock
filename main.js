@@ -256,6 +256,7 @@ function drawScene() {
   mat4.identity(mvMatrix);
 
   // Position for player
+  mat4.rotate(mvMatrix, PLAYER.yaw, [0, 1, 0]);
   mat4.translate(mvMatrix, [PLAYER.x, PLAYER.y, PLAYER.z]);
 
   // Rotate the world
@@ -298,6 +299,17 @@ function animate() {
     var elapsed = timeNow - lastTime;
 
     rCube -= (75 * elapsed) / 1000.0;
+
+    var d = elapsed * .01;
+    var a = elapsed * .001;
+    if (KEYS.A) PLAYER.x += d;
+    if (KEYS.D) PLAYER.x -= d;
+    if (KEYS.W) PLAYER.z += d;
+    if (KEYS.S) PLAYER.z -= d;
+    if (KEYS[32]) PLAYER.y -= d;  // SPACE
+    if (KEYS[16]) PLAYER.y += d;  // SHIFT
+    if (KEYS.Q) PLAYER.yaw -= a;
+    if (KEYS.E) PLAYER.yaw += a;
   }
   lastTime = timeNow;
 }
@@ -320,5 +332,25 @@ function webGLStart() {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear is blackness
   gl.enable(gl.DEPTH_TEST);           // Enable Z-buffer
 
+  window.addEventListener('keydown', onkeydown, true);
+  window.addEventListener('keyup',   onkeyup,   true);
+  //CANVAS.addEventListener('mousedown', onmousedown, true);
+  //CANVAS.addEventListener('mousemove', onmousemove, true);
+
   tick();
+}
+
+var KEYS = {};
+
+function onkeydown(event) { onkeyup(event, true); }
+
+function onkeyup(event, imeandown) {
+  event = event || window.event;
+  if (event.preventDefault)
+    event.preventDefault();
+
+  var k = event.keyCode;
+  var c = String.fromCharCode(k).toUpperCase();
+
+  KEYS[k] = KEYS[c] = imeandown;
 }
