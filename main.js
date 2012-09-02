@@ -243,7 +243,6 @@ var PLAYER = {
   facing: quat4.create([0,0,0,1])
 };
 
-
 var rCube = 0;
 
 function drawScene() {
@@ -314,10 +313,11 @@ function animate() {
     if (KEYS[16]) mat4.translate(m, [ 0, d, 0]);  // SHIFT
     mat4.multiplyVec3(m, PLAYER.position);
 
-    mat4.identity(m);
-    if (KEYS.Q) { mat4.rotateY(m, -a); console.log(m, PLAYER.facing) }
-    if (KEYS.E) mat4.rotateY(m,  a);
-    mat4.multiplyVec4(m, PLAYER.facing);
+    // http://content.gpwiki.org/index.php/OpenGL%3aTutorials%3aUsing_Quaternions_to_represent_rotation
+    if (KEYS.Q) quat4.multiply(PLAYER.facing, [0, Math.sin(-a/2), 0, Math.cos(-a/2)]);
+    if (KEYS.E) quat4.multiply(PLAYER.facing, [0, Math.sin( a/2), 0, Math.cos( a/2)]);
+    if (KEYS.Z) quat4.multiply(PLAYER.facing, [Math.sin(-a/2), 0, 0, Math.cos(-a/2)]);
+    if (KEYS.C) quat4.multiply(PLAYER.facing, [Math.sin( a/2), 0, 0, Math.cos( a/2)]);
   }
   lastTime = timeNow;
 }
