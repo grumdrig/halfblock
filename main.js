@@ -255,7 +255,7 @@ function drawScene() {
                    pMatrix);
 
   // Position for player
-  quat4.toMat4(PLAYER.facing, mvMatrix)
+  quat4.toMat4(quat4.inverse(PLAYER.facing, [0,0,0,0]), mvMatrix)
   mat4.translate(mvMatrix, PLAYER.position);
 
   // Rotate the world
@@ -302,18 +302,17 @@ function animate() {
     var d = elapsed * .01;
     var a = elapsed * .001;
     var m = mat4.create();
-    mat4.identity(m);
-    if (KEYS.A) mat4.translate(m, [ d, 0, 0]);
-    if (KEYS.D) mat4.translate(m, [-d, 0, 0]);;
-    if (KEYS.W) mat4.translate(m, [ 0, 0, d]);
-    if (KEYS.S) mat4.translate(m, [ 0, 0,-d]);
-    if (KEYS[32]) mat4.translate(m, [ 0,-d, 0]);  // SPACE
-    if (KEYS[16]) mat4.translate(m, [ 0, d, 0]);  // SHIFT
-    mat4.multiplyVec3(m, PLAYER.position);
+
+    if (KEYS.A) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [ d, 0, 0]));
+    if (KEYS.D) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [-d, 0, 0]));
+    if (KEYS.W) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [ 0, 0, d]));
+    if (KEYS.S) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [ 0, 0,-d]));
+    if (KEYS[32]) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [ 0,-d, 0]));
+    if (KEYS[16]) vec3.add(PLAYER.position, quat4.multiplyVec3(PLAYER.facing, [ 0, d, 0]));
 
     // http://content.gpwiki.org/index.php/OpenGL%3aTutorials%3aUsing_Quaternions_to_represent_rotation
-    if (KEYS.Q) quat4.multiply(PLAYER.facing, [0, Math.sin(-a/2), 0, Math.cos(-a/2)]);
-    if (KEYS.E) quat4.multiply(PLAYER.facing, [0, Math.sin( a/2), 0, Math.cos( a/2)]);
+    if (KEYS.Q) quat4.multiply(PLAYER.facing, [0, Math.sin( a/2), 0, Math.cos( a/2)]);
+    if (KEYS.E) quat4.multiply(PLAYER.facing, [0, Math.sin(-a/2), 0, Math.cos(-a/2)]);
     if (KEYS.Z) quat4.multiply(PLAYER.facing, [Math.sin(-a/2), 0, 0, Math.cos(-a/2)]);
     if (KEYS.C) quat4.multiply(PLAYER.facing, [Math.sin( a/2), 0, 0, Math.cos( a/2)]);
   }
