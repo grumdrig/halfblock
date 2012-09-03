@@ -1,3 +1,4 @@
+// http://learningwebgl.com/blog/?page_id=1217
 
 var gl;
 
@@ -69,14 +70,19 @@ function initShaders() {
     gl.data[variable] = gl['get' + type + 'Location'](gl.data.shaderProgram, variable);
   }
   locate('aVertexPosition');
+  gl.enableVertexAttribArray(gl.data.aVertexPosition);
+  locate('aVertexNormal');
+  gl.enableVertexAttribArray(gl.data.aVertexNormal);
   locate('aTextureCoord');
-  //  locate('vTextureCoord');
+  gl.enableVertexAttribArray(gl.data.aTextureCoord);
+  locate('uAmbientColor');
+  locate('uLightingDirection');
+  locate('uDirectionalColor')
   locate('uSampler');
   locate('uMVMatrix');
   locate('uPMatrix');
+  locate('uNMatrix');
 
-  gl.enableVertexAttribArray(gl.data.aVertexPosition);
-  gl.enableVertexAttribArray(gl.data.aVertexColor);
 }
 
 
@@ -102,6 +108,10 @@ function mvPopMatrix() {
 function setMatrixUniforms() {
   gl.uniformMatrix4fv(gl.data.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
+  var normalMatrix = mat3.create();
+  mat4.toInverseMat3(mvMatrix, normalMatrix);
+  mat3.transpose(normalMatrix);
+  gl.uniformMatrix3fv(gl.data.uNMatrix, false, normalMatrix);
 }
 
 
@@ -111,7 +121,8 @@ function degToRad(degrees) {
 
 
 var cubeVertexPositionBuffer;
-var cubeVertexColorBuffer;
+var cubeVertexNormalBuffer;
+var cubeVertexTextureCoordBuffer;
 var cubeVertexIndexBuffer;
 
 function initBuffers() {
@@ -147,7 +158,7 @@ function initBuffers() {
                1, -1,  1,
               -1, -1,  1,
 
-              // Rig1t face
+              // Right face
                1, -1, -1,
                1,  1, -1,
                1,  1,  1,
@@ -180,6 +191,47 @@ function initBuffers() {
                 gl.STATIC_DRAW);
   cubeVertexIndexBuffer.itemSize = 1;
   cubeVertexIndexBuffer.numItems = 36;
+
+
+
+  cubeVertexNormalBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer);
+  var vertexNormals = [
+    // Front face
+     0,  0,  1,
+     0,  0,  1,
+     0,  0,  1,
+     0,  0,  1,
+    // Back face
+     0,  0, -1,
+     0,  0, -1,
+     0,  0, -1,
+     0,  0, -1,
+    // Top face
+     0,  1,  0,
+     0,  1,  0,
+     0,  1,  0,
+     0,  1,  0,
+    // Bottom face
+     0, -1,  0,
+     0, -1,  0,
+     0, -1,  0,
+     0, -1,  0,
+    // Right face
+     1,  0,  0,
+     1,  0,  0,
+     1,  0,  0,
+     1,  0,  0,
+    // Left face
+    -1,  0,  0,
+    -1,  0,  0,
+    -1,  0,  0,
+    -1,  0,  0,
+  ];
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals), gl.STATIC_DRAW);
+  cubeVertexNormalBuffer.itemSize = 3;
+  cubeVertexNormalBuffer.numItems = 24;
+  console.log(cubeVertexNormalBuffer);
 
 
   cubeVertexTextureCoordBuffer = gl.createBuffer();
@@ -219,7 +271,7 @@ function initBuffers() {
   for (var i = 0; i < textureCoords.length; ++i) {
     textureCoords[i] /= 16;
     if (i & 1) textureCoords[i] += 15/16;
-    //else textureCoords[i] += 2/16;
+    else textureCoords[i] += 3/16;
   }
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
   cubeVertexTextureCoordBuffer.itemSize = 2;
@@ -263,7 +315,7 @@ function chunk(x, y, z) {
 
 // Rotation of the objects
 var PLAYER = {
-  position: vec3.create([0,0,-30]),
+  position: vec3.create([0,0,-10]),
   yaw: 0,
   pitch: 0
 };
@@ -291,14 +343,32 @@ function drawScene() {
                          gl.FLOAT, false, 0, 0);
 
 
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer);
+  gl.vertexAttribPointer(gl.data.aVertexNormal,
+                         cubeVertexNormalBuffer.itemSize,
+                         gl.FLOAT, false, 0, 0);
+
+  gl.uniform3f(gl.data.uAmbientColor, 0.2, 0.2, 0.2);
+
+  var adjustedLD = vec3.create();
+  vec3.normalize([-0.25, -0.25, -1], adjustedLD);
+  vec3.scale(adjustedLD, -1);
+  gl.uniform3fv(gl.data.uLightingDirection, adjustedLD);
+
+  gl.uniform3f(gl.data.uDirectionalColor, 0.8, 0.8, 0.8);
+
+
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
-  gl.vertexAttribPointer(gl.data.vTextureCoord, cubeVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(gl.data.vTextureCoord,
+                         cubeVertexTextureCoordBuffer.itemSize,
+                         gl.FLOAT, false, 0, 0);
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN);
   gl.uniform1i(gl.data.uSampler, 0);
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+
 
   for (var i = 0; i < CCCHUNK; ++i) {
     if (chunk(i)) {
@@ -366,6 +436,7 @@ function handleLoadedTexture(texture) {
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+    //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.bindTexture(gl.TEXTURE_2D, null);
