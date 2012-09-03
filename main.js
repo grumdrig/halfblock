@@ -273,13 +273,6 @@ function initBuffers() {
     1, 1,
     0, 1,
   ];
-  /*
-  for (var i = 0; i < textureCoords.length; ++i) {
-    textureCoords[i] /= 16;
-    if (i & 1) textureCoords[i] += 15/16;
-    else textureCoords[i] += 3/16;
-  }
-  */
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
   cubeVertexTextureCoordBuffer.itemSize = 2;
   cubeVertexTextureCoordBuffer.numItems = 24;
@@ -358,7 +351,7 @@ function drawScene() {
   gl.uniform3f(gl.data.uAmbientColor, 0.2, 0.2, 0.2);
 
   var adjustedLD = vec3.create();
-  vec3.normalize([-0.25, -0.25, -1], adjustedLD);
+  vec3.normalize([1, -1, -0.5], adjustedLD);
   vec3.scale(adjustedLD, -1);
   gl.uniform3fv(gl.data.uLightingDirection, adjustedLD);
 
