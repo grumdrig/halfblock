@@ -65,11 +65,13 @@ function initShaders() {
   gl.useProgram(gl.data.shaderProgram);
 
   function locate(variable) {
-    var type = { 'a': 'Attrib', 'u': 'Uniform' }[variable[0]];
+    var type = { a: 'Attrib', u: 'Uniform' }[variable[0]];
     gl.data[variable] = gl['get' + type + 'Location'](gl.data.shaderProgram, variable);
   }
   locate('aVertexPosition');
-  locate('aVertexColor');
+  locate('aTextureCoord');
+  //  locate('vTextureCoord');
+  locate('uSampler');
   locate('uMVMatrix');
   locate('uPMatrix');
 
@@ -162,28 +164,6 @@ function initBuffers() {
   cubeVertexPositionBuffer.itemSize = 3;
   cubeVertexPositionBuffer.numItems = 24;
 
-  cubeVertexColorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
-  colors = [
-            [1.0, 0.0, 0.0, 1.0], // Front face
-            [1.0, 1.0, 0.0, 1.0], // Back face
-            [0.0, 1.0, 0.0, 1.0], // Top face
-            [1.0, 0.5, 0.5, 1.0], // Bottom face
-            [1.0, 0.0, 1.0, 1.0], // Right face
-            [0.0, 0.0, 1.0, 1.0]  // Left face
-            ];
-  var unpackedColors = [];
-  for (var i in colors) {
-    var color = colors[i];
-    for (var j=0; j < 4; j++) {
-      unpackedColors = unpackedColors.concat(color);
-    }
-  }
-  gl.bufferData(gl.ARRAY_BUFFER,
-                new Float32Array(unpackedColors),
-                gl.STATIC_DRAW);
-  cubeVertexColorBuffer.itemSize = 4;
-  cubeVertexColorBuffer.numItems = 24;
 
   cubeVertexIndexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
@@ -200,6 +180,50 @@ function initBuffers() {
                 gl.STATIC_DRAW);
   cubeVertexIndexBuffer.itemSize = 1;
   cubeVertexIndexBuffer.numItems = 36;
+
+
+  cubeVertexTextureCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+  var textureCoords = [
+    // Front face
+    0, 0,
+    1, 0,
+    1, 1,
+    0, 1,
+    // Back face
+    1, 0,
+    1, 1,
+    0, 1,
+    0, 0,
+    // Top face
+    0, 1,
+    0, 0,
+    1, 0,
+    1, 1,
+    // Bottom face
+    1, 1,
+    0, 1,
+    0, 0,
+    1, 0,
+    // Right face
+    1, 0,
+    1, 1,
+    0, 1,
+    0, 0,
+    // Left face
+    0, 0,
+    1, 0,
+    1, 1,
+    0, 1,
+  ];
+  for (var i = 0; i < textureCoords.length; ++i) {
+    textureCoords[i] /= 16;
+    if (i & 1) textureCoords[i] += 15/16;
+    //else textureCoords[i] += 2/16;
+  }
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
+  cubeVertexTextureCoordBuffer.itemSize = 2;
+  cubeVertexTextureCoordBuffer.numItems = 24;
 }
 
 
@@ -266,10 +290,13 @@ function drawScene() {
                          cubeVertexPositionBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
-  gl.vertexAttribPointer(gl.data.aVertexColor,
-                         cubeVertexColorBuffer.itemSize,
-                         gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+  gl.vertexAttribPointer(gl.data.vTextureCoord, cubeVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, TERRAIN);
+  gl.uniform1i(gl.data.uSampler, 0);
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
 
@@ -335,12 +362,33 @@ function tick() {
 }
 
 
+function handleLoadedTexture(texture) {
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.bindTexture(gl.TEXTURE_2D, null);
+}
+
+var TERRAIN;
+
 // Entry point for body.onload
 function webGLStart() {
   var canvas = document.getElementById("canvas");
   initGL(canvas);
   initShaders();
   initBuffers();
+
+  // Init texture
+
+  TERRAIN = gl.createTexture();
+  TERRAIN.image = new Image();
+  TERRAIN.image.onload = function() {
+    handleLoadedTexture(TERRAIN)
+  }
+  TERRAIN.image.src = "terrain.png";
+
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear is blackness
   gl.enable(gl.DEPTH_TEST);           // Enable Z-buffer
