@@ -477,8 +477,7 @@ function webGLStart() {
 
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
-  //CANVAS.addEventListener('mousedown', onmousedown, true);
-  //CANVAS.addEventListener('mousemove', onmousemove, true);
+  window.addEventListener('mousemove', onmousemove, true);
 
   tick();
 }
@@ -496,4 +495,17 @@ function onkeyup(event, imeandown) {
   var c = String.fromCharCode(k).toUpperCase();
 
   KEYS[k] = KEYS[c] = imeandown;
+}
+
+var lastX, lastY;
+function onmousemove(event) {
+  if (typeof lastX !== 'undefined') {
+    var xDelta = event.pageX - lastX;
+    var yDelta = event.pageY - lastY;
+    PLAYER.yaw += xDelta * 0.01;
+    PLAYER.pitch += yDelta * 0.01;
+    PLAYER.pitch = Math.max(Math.min(Math.PI/2, PLAYER.pitch), -Math.PI/2);
+  }
+  lastX = event.pageX;
+  lastY = event.pageY;
 }
