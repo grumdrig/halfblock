@@ -108,8 +108,12 @@ function mvPopMatrix() {
 function setMatrixUniforms() {
   gl.uniformMatrix4fv(gl.data.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
+
+  var mmat = mat4.create();
+  mat4.rotateY(mvMatrix, -PLAYER.yaw, mmat);
+  mat4.rotateX(mmat, -PLAYER.pitch);
   var normalMatrix = mat3.create();
-  mat4.toInverseMat3(mvMatrix, normalMatrix);
+  mat4.toInverseMat3(mmat, normalMatrix);
   mat3.transpose(normalMatrix);
   gl.uniformMatrix3fv(gl.data.uNMatrix, false, normalMatrix);
 }
