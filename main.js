@@ -77,7 +77,8 @@ function initShaders() {
   gl.enableVertexAttribArray(gl.data.aTextureCoord);
   locate('uAmbientColor');
   locate('uLightingDirection');
-  locate('uDirectionalColor')
+  locate('uDirectionalColor');
+  locate('uTile');
   locate('uSampler');
   locate('uMVMatrix');
   locate('uPMatrix');
@@ -272,11 +273,13 @@ function initBuffers() {
     1, 1,
     0, 1,
   ];
+  /*
   for (var i = 0; i < textureCoords.length; ++i) {
     textureCoords[i] /= 16;
     if (i & 1) textureCoords[i] += 15/16;
     else textureCoords[i] += 3/16;
   }
+  */
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
   cubeVertexTextureCoordBuffer.itemSize = 2;
   cubeVertexTextureCoordBuffer.numItems = 24;
@@ -289,7 +292,7 @@ var LOGCHUNK = 4;
 var CCCHUNK = CHUNK * CHUNK * CHUNK;
 var WORLD = Array(CCCHUNK);
 for (var i = 0; i < CCCHUNK; ++i)
-  WORLD[i] = !choice(12);
+  WORLD[i] = choice(12) ? undefined : { tile: choice(4) };
 var NOWHERE = false;
 
 function choice(n) {
@@ -375,12 +378,14 @@ function drawScene() {
 
 
   for (var i = 0; i < CCCHUNK; ++i) {
-    if (chunk(i)) {
+    var ch = chunk(i);
+    if (ch) {
       var c = coords(i);
       // if (!chunk(c.x-1, c.y, c.z)) {
       mvPushMatrix();
       mat4.translate(mvMatrix, [c.x - CHUNK/2, CHUNK/2 - c.y, c.z - CHUNK/2]);
       setMatrixUniforms();
+      gl.uniform2f(gl.data.uTile, ch.tile, 15);
       gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
                       gl.UNSIGNED_SHORT, 0);
       mvPopMatrix();
