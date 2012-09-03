@@ -331,8 +331,8 @@ function drawScene() {
 
   // Position for player
   mat4.identity(mvMatrix);
-  mat4.rotateY(mvMatrix, PLAYER.yaw);
   mat4.rotateX(mvMatrix, PLAYER.pitch);
+  mat4.rotateY(mvMatrix, PLAYER.yaw);
   mat4.translate(mvMatrix, PLAYER.position);
 
   // Render the world as cubes
@@ -402,7 +402,7 @@ function animate() {
     var elapsed = timeNow - lastTime;
 
     var d = elapsed * .01;
-    var a = elapsed * .001;
+    var a = elapsed * .002;
     var m = mat4.create();
 
     var facing = quat4.create([0,0,0,1]);
@@ -418,8 +418,8 @@ function animate() {
     // http://content.gpwiki.org/index.php/OpenGL%3aTutorials%3aUsing_Quaternions_to_represent_rotation
     if (KEYS.Q) PLAYER.yaw -= a;
     if (KEYS.E) PLAYER.yaw += a;
-    if (KEYS.R) PLAYER.pitch += a;
-    if (KEYS.F) PLAYER.pitch -= a;
+    if (KEYS.R) PLAYER.pitch = Math.max(PLAYER.pitch - a, -Math.PI/2);
+    if (KEYS.F) PLAYER.pitch = Math.min(PLAYER.pitch + a,  Math.PI/2);
   }
   lastTime = timeNow;
 }
