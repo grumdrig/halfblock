@@ -1,4 +1,6 @@
+// REFERENCES:
 // http://learningwebgl.com/blog/?page_id=1217
+// http://codeflow.org/entries/2010/dec/09/minecraft-like-rendering-experiments-in-opengl-4/
 
 var gl;
 
@@ -321,6 +323,8 @@ var PLAYER = {
 };
 
 function drawScene() {
+  var atstart = +new Date();
+
   // Start from scratch
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -369,7 +373,6 @@ function drawScene() {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
 
-
   for (var i = 0; i < CCCHUNK; ++i) {
     var ch = chunk(i);
     if (ch) {
@@ -384,8 +387,14 @@ function drawScene() {
       mvPopMatrix();
     }
   }
+
+  var atend = +new Date();
+  var alpha = 0.9;
+  RENDERTIME = RENDERTIME * alpha + (1-alpha) * (atend-atstart);
+  document.getElementById('stats').innerText = RENDERTIME.toFixed(2) + ' ms';
 }
 
+var RENDERTIME = 0;
 
 quat4.rotateX = function (quat, angle, dest) {
   if (!dest) dest = quat;
