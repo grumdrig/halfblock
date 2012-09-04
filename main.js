@@ -13,7 +13,7 @@ function initGL(canvas) {
   } catch (e) {
   }
   if (!gl) {
-    alert("Could not initialise WebGL, sorry :-(");
+    alert("Could not initialise WebGL, sorry...");
   }
 }
 
@@ -73,19 +73,13 @@ function initShaders() {
   }
   locate('aVertexPosition');
   gl.enableVertexAttribArray(gl.data.aVertexPosition);
-  locate('aVertexNormal');
-  gl.enableVertexAttribArray(gl.data.aVertexNormal);
   locate('aTextureCoord');
   gl.enableVertexAttribArray(gl.data.aTextureCoord);
   locate('uAmbientColor');
-  locate('uLightingDirection');
-  locate('uDirectionalColor');
   locate('uTile');
   locate('uSampler');
   locate('uMVMatrix');
   locate('uPMatrix');
-  locate('uNMatrix');
-
 }
 
 
@@ -111,14 +105,6 @@ function mvPopMatrix() {
 function setMatrixUniforms() {
   gl.uniformMatrix4fv(gl.data.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
-
-  var mmat = mat4.create();
-  mat4.rotateY(mvMatrix, -PLAYER.yaw, mmat);
-  mat4.rotateX(mmat, -PLAYER.pitch);
-  var normalMatrix = mat3.create();
-  mat4.toInverseMat3(mmat, normalMatrix);
-  mat3.transpose(normalMatrix);
-  gl.uniformMatrix3fv(gl.data.uNMatrix, false, normalMatrix);
 }
 
 
@@ -128,15 +114,12 @@ function degToRad(degrees) {
 
 
 var cubeVertexPositionBuffer;
-var cubeVertexNormalBuffer;
 var cubeVertexTextureCoordBuffer;
 var cubeVertexIndexBuffer;
 
 function initBuffers() {
 
-  //
-  // Cube
-  //
+  // Vertex positions
 
   cubeVertexPositionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
@@ -182,6 +165,7 @@ function initBuffers() {
   cubeVertexPositionBuffer.itemSize = 3;
   cubeVertexPositionBuffer.numItems = 24;
 
+  // Vertex index buffer
 
   cubeVertexIndexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
@@ -199,47 +183,7 @@ function initBuffers() {
   cubeVertexIndexBuffer.itemSize = 1;
   cubeVertexIndexBuffer.numItems = 36;
 
-
-
-  cubeVertexNormalBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer);
-  var vertexNormals = [
-    // Front face
-     0,  0,  1,
-     0,  0,  1,
-     0,  0,  1,
-     0,  0,  1,
-    // Back face
-     0,  0, -1,
-     0,  0, -1,
-     0,  0, -1,
-     0,  0, -1,
-    // Top face
-     0,  1,  0,
-     0,  1,  0,
-     0,  1,  0,
-     0,  1,  0,
-    // Bottom face
-     0, -1,  0,
-     0, -1,  0,
-     0, -1,  0,
-     0, -1,  0,
-    // Right face
-     1,  0,  0,
-     1,  0,  0,
-     1,  0,  0,
-     1,  0,  0,
-    // Left face
-    -1,  0,  0,
-    -1,  0,  0,
-    -1,  0,  0,
-    -1,  0,  0,
-  ];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals), gl.STATIC_DRAW);
-  cubeVertexNormalBuffer.itemSize = 3;
-  cubeVertexNormalBuffer.numItems = 24;
-  console.log(cubeVertexNormalBuffer);
-
+  // Texture coordinates
 
   cubeVertexTextureCoordBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
@@ -302,17 +246,27 @@ function coords(i) {
 
 
 function index(x, y, z) {
+  if (typeof y === 'undefined') return x;
   if (x < 0 || y < 0 || z < 0 ||
       x >= WORLD.NX || y >= WORLD.NY || z >= WORLD.NZ) return null;
   return x + y * WORLD.NX + z * WORLD.NX * WORLD.NY;
 }
 
 function chunk(x, y, z) {
-  if (typeof y === 'undefined')
-    return WORLD.map[x] || {};  // just a flat index
-  else
-    return WORLD.map[index(x,y,z)] || {};
+  return WORLD.map[index(x,y,z)] || {};
 }
+
+function neighbors(x, y, z) {
+  var result = [];
+  var i = index(x-1, y, z); if (i) result.push(chunk(i));
+  var i = index(x+1, y, z); if (i) result.push(chunk(i));
+  var i = index(x, y-1, z); if (i) result.push(chunk(i));
+  var i = index(x, y+1, z); if (i) result.push(chunk(i));
+  var i = index(x, y, z-1); if (i) result.push(chunk(i));
+  var i = index(x, y, z+1); if (i) result.push(chunk(i));
+  return result;
+}
+
 
 
 function drawScene() {
@@ -335,28 +289,12 @@ function drawScene() {
   mat4.rotateY(mvMatrix, PLAYER.yaw);
   mat4.translate(mvMatrix, PLAYER.position);
 
-  // Render the world as cubes
+  // Render the world
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
   gl.vertexAttribPointer(gl.data.aVertexPosition,
                          cubeVertexPositionBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
-
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer);
-  gl.vertexAttribPointer(gl.data.aVertexNormal,
-                         cubeVertexNormalBuffer.itemSize,
-                         gl.FLOAT, false, 0, 0);
-
-  gl.uniform3f(gl.data.uAmbientColor, 0.2, 0.2, 0.2);
-
-  var adjustedLD = vec3.create();
-  vec3.normalize([1, -1, -0.5], adjustedLD);
-  vec3.scale(adjustedLD, -1);
-  gl.uniform3fv(gl.data.uLightingDirection, adjustedLD);
-
-  gl.uniform3f(gl.data.uDirectionalColor, 0.8, 0.8, 0.8);
-
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
   gl.vertexAttribPointer(gl.data.vTextureCoord,
@@ -373,12 +311,13 @@ function drawScene() {
     var ch = chunk(i);
     if (ch && ch.tile) {
       var c = coords(i);
-      // if (!chunk(c.x-1, c.y, c.z)) {
       mvPushMatrix();
       mat4.translate(mvMatrix, [c.x - WORLD.NX/2, 
-                                WORLD.NY/2 - c.y, 
+                                c.y - WORLD.NY/2, 
                                 c.z - WORLD.NZ/2]);
       setMatrixUniforms();
+      var light = ch.light / LIGHT_MAX;
+      gl.uniform3f(gl.data.uAmbientColor, light, light, light);
       gl.uniform2f(gl.data.uTile, ch.tile, 15);
       gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
                       gl.UNSIGNED_SHORT, 0);
@@ -403,12 +342,16 @@ quat4.rotateY = function (quat, angle, dest) {
   quat4.multiply(quat, [0, Math.sin(angle/2), 0, Math.cos(angle/2)]);
 }
 
-var lastTime = 0;
+var lastFrame = 0;
+var lastUpdate = 0;
+
+var LIGHT_MAX = 8;
+var LIGHT_MIN = 2;
 
 function animate() {
   var timeNow = new Date().getTime();
-  if (lastTime != 0) {
-    var elapsed = timeNow - lastTime;
+  if (lastFrame) {
+    var elapsed = timeNow - lastFrame;
 
     var d = elapsed * .003;
     var a = elapsed * .002;
@@ -416,20 +359,64 @@ function animate() {
 
     var facing = quat4.create([0,0,0,1]);
     quat4.rotateY(facing, -PLAYER.yaw);
-    if (KEYS.A)   vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ d, 0, 0]));
-    if (KEYS.D)   vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [-d, 0, 0]));
-    if (KEYS.W)   vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0, d]));
-    if (KEYS.S)   vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0,-d]));
-    if (KEYS[32]) vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0,-d, 0]));
-    if (KEYS[16]) vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, d, 0]));
-
+    if (KEYS.A)   
+      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ d, 0, 0]));
+    if (KEYS.D)   
+      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [-d, 0, 0]));
+    if (KEYS.W)   
+      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0, d]));
+    if (KEYS.S)   
+      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0,-d]));
+    if (KEYS[32] || KEYS.R) 
+      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0,-d, 0]));
+    if (KEYS[16] || KEYS.F) 
+      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, d, 0]));
     // http://content.gpwiki.org/index.php/OpenGL%3aTutorials%3aUsing_Quaternions_to_represent_rotation
+    // TODO though: can just do the math the simple way
+
     if (KEYS.Q) PLAYER.yaw -= a;
     if (KEYS.E) PLAYER.yaw += a;
-    if (KEYS.R) PLAYER.pitch = Math.max(PLAYER.pitch - a, -Math.PI/2);
-    if (KEYS.F) PLAYER.pitch = Math.min(PLAYER.pitch + a,  Math.PI/2);
+    if (KEYS.Z) PLAYER.pitch = Math.max(PLAYER.pitch - a, -Math.PI/2);
+    if (KEYS.X) PLAYER.pitch = Math.min(PLAYER.pitch + a,  Math.PI/2);
   }
-  lastTime = timeNow;
+  lastFrame = timeNow;
+
+  var UPDATE_PERIOD_MS = 100;
+  if (timeNow > lastUpdate + UPDATE_PERIOD_MS) {
+    // This shitty method will propagate changes faster in some
+    // directions than others
+    for (var x = 0; x < WORLD.NX; ++x) {
+      for (var z = 0; z < WORLD.NZ; ++z) {
+        var top = true;
+        for (var y = WORLD.NY-1; y >= 0; --y) {
+          var c = chunk(x,y,z);
+          top = top && !c.tile;
+
+          if (c.dirty) {
+            c.dirty = false;
+            var ns = neighbors(x,y,z);
+            var light;
+            if (top) {
+              light = LIGHT_MAX;
+            } else {
+              light = LIGHT_MIN;
+              for (var i = 0; i < ns.length; ++i) {
+                if (!ns[i].tile)
+                  light = Math.max(light, ns[i].light - 1);
+              }
+            }
+            if (c.light != light) {
+              c.light = light;
+              for (var i = 0; i < ns.length; ++i) 
+                if (ns[i].light < light-1)
+                  ns[i].dirty = true;
+            }
+          }
+        }
+      }
+    }
+    lastUpdate = timeNow;
+  }
 }
 
 
@@ -478,11 +465,21 @@ function webGLStart() {
   for (var x = 0; x < WORLD.NX; ++x) {
     for (var y = 0; y < WORLD.NY; ++y) {
       for (var z = 0; z < WORLD.NZ; ++z) {
-        var n = pinkNoise(x,y,z, 32, 4) - (2*y-WORLD.NY)/WORLD.NY;
+        var n = pinkNoise(x,y,z, 32, 2) + (2*y-WORLD.NY)/WORLD.NY;
         var t = WORLD.map[index(x,y,z)] = {};
         if (n < 0) t.tile = 3;
         if (n < -0.1) t.tile = 2;
         if (n < -0.2) t.tile = 1;
+      }
+    }
+  }
+  for (var x = 0; x < WORLD.NX; ++x) {
+    for (var z = 0; z < WORLD.NZ; ++z) {
+      chunk(x, WORLD.NY-1, z).light = LIGHT_MAX;
+      for (var y = WORLD.NY-2; y >= 0; --y) {
+        var c = chunk(x,y,z);
+        c.light = 0;
+        c.dirty = true;
       }
     }
   }
