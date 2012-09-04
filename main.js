@@ -285,10 +285,8 @@ function initBuffers() {
 var CHUNK = 16;  // Dimension of chunks
 var LOGCHUNK = 4;
 var CCCHUNK = CHUNK * CHUNK * CHUNK;
-var WORLD = Array(CCCHUNK);
-for (var i = 0; i < CCCHUNK; ++i)
-  WORLD[i] = choice(12) ? undefined : { tile: choice(4) };
-var NOWHERE = false;
+var WORLD;
+
 
 function choice(n) {
   if (!n) n = 2;
@@ -303,24 +301,24 @@ function coords(i) {
     }
 }
 
-function chunk(x, y, z) {
-  if (typeof y === 'undefined') {
-    var c = coords(x);
-    x = c.x; y = c.y; z = c.z;
-  }
+
+function index(x, y, z) {
   if (x < 0 || y < 0 || z < 0 ||
-      x >= CHUNK || y >= CHUNK || z >= CHUNK) return NOWHERE;
-  var i = x * CHUNK * CHUNK + y * CHUNK + z;
-  return WORLD[i];
+      x >= CHUNK || y >= CHUNK || z >= CHUNK) return null;
+  return x * CHUNK * CHUNK + y * CHUNK + z;
+}
+
+function chunk(x, y, z) {
+  if (typeof y === 'undefined')
+    return WORLD[x];  // just a flat index
+  else
+    return WORLD[index(x,y,z)] || {};
 }
 
 
 // Rotation of the objects
-var PLAYER = {
-  position: vec3.create([0,0,-10]),
-  yaw: 0,
-  pitch: 0
-};
+var PLAYER;
+
 
 function drawScene() {
   var atstart = +new Date();
@@ -375,7 +373,7 @@ function drawScene() {
 
   for (var i = 0; i < CCCHUNK; ++i) {
     var ch = chunk(i);
-    if (ch) {
+    if (ch.tile) {
       var c = coords(i);
       // if (!chunk(c.x-1, c.y, c.z)) {
       mvPushMatrix();
@@ -457,6 +455,30 @@ var TERRAIN;
 // Entry point for body.onload
 function webGLStart() {
   var canvas = document.getElementById("canvas");
+
+  // Init game objects
+
+  PLAYER = {
+    position: vec3.create([0,0,-10]),
+    yaw: 0,
+    pitch: 0
+  };
+
+  // Fill map
+  WORLD = Array(CCCHUNK);
+  for (var x = 0; x < CHUNK; ++x) {
+    for (var y = 0; y < CHUNK; ++y) {
+      for (var z = 0; z < CHUNK; ++z) {
+        var S = CHUNK;
+        var n = pinkNoise(x,y,z, 32,2) - (2*y-CHUNK)/CHUNK;
+        var t = WORLD[index(x,y,z)] = {};
+        if (n < 0) t.tile = 3;
+        if (n < -0.1) t.tile = 2;
+        if (n < -0.2) t.tile = 1;
+      }
+    }
+  }
+
   initGL(canvas);
   initShaders();
   initBuffers();
