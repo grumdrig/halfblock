@@ -248,11 +248,14 @@ function coords(i) {
 function index(x, y, z) {
   if (typeof x === 'object') {
     // assuming vec3 or array
-    z = Math.floor(x[2]);
-    y = Math.floor(x[1]);
-    x = Math.floor(x[0]);
+    z = x[2];
+    y = x[1];
+    x = x[0];
   }
   if (typeof y === 'undefined') return x;
+  z = Math.floor(z);
+  y = Math.floor(y);
+  x = Math.floor(x);
   if (x < 0 || y < 0 || z < 0 ||
       x >= WORLD.NX || y >= WORLD.NY || z >= WORLD.NZ) return null;
   return x + y * WORLD.NX + z * WORLD.NX * WORLD.NY;
@@ -381,8 +384,11 @@ function animate() {
       PLAYER.position[1] += d;
     if (PLAYER.flying && (KEYS[16] || KEYS.F))
       PLAYER.position[1] -= d;
-    if (!PLAYER.flying && KEYS[32] === 1) {
-      PLAYER.dy += 6;
+    if (!PLAYER.flying && !PLAYER.falling && KEYS[32] === 1) {
+      PLAYER.dy = 5.5;
+      PLAYER.falling = true;
+      if (chunk(PLAYER.position).tile) 
+        PLAYER.position[1] = Math.floor(PLAYER.position[1] + 1);
       ++KEYS[32];
     }
     // http://content.gpwiki.org/index.php/OpenGL%3aTutorials%3aUsing_Quaternions_to_represent_rotation
@@ -395,14 +401,32 @@ function animate() {
 
     if (!PLAYER.flying) {
       var c = chunk(PLAYER.position);
-      if (c.tile) {
-        // Rise from dirt
-        PLAYER.dy = 0;
-        PLAYER.position[1] += d/20;
-      } else {
-        PLAYER.dy -= 9.8 * elapsed / 1000;
+      if (!PLAYER.falling) {
+        if (c.tile) {
+          // Rise from dirt
+          PLAYER.position[1] += d/10;
+          if (!chunk(PLAYER.position).tile) {
+            PLAYER.position[1] = Math.floor(PLAYER.position[1]);
+          }
+        } else if (!chunk(PLAYER.position[0], 
+                          PLAYER.position[1]-1,
+                          PLAYER.position[2]).tile) {
+          // Fall off cliff
+          PLAYER.falling = true;
+          PLAYER.dy = 0;
+        }
+      } else { // falling
+        if (c.tile) {
+          // Landed
+          PLAYER.dy = 0;
+          PLAYER.falling = false;
+          PLAYER.position[1] = Math.floor(PLAYER.position[1] + 1);
+        } else {
+          // Still falling
+          PLAYER.dy -= 9.8 * elapsed / 1000;
+          PLAYER.position[1] += PLAYER.dy * elapsed / 1000;
+        }
       }
-      PLAYER.position[1] += PLAYER.dy * elapsed / 1000;
     }
   }
   lastFrame = timeNow;
@@ -527,7 +551,7 @@ function webGLStart() {
     flying: false
   };
   var c = topmost(PLAYER.position[0], PLAYER.position[2]);
-  PLAYER.position[1] = c.y;
+  PLAYER.position[1] = c.y + 1;
 
   initGL(canvas);
   initShaders();
