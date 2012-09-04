@@ -68,7 +68,7 @@ function pinkNoise(x, y, z, maxScale, minScale, alpha) {
   var result = 0;
   var a = 1;
   for (var scale = maxScale; scale >= minScale; scale /= 2) {
-    result += noise(x / scale, y / scale, z + scale) * a;
+    result += noise(x / scale, y / scale, z / scale) * a;
     a *= alpha;
   }
   return result;
