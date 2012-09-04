@@ -2,7 +2,38 @@
 // http://learningwebgl.com/blog/?page_id=1217
 // http://codeflow.org/entries/2010/dec/09/minecraft-like-rendering-experiments-in-opengl-4/
 
+// OpenGL rendering things!
+
 var gl;
+
+var mvMatrix = mat4.create();  // model-view matrix
+var mvMatrixStack = [];
+var pMatrix = mat4.create();   // projection matrix
+
+var cubeVertexPositionBuffer;
+var cubeVertexTextureCoordBuffer;
+var cubeVertexIndexBuffer;
+
+// Game objects
+
+var WORLD;
+var PLAYER;
+
+var RENDERTIME = 0;
+
+var lastFrame = 0;
+var lastUpdate = 0;
+
+var LIGHT_MAX = 8;
+var LIGHT_MIN = 4;
+
+var TERRAIN;
+var EYE_HEIGHT = 1.6;
+
+var KEYS = {};
+
+var lastX, lastY;
+
 
 function initGL(canvas) {
   try {
@@ -84,10 +115,6 @@ function initShaders() {
 
 
 
-var mvMatrix = mat4.create();  // model-view matrix
-var mvMatrixStack = [];
-var pMatrix = mat4.create();   // projection matrix
-
 function mvPushMatrix() {
   var copy = mat4.create();
   mat4.set(mvMatrix, copy);
@@ -112,10 +139,6 @@ function degToRad(degrees) {
   return degrees * Math.PI / 180;
 }
 
-
-var cubeVertexPositionBuffer;
-var cubeVertexTextureCoordBuffer;
-var cubeVertexIndexBuffer;
 
 
 function chunkToBuffers() {
@@ -176,64 +199,6 @@ function chunkToBuffers() {
   cubeVertexTextureCoordBuffer.itemSize = 2;
   cubeVertexTextureCoordBuffer.numItems = textures.length / 2;
 }
-
-
-function initBuffers() {
-
-  // Vertex positions
-
-  cubeVertexPositionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
-  var vertices = [-1,-1,+1, +1,-1,+1, +1,+1,+1, -1,+1,+1,  // front face
-                  -1,-1,-1, -1,+1,-1, +1,+1,-1, +1,-1,-1,  // back face
-                  -1,+1,-1, -1,+1,+1, +1,+1,+1, +1,+1,-1,  // top face
-                  -1,-1,-1, +1,-1,-1, +1,-1,+1, -1,-1,+1,  // bottom face
-                  +1,-1,-1, +1,+1,-1, +1,+1,+1, +1,-1,+1,  // right face
-                  -1,-1,-1, -1,-1,+1, -1,+1,+1, -1,+1,-1   // left face
-                  ];
-  for (var i = 0; i < vertices.length; ++i) vertices[i] /= 2;
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-  cubeVertexPositionBuffer.itemSize = 3;
-  cubeVertexPositionBuffer.numItems = 24;
-
-  // Vertex index buffer
-
-  cubeVertexIndexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
-  var cubeVertexIndices = [0, 1, 2,      0, 2, 3,    // front face
-                           4, 5, 6,      4, 6, 7,    // back face
-                           8, 9, 10,     8, 10, 11,  // top face
-                           12, 13, 14,   12, 14, 15, // bottom face
-                           16, 17, 18,   16, 18, 19, // right face
-                           20, 21, 22,   20, 22, 23  // left face
-                           ];
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-                new Uint16Array(cubeVertexIndices),
-                gl.STATIC_DRAW);
-  cubeVertexIndexBuffer.itemSize = 1;
-  cubeVertexIndexBuffer.numItems = 36;
-
-  // Texture coordinates
-
-  cubeVertexTextureCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
-  var textureCoords = [0,0, 1,0, 1,1, 0,1,  // front face
-                       1,0, 1,1, 0,1, 0,0,  //back face
-                       0,1, 0,0, 1,0, 1,1,  // top face
-                       1,1, 0,1, 0,0, 1,0,  // bottom face
-                       1,0, 1,1, 0,1, 0,0,  // right face
-                       0,0, 1,0, 1,1, 0,1   // left face
-                       ];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
-  cubeVertexTextureCoordBuffer.itemSize = 2;
-  cubeVertexTextureCoordBuffer.numItems = 24;
-}
-
-
-// Global game objects
-var WORLD;
-var PLAYER;
-
 
 
 function choice(n) {
@@ -344,8 +309,6 @@ function drawScene() {
   document.getElementById('stats').innerText = RENDERTIME.toFixed(2) + ' ms';
 }
 
-var RENDERTIME = 0;
-
 quat4.rotateX = function (quat, angle, dest) {
   if (!dest) dest = quat;
   quat4.multiply(quat, [Math.sin(angle/2), 0, 0, Math.cos(angle/2)]);
@@ -355,11 +318,6 @@ quat4.rotateY = function (quat, angle, dest) {
   quat4.multiply(quat, [0, Math.sin(angle/2), 0, Math.cos(angle/2)]);
 }
 
-var lastFrame = 0;
-var lastUpdate = 0;
-
-var LIGHT_MAX = 8;
-var LIGHT_MIN = 4;
 
 function animate() {
   var timeNow = new Date().getTime();
@@ -492,9 +450,6 @@ function handleLoadedTexture(texture) {
   gl.bindTexture(gl.TEXTURE_2D, null);
 }
 
-var TERRAIN;
-var EYE_HEIGHT = 1.6;
-
 
 function topmost(x, z) {
   for (var y = WORLD.NY-1; y >= 0; --y) {
@@ -584,7 +539,6 @@ function webGLStart() {
   tick();
 }
 
-var KEYS = {};
 
 function onkeyup(event) { onkeydown(event, 0); }
 
@@ -602,7 +556,6 @@ function onkeydown(event, count) {
   KEYS[k] = KEYS[c] = count;
 }
 
-var lastX, lastY;
 function onmousemove(event) {
   if (typeof lastX !== 'undefined') {
     var xDelta = event.pageX - lastX;
