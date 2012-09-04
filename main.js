@@ -282,9 +282,6 @@ function initBuffers() {
 
 
 // The world
-var CHUNK = 16;  // Dimension of chunks
-var LOGCHUNK = 4;
-var CCCHUNK = CHUNK * CHUNK * CHUNK;
 var WORLD;
 
 
@@ -295,24 +292,24 @@ function choice(n) {
 
 function coords(i) {
     return {
-      x: i % CHUNK,
-      y: (i >> LOGCHUNK) % CHUNK,
-      z: (i >> (2*LOGCHUNK)) % CHUNK
+      x: i % WORLD.NX,
+      y: (i >> WORLD.LOGNX) % WORLD.NY,
+      z: (i >> (WORLD.LOGNX + WORLD.LOGNY)) % WORLD.NZ
     }
 }
 
 
 function index(x, y, z) {
   if (x < 0 || y < 0 || z < 0 ||
-      x >= CHUNK || y >= CHUNK || z >= CHUNK) return null;
-  return x * CHUNK * CHUNK + y * CHUNK + z;
+      x >= WORLD.NX || y >= WORLD.NY || z >= WORLD.NZ) return null;
+  return x + y * WORLD.NX + z * WORLD.NX * WORLD.NY;
 }
 
 function chunk(x, y, z) {
   if (typeof y === 'undefined')
-    return WORLD[x];  // just a flat index
+    return WORLD.map[x] || {};  // just a flat index
   else
-    return WORLD[index(x,y,z)] || {};
+    return WORLD.map[index(x,y,z)] || {};
 }
 
 
@@ -371,13 +368,15 @@ function drawScene() {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
 
-  for (var i = 0; i < CCCHUNK; ++i) {
+  for (var i = 0; i < WORLD.NNN; ++i) {
     var ch = chunk(i);
-    if (ch.tile) {
+    if (ch && ch.tile) {
       var c = coords(i);
       // if (!chunk(c.x-1, c.y, c.z)) {
       mvPushMatrix();
-      mat4.translate(mvMatrix, [c.x - CHUNK/2, CHUNK/2 - c.y, c.z - CHUNK/2]);
+      mat4.translate(mvMatrix, [c.x - WORLD.NX/2, 
+                                WORLD.NY/2 - c.y, 
+                                c.z - WORLD.NZ/2]);
       setMatrixUniforms();
       gl.uniform2f(gl.data.uTile, ch.tile, 15);
       gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
@@ -465,13 +464,21 @@ function webGLStart() {
   };
 
   // Fill map
-  WORLD = Array(CCCHUNK);
-  for (var x = 0; x < CHUNK; ++x) {
-    for (var y = 0; y < CHUNK; ++y) {
-      for (var z = 0; z < CHUNK; ++z) {
-        var S = CHUNK;
-        var n = pinkNoise(x,y,z, 32,2) - (2*y-CHUNK)/CHUNK;
-        var t = WORLD[index(x,y,z)] = {};
+  WORLD = {
+    LOGNX: 4,
+    LOGNY: 4,
+    LOGNZ: 4,
+  }
+  WORLD.NX = 1 << WORLD.LOGNX;
+  WORLD.NY = 1 << WORLD.LOGNY;
+  WORLD.NZ = 1 << WORLD.LOGNZ;
+  WORLD.NNN = WORLD.NX * WORLD.NY * WORLD.NZ;
+  WORLD.map = Array(WORLD.NNN);
+  for (var x = 0; x < WORLD.NX; ++x) {
+    for (var y = 0; y < WORLD.NY; ++y) {
+      for (var z = 0; z < WORLD.NZ; ++z) {
+        var n = pinkNoise(x,y,z, 32, 4) - (2*y-WORLD.NY)/WORLD.NY;
+        var t = WORLD.map[index(x,y,z)] = {};
         if (n < 0) t.tile = 3;
         if (n < -0.1) t.tile = 2;
         if (n < -0.2) t.tile = 1;
