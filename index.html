@@ -47,11 +47,27 @@
   }
 </script>
 <script type="text/javascript" src="main.js"></script>
+<style>
+body {
+  height: 100%;
+  width: 100%;
+  margin: auto;
+  margin-top: 100px;
+}
+
+#cancan, canvas {
+  width: 500px;
+  height: 500px;
+  margin: auto auto;
+}
+</style>
 </head>
 
 
 <body onload="webGLStart();">
+<div id="cancan">
 <canvas id="canvas" style="border: none;" width="500" height="500"></canvas>
+</div>
 <div id=stats></div>
 </body>
 

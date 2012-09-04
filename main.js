@@ -412,13 +412,12 @@ function animate() {
   if (lastTime != 0) {
     var elapsed = timeNow - lastTime;
 
-    var d = elapsed * .01;
+    var d = elapsed * .003;
     var a = elapsed * .002;
     var m = mat4.create();
 
     var facing = quat4.create([0,0,0,1]);
     quat4.rotateY(facing, -PLAYER.yaw);
-    quat4.rotateX(facing, -PLAYER.pitch);
     if (KEYS.A)   vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ d, 0, 0]));
     if (KEYS.D)   vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [-d, 0, 0]));
     if (KEYS.W)   vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0, d]));
@@ -478,6 +477,8 @@ function webGLStart() {
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
   window.addEventListener('mousemove', onmousemove, true);
+  window.addEventListener('mousedown', onmousedown, true);
+  window.addEventListener('mouseup', onmouseup, true);
 
   tick();
 }
@@ -502,10 +503,15 @@ function onmousemove(event) {
   if (typeof lastX !== 'undefined') {
     var xDelta = event.pageX - lastX;
     var yDelta = event.pageY - lastY;
-    PLAYER.yaw += xDelta * 0.01;
-    PLAYER.pitch += yDelta * 0.01;
+    PLAYER.yaw += xDelta * 0.005;
+    PLAYER.pitch += yDelta * 0.005;
     PLAYER.pitch = Math.max(Math.min(Math.PI/2, PLAYER.pitch), -Math.PI/2);
   }
   lastX = event.pageX;
   lastY = event.pageY;
+}
+function onmousedown(event) {
+  PLAYER.yaw = PLAYER.pitch = 0;
+}
+function onmouseup(event) {
 }
