@@ -246,6 +246,12 @@ function coords(i) {
 
 
 function index(x, y, z) {
+  if (typeof x === 'object') {
+    // assuming vec3 or array
+    z = Math.floor(x[2]);
+    y = Math.floor(x[1]);
+    x = Math.floor(x[0]);
+  }
   if (typeof y === 'undefined') return x;
   if (x < 0 || y < 0 || z < 0 ||
       x >= WORLD.NX || y >= WORLD.NY || z >= WORLD.NZ) return null;
@@ -287,8 +293,8 @@ function drawScene() {
   mat4.identity(mvMatrix);
   mat4.rotateX(mvMatrix, PLAYER.pitch);
   mat4.rotateY(mvMatrix, PLAYER.yaw);
-  mat4.translate(mvMatrix, PLAYER.position);
-  mat4.translate(mvMatrix, [0, EYE_HEIGHT, 0]);
+  mat4.translate(mvMatrix, vec3.negate(PLAYER.position, [0,0,0]));
+  mat4.translate(mvMatrix, [0, -EYE_HEIGHT, 0]);
 
   // Render the world
 
@@ -313,9 +319,7 @@ function drawScene() {
     if (ch && ch.tile) {
       var c = coords(i);
       mvPushMatrix();
-      mat4.translate(mvMatrix, [-c.x, 
-                                c.y - WORLD.NY, 
-                                -c.z]);
+      mat4.translate(mvMatrix, [c.x, c.y, c.z]);
       setMatrixUniforms();
       var light = ch.light / LIGHT_MAX;
       gl.uniform3f(gl.data.uAmbientColor, light, light, light);
@@ -358,20 +362,29 @@ function animate() {
     var a = elapsed * .002;
     var m = mat4.create();
 
+    if (KEYS.T === 1) {
+      PLAYER.flying = !PLAYER.flying;
+      ++KEYS.T;
+    }
+
     var facing = quat4.create([0,0,0,1]);
     quat4.rotateY(facing, -PLAYER.yaw);
     if (KEYS.A)   
-      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ d, 0, 0]));
-    if (KEYS.D)   
       vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [-d, 0, 0]));
+    if (KEYS.D)   
+      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ d, 0, 0]));
     if (KEYS.W)   
-      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0, d]));
-    if (KEYS.S)   
       vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0,-d]));
-    if (KEYS[32] || KEYS.R) 
-      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0,-d, 0]));
-    if (KEYS[16] || KEYS.F) 
-      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, d, 0]));
+    if (KEYS.S)   
+      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0, d]));
+    if (PLAYER.flying && (KEYS[32] || KEYS.R))
+      PLAYER.position[1] += d;
+    if (PLAYER.flying && (KEYS[16] || KEYS.F))
+      PLAYER.position[1] -= d;
+    if (!PLAYER.flying && KEYS[32] === 1) {
+      PLAYER.dy += 6;
+      ++KEYS[32];
+    }
     // http://content.gpwiki.org/index.php/OpenGL%3aTutorials%3aUsing_Quaternions_to_represent_rotation
     // TODO though: can just do the math the simple way
 
@@ -379,6 +392,18 @@ function animate() {
     if (KEYS.E) PLAYER.yaw += a;
     if (KEYS.Z) PLAYER.pitch = Math.max(PLAYER.pitch - a, -Math.PI/2);
     if (KEYS.X) PLAYER.pitch = Math.min(PLAYER.pitch + a,  Math.PI/2);
+
+    if (!PLAYER.flying) {
+      var c = chunk(PLAYER.position);
+      if (c.tile) {
+        // Rise from dirt
+        PLAYER.dy = 0;
+        PLAYER.position[1] += d/20;
+      } else {
+        PLAYER.dy -= 9.8 * elapsed / 1000;
+      }
+      PLAYER.position[1] += PLAYER.dy * elapsed / 1000;
+    }
   }
   lastFrame = timeNow;
 
@@ -496,8 +521,10 @@ function webGLStart() {
 
   PLAYER = {
     position: vec3.create([WORLD.NX/2, WORLD.NY/2, WORLD.NZ/2]),
+    dy: 0,
     yaw: 0,
-    pitch: 0
+    pitch: 0,
+    flying: false
   };
   var c = topmost(PLAYER.position[0], PLAYER.position[2]);
   PLAYER.position[1] = c.y;
@@ -530,9 +557,9 @@ function webGLStart() {
 
 var KEYS = {};
 
-function onkeydown(event) { onkeyup(event, true); }
+function onkeyup(event) { onkeydown(event, 0); }
 
-function onkeyup(event, imeandown) {
+function onkeydown(event, count) {
   event = event || window.event;
   if (event.preventDefault)
     event.preventDefault();
@@ -540,7 +567,10 @@ function onkeyup(event, imeandown) {
   var k = event.keyCode;
   var c = String.fromCharCode(k).toUpperCase();
 
-  KEYS[k] = KEYS[c] = imeandown;
+  if (typeof count === 'undefined') 
+    count = (KEYS[k] || 0) + 1;
+
+  KEYS[k] = KEYS[c] = count;
 }
 
 var lastX, lastY;
