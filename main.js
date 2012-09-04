@@ -117,6 +117,67 @@ var cubeVertexPositionBuffer;
 var cubeVertexTextureCoordBuffer;
 var cubeVertexIndexBuffer;
 
+
+function chunkToBuffers() {
+  var vertices = [];
+  var textures = [];
+  var indices = [];
+  for (var x = 0; x < WORLD.NX; ++x) {
+    for (var z = 0; z < WORLD.NZ; ++z) {
+      for (var y = WORLD.NY-1; y >= 0; --y) {
+        var triplet = [x,y,z];
+        var c = chunk(x,y,z); 
+        if (c.tile) {
+          function nabe(coord, sign) {
+            var nc = [x,y,z];
+            nc[coord] += sign;
+            var n = chunk(nc);
+            if (!n.tile) {
+              var vindex = vertices.length / 3;
+              var corners = [-1,-1, +1,-1, +1,+1, -1,+1];
+              for (var ic = 0; ic < 12; ++ic) {
+                var d = triplet[ic % 3];
+                if (ic % 3 === coord)
+                  vertices.push(d + sign/2);
+                else
+                  vertices.push(d + corners.shift() * sign / 2);
+              }
+              
+              indices.push(vindex, vindex + 1, vindex + 2,
+                           vindex, vindex + 2, vindex + 3);
+
+              textures.push(0,0, 1,0, 1,1, 0,1);
+            }
+          }
+          for (var co = 0; co < 3; ++co)
+            for (var s = -1; s <= 1; s += 2)
+              nabe(co, s);
+        }
+      }
+    }
+  }
+
+  cubeVertexPositionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+  cubeVertexPositionBuffer.itemSize = 3;
+  cubeVertexPositionBuffer.numItems = vertices.length / 3;
+
+  cubeVertexIndexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), 
+                gl.STATIC_DRAW);
+  cubeVertexIndexBuffer.itemSize = 1;
+  cubeVertexIndexBuffer.numItems = indices.length;
+
+  cubeVertexTextureCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textures), gl.STATIC_DRAW);
+  cubeVertexTextureCoordBuffer.itemSize = 2;
+  cubeVertexTextureCoordBuffer.numItems = textures.length / 2;
+}
+
+
 function initBuffers() {
 
   // Vertex positions
@@ -191,10 +252,16 @@ function coords(i) {
 
 function index(x, y, z) {
   if (typeof x === 'object') {
-    // assuming vec3 or array
-    z = x[2];
-    y = x[1];
-    x = x[0];
+    if (typeof x.x === 'undefined') {
+      // assuming vec3 or array
+      z = x[2];
+      y = x[1];
+      x = x[0];
+    } else {
+      z = x.z;
+      y = x.y;
+      x = x.x;
+    }
   }
   if (typeof y === 'undefined') return x;
   z = Math.floor(z);
@@ -230,7 +297,7 @@ function drawScene() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Cull backfaces, which seems to not at all affect speed
-  gl.enable(gl.CULL_FACE);
+  // gl.enable(gl.CULL_FACE);
 
   // Set up the projection
   mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0,
@@ -261,21 +328,15 @@ function drawScene() {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
 
-  for (var i = 0; i < WORLD.NNN; ++i) {
-    var ch = chunk(i);
-    if (ch && ch.tile) {
-      var c = coords(i);
-      mvPushMatrix();
-      mat4.translate(mvMatrix, [c.x, c.y, c.z]);
-      setMatrixUniforms();
-      var light = ch.light / LIGHT_MAX;
-      gl.uniform3f(gl.data.uAmbientColor, light, light, light);
-      gl.uniform2f(gl.data.uTile, ch.tile, 15);
-      gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
-                      gl.UNSIGNED_SHORT, 0);
-      mvPopMatrix();
-    }
-  }
+  //mvPushMatrix();
+  //mat4.translate(mvMatrix, [c.x, c.y, c.z]);
+  setMatrixUniforms();
+  var light = LIGHT_MAX/LIGHT_MAX;
+  gl.uniform3f(gl.data.uAmbientColor, light, light, light);
+  gl.uniform2f(gl.data.uTile, 1, 15);
+  gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
+                  gl.UNSIGNED_SHORT, 0);
+  //mvPopMatrix();
 
   var atend = +new Date();
   var alpha = 0.9;
@@ -348,7 +409,7 @@ function animate() {
       if (!PLAYER.falling) {
         if (c.tile) {
           // Rise from dirt
-          PLAYER.position[1] += d/10;
+          PLAYER.position[1] += d;
           if (!chunk(PLAYER.position).tile) {
             PLAYER.position[1] = Math.floor(PLAYER.position[1]);
           }
@@ -499,7 +560,7 @@ function webGLStart() {
 
   initGL(canvas);
   initShaders();
-  initBuffers();
+  chunkToBuffers();
 
   // Init texture
 
