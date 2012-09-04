@@ -288,6 +288,7 @@ function drawScene() {
   mat4.rotateX(mvMatrix, PLAYER.pitch);
   mat4.rotateY(mvMatrix, PLAYER.yaw);
   mat4.translate(mvMatrix, PLAYER.position);
+  mat4.translate(mvMatrix, [0, EYE_HEIGHT, 0]);
 
   // Render the world
 
@@ -499,7 +500,7 @@ function webGLStart() {
     pitch: 0
   };
   var c = topmost(PLAYER.position[0], PLAYER.position[2]);
-  PLAYER.position[1] = c.y + EYE_HEIGHT;
+  PLAYER.position[1] = c.y;
 
   initGL(canvas);
   initShaders();
