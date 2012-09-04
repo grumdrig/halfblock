@@ -312,9 +312,9 @@ function drawScene() {
     if (ch && ch.tile) {
       var c = coords(i);
       mvPushMatrix();
-      mat4.translate(mvMatrix, [c.x - WORLD.NX/2, 
-                                c.y - WORLD.NY/2, 
-                                c.z - WORLD.NZ/2]);
+      mat4.translate(mvMatrix, [-c.x, 
+                                c.y - WORLD.NY, 
+                                -c.z]);
       setMatrixUniforms();
       var light = ch.light / LIGHT_MAX;
       gl.uniform3f(gl.data.uAmbientColor, light, light, light);
@@ -346,7 +346,7 @@ var lastFrame = 0;
 var lastUpdate = 0;
 
 var LIGHT_MAX = 8;
-var LIGHT_MIN = 2;
+var LIGHT_MIN = 4;
 
 function animate() {
   var timeNow = new Date().getTime();
@@ -438,20 +438,23 @@ function handleLoadedTexture(texture) {
 }
 
 var TERRAIN;
+var EYE_HEIGHT = 1.6;
+
+
+function topmost(x, z) {
+  for (var y = WORLD.NY-1; y >= 0; --y) {
+    var c = chunk(x,y,z);
+    if (c.tile) return c;
+  }
+  return null;
+}
+
 
 // Entry point for body.onload
 function webGLStart() {
   var canvas = document.getElementById("canvas");
 
-  // Init game objects
-
-  PLAYER = {
-    position: vec3.create([0,0,-10]),
-    yaw: 0,
-    pitch: 0
-  };
-
-  // Fill map
+  // Create world map
   WORLD = {
     LOGNX: 4,
     LOGNY: 4,
@@ -462,17 +465,21 @@ function webGLStart() {
   WORLD.NZ = 1 << WORLD.LOGNZ;
   WORLD.NNN = WORLD.NX * WORLD.NY * WORLD.NZ;
   WORLD.map = Array(WORLD.NNN);
+  // Fill the map with terrain
   for (var x = 0; x < WORLD.NX; ++x) {
     for (var y = 0; y < WORLD.NY; ++y) {
       for (var z = 0; z < WORLD.NZ; ++z) {
         var n = pinkNoise(x,y,z, 32, 2) + (2*y-WORLD.NY)/WORLD.NY;
-        var t = WORLD.map[index(x,y,z)] = {};
+        var t = WORLD.map[index(x,y,z)] = 
+          { x: x, y: y, z: z, i: index(x,y,z) };
         if (n < 0) t.tile = 3;
         if (n < -0.1) t.tile = 2;
         if (n < -0.2) t.tile = 1;
+        if (y == 0) t.tile = 6;
       }
     }
   }
+  // Initialize lighing
   for (var x = 0; x < WORLD.NX; ++x) {
     for (var z = 0; z < WORLD.NZ; ++z) {
       chunk(x, WORLD.NY-1, z).light = LIGHT_MAX;
@@ -483,6 +490,16 @@ function webGLStart() {
       }
     }
   }
+
+  // Create player
+
+  PLAYER = {
+    position: vec3.create([WORLD.NX/2, WORLD.NY/2, WORLD.NZ/2]),
+    yaw: 0,
+    pitch: 0
+  };
+  var c = topmost(PLAYER.position[0], PLAYER.position[2]);
+  PLAYER.position[1] = c.y + EYE_HEIGHT;
 
   initGL(canvas);
   initShaders();
