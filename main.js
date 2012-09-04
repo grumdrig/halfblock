@@ -107,7 +107,6 @@ function initShaders() {
   locate('aTextureCoord');
   gl.enableVertexAttribArray(gl.data.aTextureCoord);
   locate('uAmbientColor');
-  locate('uTile');
   locate('uSampler');
   locate('uMVMatrix');
   locate('uPMatrix');
@@ -169,7 +168,10 @@ function chunkToBuffers() {
               indices.push(vindex, vindex + 1, vindex + 2,
                            vindex, vindex + 2, vindex + 3);
 
-              textures.push(0,0, 1,0, 1,1, 0,1);
+              textures.push(c.tile,     15, 
+                            c.tile + 1, 15, 
+                            c.tile + 1, 16, 
+                            c.tile,     16);
             }
           }
           for (var co = 0; co < 3; ++co)
@@ -298,7 +300,6 @@ function drawScene() {
   setMatrixUniforms();
   var light = LIGHT_MAX/LIGHT_MAX;
   gl.uniform3f(gl.data.uAmbientColor, light, light, light);
-  gl.uniform2f(gl.data.uTile, 1, 15);
   gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
                   gl.UNSIGNED_SHORT, 0);
   //mvPopMatrix();

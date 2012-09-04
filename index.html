@@ -30,13 +30,11 @@ attribute vec2 aTextureCoord;
 uniform mat4 uMVMatrix;
 uniform mat4 uPMatrix;
 
-uniform vec2 uTile;
-
 varying vec2 vTextureCoord;
 
 void main(void) {
   gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
-  vTextureCoord = (uTile + aTextureCoord) / 16.0;
+  vTextureCoord = aTextureCoord / 16.0;
 }
 </script>
 
