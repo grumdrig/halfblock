@@ -281,8 +281,10 @@ function initBuffers() {
 }
 
 
-// The world
+// Global game objects
 var WORLD;
+var PLAYER;
+
 
 
 function choice(n) {
@@ -313,16 +315,15 @@ function chunk(x, y, z) {
 }
 
 
-// Rotation of the objects
-var PLAYER;
-
-
 function drawScene() {
   var atstart = +new Date();
 
   // Start from scratch
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  // Cull backfaces, which seems to not at all affect speed
+  gl.enable(gl.CULL_FACE);
 
   // Set up the projection
   mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0,
