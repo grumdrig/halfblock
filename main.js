@@ -28,7 +28,7 @@ var lastUpdate = 0;
 var LIGHT_MAX = 8;
 var LIGHT_MIN = 2;
 
-var TERRAIN;
+var TERRAIN_TEXTURE;
 var EYE_HEIGHT = 1.6;
 
 var KEYS = {};
@@ -274,6 +274,10 @@ function drawScene() {
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+  if (!TERRAIN_TEXTURE.loaded) {
+    return;
+  }
+
   // Cull backfaces, which seems to not at all affect speed
   // gl.enable(gl.CULL_FACE);
 
@@ -306,7 +310,7 @@ function drawScene() {
                          gl.FLOAT, false, 0, 0);
 
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, TERRAIN);
+  gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
   gl.uniform1i(gl.data.uSampler, 0);
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
@@ -469,6 +473,7 @@ function handleLoadedTexture(texture) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.bindTexture(gl.TEXTURE_2D, null);
+  texture.loaded = true;
 }
 
 
@@ -551,15 +556,15 @@ function webGLStart() {
 
   // Init texture
 
-  TERRAIN = gl.createTexture();
-  TERRAIN.image = new Image();
-  TERRAIN.image.onload = function() {
-    handleLoadedTexture(TERRAIN)
+  TERRAIN_TEXTURE = gl.createTexture();
+  TERRAIN_TEXTURE.image = new Image();
+  TERRAIN_TEXTURE.image.onload = function() {
+    handleLoadedTexture(TERRAIN_TEXTURE)
   }
-  TERRAIN.image.src = "terrain.png";
+  TERRAIN_TEXTURE.image.src = "terrain.png";
 
 
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear is blackness
+  gl.clearColor(130/255, 202/255, 250/255, 1.0);  // Clear is blackness
   gl.enable(gl.DEPTH_TEST);           // Enable Z-buffer
 
   window.addEventListener('keydown', onkeydown, true);
