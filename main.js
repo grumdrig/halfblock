@@ -16,6 +16,7 @@ var WORLD;
 var PLAYER;
 
 var RENDERTIME = 0;
+var FRAMETIME = 0;
 
 var lastFrame = 0;
 var lastUpdate = 0;
@@ -305,10 +306,8 @@ function drawScene() {
   gl.drawElements(gl.TRIANGLES, WORLD.vertexIndexBuffer.numItems,
                   gl.UNSIGNED_SHORT, 0);
 
-  var atend = +new Date();
   var alpha = 0.9;
-  RENDERTIME = RENDERTIME * alpha + (1-alpha) * (atend-atstart);
-  document.getElementById('stats').innerText = RENDERTIME.toFixed(2) + ' ms';
+  RENDERTIME = RENDERTIME * alpha + (1-alpha) * (+new Date() - atstart);
 }
 
 quat4.rotateX = function (quat, angle, dest) {
@@ -322,9 +321,11 @@ quat4.rotateY = function (quat, angle, dest) {
 
 
 function animate() {
-  var timeNow = new Date().getTime();
+  var timeNow = +new Date();
   if (lastFrame) {
     var elapsed = timeNow - lastFrame;
+    var alpha = 0.9;
+    FRAMETIME = FRAMETIME * alpha + (1-alpha) * elapsed;
 
     var d = elapsed * .003;
     var a = elapsed * .002;
@@ -445,6 +446,10 @@ function tick() {
   requestAnimFrame(tick);
   drawScene();
   animate();
+
+  document.getElementById('stats').innerHTML = 
+    'Render: ' + RENDERTIME.toFixed(2) + ' ms &mdash; ' +
+    'Frame: ' + FRAMETIME.toFixed(2) + ' ms    ';
 }
 
 
