@@ -12,6 +12,7 @@ var pMatrix = mat4.create();   // projection matrix
 
 var cubeVertexPositionBuffer;
 var cubeVertexTextureCoordBuffer;
+var cubeVertexLightingBuffer;
 var cubeVertexIndexBuffer;
 
 // Game objects
@@ -106,7 +107,8 @@ function initShaders() {
   gl.enableVertexAttribArray(gl.data.aVertexPosition);
   locate('aTextureCoord');
   gl.enableVertexAttribArray(gl.data.aTextureCoord);
-  locate('uAmbientColor');
+  locate('aLighting');
+  gl.enableVertexAttribArray(gl.data.aLighting);
   locate('uSampler');
   locate('uMVMatrix');
   locate('uPMatrix');
@@ -144,6 +146,7 @@ function chunkToBuffers() {
   var vertices = [];
   var textures = [];
   var indices = [];
+  var lighting = [];
   for (var x = 0; x < WORLD.NX; ++x) {
     for (var z = 0; z < WORLD.NZ; ++z) {
       for (var y = WORLD.NY-1; y >= 0; --y) {
@@ -157,12 +160,15 @@ function chunkToBuffers() {
             if (!n.tile) {
               var vindex = vertices.length / 3;
               var corners = [-1,-1, +1,-1, +1,+1, -1,+1];
+              var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, c.light||0))
+                / LIGHT_MAX;
               for (var ic = 0; ic < 12; ++ic) {
                 var d = triplet[ic % 3];
                 if (ic % 3 === coord)
                   vertices.push(d + sign/2);
                 else
                   vertices.push(d + corners.shift() * sign / 2);
+                lighting.push(light);
               }
               
               indices.push(vindex, vindex + 1, vindex + 2,
@@ -200,6 +206,12 @@ function chunkToBuffers() {
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textures), gl.STATIC_DRAW);
   cubeVertexTextureCoordBuffer.itemSize = 2;
   cubeVertexTextureCoordBuffer.numItems = textures.length / 2;
+
+  cubeVertexLightingBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexLightingBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lighting), gl.STATIC_DRAW);
+  cubeVertexLightingBuffer.itemSize = 3;
+  cubeVertexLightingBuffer.numItems = lighting.length / 3;
 }
 
 
@@ -285,8 +297,13 @@ function drawScene() {
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
-  gl.vertexAttribPointer(gl.data.vTextureCoord,
+  gl.vertexAttribPointer(gl.data.aTextureCoord,
                          cubeVertexTextureCoordBuffer.itemSize,
+                         gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexLightingBuffer);
+  gl.vertexAttribPointer(gl.data.aLighting,
+                         cubeVertexLightingBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
   gl.activeTexture(gl.TEXTURE0);
@@ -298,8 +315,6 @@ function drawScene() {
   //mvPushMatrix();
   //mat4.translate(mvMatrix, [c.x, c.y, c.z]);
   setMatrixUniforms();
-  var light = LIGHT_MAX/LIGHT_MAX;
-  gl.uniform3f(gl.data.uAmbientColor, light, light, light);
   gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
                   gl.UNSIGNED_SHORT, 0);
   //mvPopMatrix();

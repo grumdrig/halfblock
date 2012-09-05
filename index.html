@@ -11,30 +11,32 @@
 precision mediump float;
 
 varying vec2 vTextureCoord;
-
-uniform vec3 uAmbientColor;
+varying vec3 vAmbientColor;
 
 uniform sampler2D uSampler;
 
 void main(void) {
   vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, 
                                                vTextureCoord.t));
-  gl_FragColor = vec4(textureColor.rgb * uAmbientColor, textureColor.a);
+  gl_FragColor = vec4(textureColor.rgb * vAmbientColor, textureColor.a);
 }
 </script>
 
 <script id="shader-vs" type="x-shader/x-vertex">
 attribute vec3 aVertexPosition;
 attribute vec2 aTextureCoord;
+attribute vec3 aLighting;
 
 uniform mat4 uMVMatrix;
 uniform mat4 uPMatrix;
 
 varying vec2 vTextureCoord;
+varying vec3 vAmbientColor;
 
 void main(void) {
   gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
   vTextureCoord = aTextureCoord / 16.0;
+  vAmbientColor = aLighting;
 }
 </script>
 
