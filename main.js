@@ -10,11 +10,6 @@ var mvMatrix = mat4.create();  // model-view matrix
 var mvMatrixStack = [];
 var pMatrix = mat4.create();   // projection matrix
 
-var cubeVertexPositionBuffer;
-var cubeVertexTextureCoordBuffer;
-var cubeVertexLightingBuffer;
-var cubeVertexIndexBuffer;
-
 // Game objects
 
 var WORLD;
@@ -176,30 +171,30 @@ function chunkToBuffers() {
     }
   }
 
-  cubeVertexPositionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+  WORLD.vertexPositionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexPositionBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-  cubeVertexPositionBuffer.itemSize = 3;
-  cubeVertexPositionBuffer.numItems = vertices.length / 3;
+  WORLD.vertexPositionBuffer.itemSize = 3;
+  WORLD.vertexPositionBuffer.numItems = vertices.length / 3;
 
-  cubeVertexIndexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+  WORLD.vertexIndexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, WORLD.vertexIndexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), 
                 gl.STATIC_DRAW);
-  cubeVertexIndexBuffer.itemSize = 1;
-  cubeVertexIndexBuffer.numItems = indices.length;
+  WORLD.vertexIndexBuffer.itemSize = 1;
+  WORLD.vertexIndexBuffer.numItems = indices.length;
 
-  cubeVertexTextureCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+  WORLD.vertexTextureCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexTextureCoordBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textures), gl.STATIC_DRAW);
-  cubeVertexTextureCoordBuffer.itemSize = 2;
-  cubeVertexTextureCoordBuffer.numItems = textures.length / 2;
+  WORLD.vertexTextureCoordBuffer.itemSize = 2;
+  WORLD.vertexTextureCoordBuffer.numItems = textures.length / 2;
 
-  cubeVertexLightingBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexLightingBuffer);
+  WORLD.vertexLightingBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexLightingBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lighting), gl.STATIC_DRAW);
-  cubeVertexLightingBuffer.itemSize = 3;
-  cubeVertexLightingBuffer.numItems = lighting.length / 3;
+  WORLD.vertexLightingBuffer.itemSize = 3;
+  WORLD.vertexLightingBuffer.numItems = lighting.length / 3;
 }
 
 
@@ -282,32 +277,32 @@ function drawScene() {
 
   // Render the world
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexPositionBuffer);
   gl.vertexAttribPointer(gl.data.aVertexPosition,
-                         cubeVertexPositionBuffer.itemSize,
+                         WORLD.vertexPositionBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexTextureCoordBuffer);
   gl.vertexAttribPointer(gl.data.aTextureCoord,
-                         cubeVertexTextureCoordBuffer.itemSize,
+                         WORLD.vertexTextureCoordBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexLightingBuffer);
+  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexLightingBuffer);
   gl.vertexAttribPointer(gl.data.aLighting,
-                         cubeVertexLightingBuffer.itemSize,
+                         WORLD.vertexLightingBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
   gl.uniform1i(gl.data.uSampler, 0);
 
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, WORLD.vertexIndexBuffer);
 
   // Set matrix uniforms
   gl.uniformMatrix4fv(gl.data.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
 
-  gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
+  gl.drawElements(gl.TRIANGLES, WORLD.vertexIndexBuffer.numItems,
                   gl.UNSIGNED_SHORT, 0);
 
   var atend = +new Date();
