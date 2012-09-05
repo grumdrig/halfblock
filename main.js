@@ -26,7 +26,7 @@ var lastFrame = 0;
 var lastUpdate = 0;
 
 var LIGHT_MAX = 8;
-var LIGHT_MIN = 4;
+var LIGHT_MIN = 2;
 
 var TERRAIN;
 var EYE_HEIGHT = 1.6;
@@ -139,7 +139,6 @@ function setMatrixUniforms() {
 function degToRad(degrees) {
   return degrees * Math.PI / 180;
 }
-
 
 
 function chunkToBuffers() {
@@ -445,6 +444,7 @@ function animate() {
       }
     }
     lastUpdate = timeNow;
+    chunkToBuffers();
   }
 }
 
