@@ -413,6 +413,7 @@ function animate() {
   if (timeNow > lastUpdate + UPDATE_PERIOD_MS) {
     // This shitty method will propagate changes faster in some
     // directions than others
+    var dirty = false;
     for (var x = 0; x < WORLD.NX; ++x) {
       for (var z = 0; z < WORLD.NZ; ++z) {
         var top = true;
@@ -421,6 +422,7 @@ function animate() {
           top = top && !c.tile;
 
           if (c.dirty) {
+            dirty = true;
             c.dirty = false;
             var ns = neighbors(x,y,z);
             var light;
@@ -444,7 +446,8 @@ function animate() {
       }
     }
     lastUpdate = timeNow;
-    chunkToBuffers();
+    if (dirty)
+      chunkToBuffers();
   }
 }
 
