@@ -150,12 +150,12 @@ function chunkToBuffers() {
     for (var z = 0; z < WORLD.NZ; ++z) {
       for (var y = WORLD.NY-1; y >= 0; --y) {
         var triplet = [x,y,z];
-        var c = chunk(x,y,z); 
+        var c = block(x,y,z); 
         if (c.tile) {
           function nabe(coord, sign) {
             var nc = [x,y,z];
             nc[coord] += sign;
-            var n = chunk(nc);
+            var n = block(nc);
             if (!n.tile) {
               var vindex = vertices.length / 3;
               var corners = [-1,-1, +1,-1, +1,+1, -1,+1];
@@ -250,18 +250,18 @@ function index(x, y, z) {
   return x + y * WORLD.NX + z * WORLD.NX * WORLD.NY;
 }
 
-function chunk(x, y, z) {
+function block(x, y, z) {
   return WORLD.map[index(x,y,z)] || {};
 }
 
 function neighbors(x, y, z) {
   var result = [];
-  var i = index(x-1, y, z); if (i) result.push(chunk(i));
-  var i = index(x+1, y, z); if (i) result.push(chunk(i));
-  var i = index(x, y-1, z); if (i) result.push(chunk(i));
-  var i = index(x, y+1, z); if (i) result.push(chunk(i));
-  var i = index(x, y, z-1); if (i) result.push(chunk(i));
-  var i = index(x, y, z+1); if (i) result.push(chunk(i));
+  var i = index(x-1, y, z); if (i) result.push(block(i));
+  var i = index(x+1, y, z); if (i) result.push(block(i));
+  var i = index(x, y-1, z); if (i) result.push(block(i));
+  var i = index(x, y+1, z); if (i) result.push(block(i));
+  var i = index(x, y, z-1); if (i) result.push(block(i));
+  var i = index(x, y, z+1); if (i) result.push(block(i));
   return result;
 }
 
@@ -365,7 +365,7 @@ function animate() {
     if (!PLAYER.flying && !PLAYER.falling && KEYS[32] === 1) {
       PLAYER.dy = 5.5;
       PLAYER.falling = true;
-      if (chunk(PLAYER.position).tile) 
+      if (block(PLAYER.position).tile) 
         PLAYER.position[1] = Math.floor(PLAYER.position[1] + 1);
       ++KEYS[32];
     }
@@ -378,15 +378,15 @@ function animate() {
     if (KEYS.X) PLAYER.pitch = Math.min(PLAYER.pitch + a,  Math.PI/2);
 
     if (!PLAYER.flying) {
-      var c = chunk(PLAYER.position);
+      var c = block(PLAYER.position);
       if (!PLAYER.falling) {
         if (c.tile) {
           // Rise from dirt
           PLAYER.position[1] += d;
-          if (!chunk(PLAYER.position).tile) {
+          if (!block(PLAYER.position).tile) {
             PLAYER.position[1] = Math.floor(PLAYER.position[1]);
           }
-        } else if (!chunk(PLAYER.position[0], 
+        } else if (!block(PLAYER.position[0], 
                           PLAYER.position[1]-1,
                           PLAYER.position[2]).tile) {
           // Fall off cliff
@@ -418,7 +418,7 @@ function animate() {
       for (var z = 0; z < WORLD.NZ; ++z) {
         var top = true;
         for (var y = WORLD.NY-1; y >= 0; --y) {
-          var c = chunk(x,y,z);
+          var c = block(x,y,z);
           top = top && !c.tile;
 
           if (c.dirty) {
@@ -474,7 +474,7 @@ function handleLoadedTexture(texture) {
 
 function topmost(x, z) {
   for (var y = WORLD.NY-1; y >= 0; --y) {
-    var c = chunk(x,y,z);
+    var c = block(x,y,z);
     if (c.tile) return c;
   }
   return null;
@@ -487,6 +487,7 @@ function webGLStart() {
 
   // Create world map
   WORLD = {
+    NBLOCKS: 0,
     LOGNX: 6,
     LOGNY: 5,
     LOGNZ: 6,
@@ -501,8 +502,11 @@ function webGLStart() {
     for (var y = 0; y < WORLD.NY; ++y) {
       for (var z = 0; z < WORLD.NZ; ++z) {
         var n = pinkNoise(x,y,z, 32, 2) + (2*y-WORLD.NY)/WORLD.NY;
-        var t = WORLD.map[index(x,y,z)] = 
-          { x: x, y: y, z: z, i: index(x,y,z) };
+        var t = WORLD.map[index(x,y,z)] = { 
+          x: x, y: y, z: z, 
+          i: index(x,y,z),
+          id: ++WORLD.NBLOCKS
+        };
         if (n < 0) t.tile = 3;
         if (n < -0.1) t.tile = 2;
         if (n < -0.2) t.tile = 1;
@@ -517,9 +521,9 @@ function webGLStart() {
   // Initialize lighing
   for (var x = 0; x < WORLD.NX; ++x) {
     for (var z = 0; z < WORLD.NZ; ++z) {
-      chunk(x, WORLD.NY-1, z).light = LIGHT_MAX;
+      block(x, WORLD.NY-1, z).light = LIGHT_MAX;
       for (var y = WORLD.NY-2; y >= 0; --y) {
-        var c = chunk(x,y,z);
+        var c = block(x,y,z);
         c.light = 0;
         c.dirty = true;
       }
