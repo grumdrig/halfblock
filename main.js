@@ -130,17 +130,6 @@ function mvPopMatrix() {
 }
 
 
-function setMatrixUniforms() {
-  gl.uniformMatrix4fv(gl.data.uPMatrix,  false,  pMatrix);
-  gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
-}
-
-
-function degToRad(degrees) {
-  return degrees * Math.PI / 180;
-}
-
-
 function chunkToBuffers() {
   var vertices = [];
   var textures = [];
@@ -268,15 +257,14 @@ function neighbors(x, y, z) {
 
 
 function drawScene() {
+  if (!TERRAIN_TEXTURE.loaded)
+    return;  // Wait for texture
+
   var atstart = +new Date();
 
   // Start from scratch
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  if (!TERRAIN_TEXTURE.loaded) {
-    return;
-  }
 
   // Cull backfaces, which seems to not at all affect speed
   // gl.enable(gl.CULL_FACE);
@@ -315,12 +303,12 @@ function drawScene() {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
 
-  //mvPushMatrix();
-  //mat4.translate(mvMatrix, [c.x, c.y, c.z]);
-  setMatrixUniforms();
+  // Set matrix uniforms
+  gl.uniformMatrix4fv(gl.data.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
+
   gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems,
                   gl.UNSIGNED_SHORT, 0);
-  //mvPopMatrix();
 
   var atend = +new Date();
   var alpha = 0.9;
@@ -563,8 +551,7 @@ function webGLStart() {
   }
   TERRAIN_TEXTURE.image.src = "terrain.png";
 
-
-  gl.clearColor(130/255, 202/255, 250/255, 1.0);  // Clear is blackness
+  gl.clearColor(130/255, 202/255, 250/255, 1.0);  // Clear color is sky blue
   gl.enable(gl.DEPTH_TEST);           // Enable Z-buffer
 
   window.addEventListener('keydown', onkeydown, true);
