@@ -413,7 +413,7 @@ function animate() {
   if (timeNow > lastUpdate + UPDATE_PERIOD_MS) {
     // This shitty method will propagate changes faster in some
     // directions than others
-    var dirty = false;
+    var dirty = 0;
     for (var x = 0; x < WORLD.NX; ++x) {
       for (var z = 0; z < WORLD.NZ; ++z) {
         var top = true;
@@ -422,7 +422,7 @@ function animate() {
           top = top && !c.tile;
 
           if (c.dirty) {
-            dirty = true;
+            ++dirty;
             c.dirty = false;
             var ns = neighbors(x,y,z);
             var light;
@@ -446,8 +446,10 @@ function animate() {
       }
     }
     lastUpdate = timeNow;
-    if (dirty)
+    if (dirty) {
+      console.log('Update ', dirty);
       chunkToBuffers();
+    }
   }
 }
 
@@ -485,9 +487,9 @@ function webGLStart() {
 
   // Create world map
   WORLD = {
-    LOGNX: 4,
-    LOGNY: 4,
-    LOGNZ: 4,
+    LOGNX: 6,
+    LOGNY: 5,
+    LOGNZ: 6,
   }
   WORLD.NX = 1 << WORLD.LOGNX;
   WORLD.NY = 1 << WORLD.LOGNY;
@@ -504,6 +506,10 @@ function webGLStart() {
         if (n < 0) t.tile = 3;
         if (n < -0.1) t.tile = 2;
         if (n < -0.2) t.tile = 1;
+
+        if (Math.pow(noise(x/20, y/20, z/20), 2) < 0.01)
+          t.tile = 0;
+
         if (y == 0) t.tile = 6;
       }
     }
@@ -530,7 +536,10 @@ function webGLStart() {
     flying: false
   };
   var c = topmost(PLAYER.position[0], PLAYER.position[2]);
-  PLAYER.position[1] = c.y + 1;
+  if (c)
+    PLAYER.position[1] = c.y + 1;
+  else 
+    PLAYER.flying = true;
 
   initGL(canvas);
   initShaders();
