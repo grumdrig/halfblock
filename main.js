@@ -138,10 +138,7 @@ function chunkToBuffers() {
         var triplet = [x,y,z];
         var c = block(x,y,z); 
         if (c.tile) {
-          function nabe(coord, sign) {
-            var nc = [x,y,z];
-            nc[coord] += sign;
-            var n = block(nc);
+          function nabe(n, coord, sign) {
             if (!n.tile) {
               var vindex = vertices.length / 3;
               var corners = [-1,-1, +1,-1, +1,+1, -1,+1];
@@ -166,9 +163,7 @@ function chunkToBuffers() {
                             c.tile,     16);
             }
           }
-          for (var co = 0; co < 3; ++co)
-            for (var s = -1; s <= 1; s += 2)
-              nabe(co, s);
+          neighbors(c, nabe);
         }
       }
     }
@@ -243,20 +238,20 @@ function block(x, y, z) {
 
 function neighbors(b, callback) {
   var result = [];
-  function chk(dx,dy,dz) {
+  function chk(dx, dy, dz, axis, sign) {
     var i = index(b.x + dx, b.y + dy, b.z + dz);
     if (i) {
       var n = block(i);
       result.push(n);
-      if (callback) callback(n);
+      if (callback) callback(n, axis, sign);
     }
   }
-  chk( 0, 0,-1);  // front
-  chk( 0, 0,+1);  // back
-  chk( 0,-1, 0);  // top
-  chk( 0,+1, 0);  // bottom
-  chk(-1, 0, 0);  // left(?)
-  chk(+1, 0, 0);  // right
+  chk( 0, 0,-1, 2, -1);  // front
+  chk( 0, 0,+1, 2, +1);  // back
+  chk( 0,-1, 0, 1, -1);  // top
+  chk( 0,+1, 0, 1, +1);  // bottom
+  chk(-1, 0, 0, 0, -1);  // left(?)
+  chk(+1, 0, 0, 0, +1);  // right
   return result;
 }
 
@@ -670,9 +665,12 @@ function onmousemove(event) {
   lastY = event.pageY;
 }
 function onmousedown(event) {
+  event = event || window.event;
+  if (event.preventDefault) event.preventDefault();
   if (PICKED && PICKED.tile) {
     PICKED.tile = 0;
     PICKED.dirty = true;
     neighbors(PICKED, function (n) { n.dirty = true; });
   }
+  return false;
 }
