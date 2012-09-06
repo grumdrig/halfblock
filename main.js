@@ -241,13 +241,24 @@ function block(x, y, z) {
   var i = index(x, y, z);
   var result = WORLD.map[i];
   if (!result) {
-    // Manufacture a fake block
+    // Manufacture an ad hoc temporary block
     var c = coords(i);
     result = new Block(c.x, c.y, c.z);
+    result.temporary = true;
   }
   return result;
 }
 
+function blockFacing(b, face) {
+  switch (face) {
+  case 0: return block(b.x, b.y, b.z-1);
+  case 1: return block(b.x, b.y, b.z+1);
+  case 2: return block(b.x, b.y+1, b.z);
+  case 3: return block(b.x, b.y-1, b.z);
+  case 4: return block(b.x-1, b.y, b.z);
+  case 5: return block(b.x+1, b.y, b.z);
+  }
+}
 
 function neighbors(b, callback) {
   var result = [];
@@ -527,13 +538,13 @@ function pick(x, y, z, pitch, yaw) {
     var h = 1.001;
     if (dz < dx && dz < dy) {
       h *= dz;
-      PICKED_FACE = dz < 0 ? 0 : 1;
+      PICKED_FACE = pz > 0 ? 0 : 1;
     } else if (dy < dx) {
       h *= dy;
-      PICKED_FACE = dy < 0 ? 2 : 3;
+      PICKED_FACE = py < 0 ? 2 : 3;
     } else {
       h *= dx;
-      PICKED_FACE = dx < 0 ? 4 : 5;
+      PICKED_FACE = px > 0 ? 4 : 5;
     }
     x += h / px;
     y += h / py;
@@ -687,7 +698,7 @@ function onLoad() {
   window.addEventListener('keyup',   onkeyup,   true);
   window.addEventListener('mousemove', onmousemove, true);
   window.addEventListener('mousedown', onmousedown, true);
-  //canvas.addEventListener('oncontextmenu', function () { console.log('OCM');return false }, true);
+  document.oncontextmenu = function () { return false };
 
   tick();
 }
@@ -724,9 +735,17 @@ function onmousedown(event) {
   event = event || window.event;
   if (event.preventDefault) event.preventDefault();
   if (PICKED && PICKED.tile) {
-    PICKED.tile = 0;
-    PICKED.dirty = true;
-    neighbors(PICKED, function (n) { n.dirty = true; });
+    if (event.button === 0) {
+      PICKED.tile = 0;
+      PICKED.dirty = true;
+    } else {
+      var b = blockFacing(PICKED, PICKED_FACE);
+      if (!b.temporary) {
+        b.tile = PICKED.tile;
+        b.dirty = true;
+        neighbors(b, function (n) { n.dirty = true; });
+      }
+    }
   }
   return false;
 }
