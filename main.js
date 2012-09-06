@@ -39,8 +39,8 @@ var FACE_FRONT = 0;
 var FACE_BACK = 1;
 var FACE_BOTTOM = 2;
 var FACE_TOP = 3;
-var FACE_LEFT = 4;
-var FACE_RIGHT = 5;
+var FACE_RIGHT = 4;
+var FACE_LEFT = 5;
 
 function initGL(canvas) {
   try {
@@ -272,8 +272,8 @@ function blockFacing(b, face) {
   case FACE_BACK:   return block(b.x, b.y, b.z+1);
   case FACE_BOTTOM: return block(b.x, b.y-1, b.z);
   case FACE_TOP:    return block(b.x, b.y+1, b.z);
-  case FACE_LEFT:   return block(b.x-1, b.y, b.z);
-  case FACE_RIGHT:  return block(b.x+1, b.y, b.z);
+  case FACE_RIGHT:  return block(b.x-1, b.y, b.z);
+  case FACE_LEFT:   return block(b.x+1, b.y, b.z);
   }
 }
 
@@ -284,12 +284,12 @@ function neighbors(b, callback) {
     result.push(n);
     if (callback) callback(n, axis, sign, face);
   }
-  chk( 0, 0,-1, 2, -1, 0);  // front
-  chk( 0, 0,+1, 2, +1, 1);  // back
-  chk( 0,-1, 0, 1, -1, 2);  // bottom
-  chk( 0,+1, 0, 1, +1, 3);  // top
-  chk(-1, 0, 0, 0, -1, 4);  // left(?)
-  chk(+1, 0, 0, 0, +1, 5);  // right
+  chk( 0, 0,-1, 2, -1, FACE_FRONT);
+  chk( 0, 0,+1, 2, +1, FACE_BACK);
+  chk( 0,-1, 0, 1, -1, FACE_BOTTOM);
+  chk( 0,+1, 0, 1, +1, FACE_TOP);
+  chk(-1, 0, 0, 0, -1, FACE_RIGHT);
+  chk(+1, 0, 0, 0, +1, FACE_LEFT);
   return result;
 }
 
