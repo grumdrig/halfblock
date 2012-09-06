@@ -35,6 +35,12 @@ var KEYS = {};
 
 var lastX, lastY;
 
+var FACE_FRONT = 0;
+var FACE_BACK = 1;
+var FACE_BOTTOM = 2;
+var FACE_TOP = 3;
+var FACE_LEFT = 4;
+var FACE_RIGHT = 5;
 
 function initGL(canvas) {
   try {
@@ -147,6 +153,8 @@ function chunkToBuffers() {
               var corners = [-1,-1, +1,-1, +1,+1, -1,+1];
               var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
                 / LIGHT_MAX;
+              if (c.y >= WORLD.NY-1 && face === FACE_TOP) 
+                light = 1;  // Account for topmost block against non-block
               if (c === PICKED && face === PICKED_FACE) 
                 light = 2;
               for (var ic = 0; ic < 12; ++ic) {
@@ -205,58 +213,67 @@ function choice(n) {
   return Math.floor(Math.random() * n);
 }
 
-function coords(i) {
-    return {
-      x: i % WORLD.NX,
-      y: (i >> WORLD.LOGNX) % WORLD.NY,
-      z: (i >> (WORLD.LOGNX + WORLD.LOGNY)) % WORLD.NZ
-    }
-}
 
-
-function index(x, y, z) {
+function coords(x, y, z) {
+  var result;
   if (typeof x === 'object') {
-    if (!x) debugger;
     if (typeof x.x === 'undefined') {
-      // assuming vec3 or array
-      z = x[2];
-      y = x[1];
-      x = x[0];
+      // assuming array or vector
+      result = {
+        x: x[0],
+        y: x[1],
+        z: x[2]
+      };
     } else {
-      z = x.z;
-      y = x.y;
-      x = x.x;
+      result = {
+        x: x.x,
+        y: x.y,
+        z: x.z
+      };
+    }
+    result.z = Math.floor(result.z);
+    result.y = Math.floor(result.y);
+    result.x = Math.floor(result.x);
+  } else if (typeof y === 'undefined') {
+    result = {
+      x: x % WORLD.NX,
+      y: (x >> WORLD.LOGNX) % WORLD.NY,
+      z: (x >> (WORLD.LOGNX + WORLD.LOGNY)) % WORLD.NZ
+    }
+  } else {
+    result = {
+      x: Math.floor(x),
+      y: Math.floor(y),
+      z: Math.floor(z)
     }
   }
-  if (typeof y === 'undefined') return x;
-  z = Math.floor(z);
-  y = Math.floor(y);
-  x = Math.floor(x);
-  if (x < 0 || y < 0 || z < 0 ||
-      x >= WORLD.NX || y >= WORLD.NY || z >= WORLD.NZ) return null;
-  return x + y * WORLD.NX + z * WORLD.NX * WORLD.NY;
+  if (result.x < 0 || result.x >= WORLD.NX || 
+      result.y < 0 || result.y >= WORLD.NY || 
+      result.z < 0 || result.z >= WORLD.NZ)
+    result.outofbounds = true;
+  else
+    result.i = result.x + result.y * WORLD.NX + result.z * WORLD.NX * WORLD.NY;
+  return result;
 }
 
 function block(x, y, z) {
-  var i = index(x, y, z);
-  var result = WORLD.map[i];
-  if (!result) {
+  var c = coords(x, y, z);
+  if (!c.outofbounds) {
+    return WORLD.map[c.i];
+  } else {
     // Manufacture an ad hoc temporary block
-    var c = coords(i);
-    result = new Block(c.x, c.y, c.z);
-    result.temporary = true;
+    return new Block(c);
   }
-  return result;
 }
 
 function blockFacing(b, face) {
   switch (face) {
-  case 0: return block(b.x, b.y, b.z-1);
-  case 1: return block(b.x, b.y, b.z+1);
-  case 2: return block(b.x, b.y-1, b.z);
-  case 3: return block(b.x, b.y+1, b.z);
-  case 4: return block(b.x-1, b.y, b.z);
-  case 5: return block(b.x+1, b.y, b.z);
+  case FACE_FRONT:  return block(b.x, b.y, b.z-1);
+  case FACE_BACK:   return block(b.x, b.y, b.z+1);
+  case FACE_BOTTOM: return block(b.x, b.y-1, b.z);
+  case FACE_TOP:    return block(b.x, b.y+1, b.z);
+  case FACE_LEFT:   return block(b.x-1, b.y, b.z);
+  case FACE_RIGHT:  return block(b.x+1, b.y, b.z);
   }
 }
 
@@ -592,12 +609,13 @@ function topmost(x, z) {
 }
 
 
-function Block(x, y, z) {
-  this.x = x;
-  this.y = y;
-  this.z = z;
+function Block(coord) {
+  this.x = coord.x;
+  this.y = coord.y;
+  this.z = coord.z;
 
-  this.i = index(x,y,z);
+  this.i = coord.i;
+  this.outofbounds = coord.outofbounds;
 
   this.light = LIGHT_MIN;
   this.dirty = true;
@@ -642,8 +660,9 @@ function onLoad() {
   for (var x = 0; x < WORLD.NX; ++x) {
     for (var y = 0; y < WORLD.NY; ++y) {
       for (var z = 0; z < WORLD.NZ; ++z) {
-        var t = WORLD.map[index(x,y,z)] = new Block(x, y, z);
-        t.generateTerrain();
+        var c = coords(x, y, z);
+        WORLD.map[c.i] = new Block(c);
+        WORLD.map[c.i].generateTerrain();
       }
     }
   }
@@ -740,7 +759,7 @@ function onmousedown(event) {
       PICKED.dirty = true;
     } else {
       var b = blockFacing(PICKED, PICKED_FACE);
-      if (!b.temporary) {
+      if (!b.outofbounds) {
         b.tile = PICKED.tile;
         b.dirty = true;
         neighbors(b, function (n) { n.dirty = true; });
