@@ -342,22 +342,14 @@ function animate() {
     var a = elapsed * .002;
     var m = mat4.create();
 
-    if (KEYS.T === 1) {
-      PLAYER.flying = !PLAYER.flying;
-      ++KEYS.T;
-    }
-
-    if (KEYS.A || KEYS.D || KEYS.W || KEYS.S) {
-      var position = vec3.create([PLAYER.x, PLAYER.y, PLAYER.z]);
-      var facing = quat4.create([0,0,0,1]);
-      quat4.rotateY(facing, -PLAYER.yaw);
-      if (KEYS.A) vec3.add(position, quat4.multiplyVec3(facing, [-d, 0, 0]));
-      if (KEYS.D) vec3.add(position, quat4.multiplyVec3(facing, [ d, 0, 0]));
-      if (KEYS.W) vec3.add(position, quat4.multiplyVec3(facing, [ 0, 0,-d]));
-      if (KEYS.S) vec3.add(position, quat4.multiplyVec3(facing, [ 0, 0, d]));
-      PLAYER.x = position[0];
-      PLAYER.y = position[1];
-      PLAYER.z = position[2];
+    // Movement keys
+    if (KEYS.W || KEYS.A || KEYS.S || KEYS.D) {
+      var px = d * Math.cos(-PLAYER.yaw);
+      var pz = d * Math.sin(-PLAYER.yaw);
+      if (KEYS.W) { PLAYER.x -= pz; PLAYER.z -= px; }
+      if (KEYS.A) { PLAYER.x -= px; PLAYER.z += pz; }
+      if (KEYS.S) { PLAYER.x += pz; PLAYER.z += px; }
+      if (KEYS.D) { PLAYER.x += px; PLAYER.z -= pz; }
     }
     if (PLAYER.flying && (KEYS[' '] || KEYS.R))
       PLAYER.y += d;
@@ -369,17 +361,18 @@ function animate() {
       if (block(PLAYER).tile) 
         PLAYER.y = Math.floor(PLAYER.y + 1);
     }
-    // http://content.gpwiki.org/index.php/OpenGL%3aTutorials%3aUsing_Quaternions_to_represent_rotation
-    // TODO though: can just do the math the simple way
 
+    // Rotations
     if (KEYS.Q) PLAYER.yaw -= a;
     if (KEYS.E) PLAYER.yaw += a;
     if (KEYS.Z) PLAYER.pitch = Math.max(PLAYER.pitch - a, -Math.PI/2);
     if (KEYS.X) PLAYER.pitch = Math.min(PLAYER.pitch + a,  Math.PI/2);
 
-    if (keyPressed('\t'))
-      PLAYER.mouselook = !PLAYER.mouselook;
+    // Toggles
+    if (keyPressed('T')) PLAYER.flying = !PLAYER.flying;
+    if (keyPressed('\t')) PLAYER.mouselook = !PLAYER.mouselook;
 
+    // Physics
     if (!PLAYER.flying) {
       var c = block(PLAYER);
       if (!PLAYER.falling) {
