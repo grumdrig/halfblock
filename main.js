@@ -147,7 +147,7 @@ function chunkToBuffers() {
               var corners = [-1,-1, +1,-1, +1,+1, -1,+1];
               var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
                 / LIGHT_MAX;
-              if (c === PICKED && (face >> 1) === (PICKED_FACE >> 1)) 
+              if (c === PICKED && face === PICKED_FACE) 
                 light = 2;
               for (var ic = 0; ic < 12; ++ic) {
                 var d = triplet[ic % 3];
