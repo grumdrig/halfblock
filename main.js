@@ -14,7 +14,7 @@ var pMatrix = mat4.create();   // projection matrix
 
 // Game objects
 
-var WORLD;
+var WORLD, WORLD1;
 var PLAYER;
 var PICKED = {};
 var PICKED_FACE = 0;
@@ -181,8 +181,10 @@ Chunk.prototype.generateBuffers = function () {
   var textures = [];
   var indices = [];
   var lighting = [];
-  for (var x = 0; x < NX; ++x) {
-    for (var z = 0; z < NZ; ++z) {
+  for (var ix = 0; ix < NX; ++ix) {
+    var x = ix + this.chunkx * NX;
+    for (var iz = 0; iz < NZ; ++iz) {
+      var z = iz + this.chunkz * NZ;
       for (var y = NY-1; y >= 0; --y) {
         var triplet = [x,y,z];
         var c = block(x,y,z); 
@@ -326,7 +328,7 @@ function coords(x, y, z) {
 
 
 function chunk(chunkx, chunkz) {
-  return WORLD;  // for now!
+  return chunkx & 1 ? WORLD1 : WORLD;  // for now!
 }
 
 
@@ -404,6 +406,7 @@ function drawScene() {
   gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
 
   WORLD.render();
+  WORLD1.render();
 
   var alpha = 0.9;
   RENDERTIME = RENDERTIME * alpha + (1-alpha) * (+new Date() - atstart);
@@ -572,6 +575,7 @@ function animate() {
     if (dirty) {
       console.log('Update ', dirty);
       WORLD.generateBuffers();
+      WORLD1.generateBuffers();
     }
   }
 }
@@ -586,8 +590,8 @@ function pickp() {
 function pick(x, y, z, pitch, yaw) {
   // Compute length of ray which projects to length 1 on each axis
   var py = -1 / Math.sin(pitch);
-  var ph = 1 / Math.cos(pitch);
-  var px = ph / Math.sin(yaw);
+  var ph =  1 / Math.cos(pitch);
+  var px =  ph / Math.sin(yaw);
   var pz = -ph / Math.cos(yaw);
 
   function next(w, pw) { 
@@ -596,11 +600,8 @@ function pick(x, y, z, pitch, yaw) {
   
   for (var i = 0; i < 3000; ++i) {
     // check out of bounds
-    if ((px < 0 ? x < 0 : x > NX + 1) ||
-        (py < 0 ? y < 0 : y > NY + 1) ||
-        (pz < 0 ? z < 0 : z > NZ + 1)) {
+    if (py < 0 ? y < 0 : y > NY + 1)
       break;
-    }
     var b = block(x,y,z);
     if (b.tile) 
       return b;
@@ -703,6 +704,7 @@ function onLoad() {
 
   // Create world map
   WORLD = new Chunk(0, 0);
+  WORLD1 = new Chunk(1, 0);
 
   // Create player
 
@@ -726,6 +728,7 @@ function onLoad() {
   initGL(canvas);
   initShaders();
   WORLD.generateBuffers();
+  WORLD1.generateBuffers();
 
   // Init texture
 
