@@ -378,7 +378,10 @@ function animate() {
 
     // Toggles
     if (keyPressed('T')) PLAYER.flying = !PLAYER.flying;
-    if (keyPressed('\t')) PLAYER.mouselook = !PLAYER.mouselook;
+    if (keyPressed('\t')) {
+      PLAYER.mouselook = !PLAYER.mouselook;
+      document.body.style.cursor = PLAYER.mouselook ? 'none' : '';
+    }
 
     // Physics
     if (!PLAYER.flying) {
