@@ -143,7 +143,7 @@ function chunkToBuffers() {
             if (!n.tile) {
               var vindex = vertices.length / 3;
               var corners = [-1,-1, +1,-1, +1,+1, -1,+1];
-              var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, c.light||0))
+              var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
                 / LIGHT_MAX;
               if (c === PICKED && (face >> 1) === (PICKED_FACE >> 1)) 
                 light = 2;
