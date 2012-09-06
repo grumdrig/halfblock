@@ -15,6 +15,7 @@ var pMatrix = mat4.create();   // projection matrix
 var WORLD;
 var PLAYER;
 var PICKED = {};
+var PICKED_FACE = 0;
 
 var RENDERTIME = 0;
 var FRAMETIME = 0;
@@ -138,13 +139,14 @@ function chunkToBuffers() {
         var triplet = [x,y,z];
         var c = block(x,y,z); 
         if (c.tile) {
-          function nabe(n, coord, sign) {
+          function nabe(n, coord, sign, face) {
             if (!n.tile) {
               var vindex = vertices.length / 3;
               var corners = [-1,-1, +1,-1, +1,+1, -1,+1];
               var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, c.light||0))
                 / LIGHT_MAX;
-              if (c === PICKED) light = 2;
+              if (c === PICKED && (face >> 1) === (PICKED_FACE >> 1)) 
+                light = 2;
               for (var ic = 0; ic < 12; ++ic) {
                 var d = triplet[ic % 3];
                 if (ic % 3 === coord)
@@ -238,20 +240,20 @@ function block(x, y, z) {
 
 function neighbors(b, callback) {
   var result = [];
-  function chk(dx, dy, dz, axis, sign) {
+  function chk(dx, dy, dz, axis, sign, face) {
     var i = index(b.x + dx, b.y + dy, b.z + dz);
     if (i) {
       var n = block(i);
       result.push(n);
-      if (callback) callback(n, axis, sign);
+      if (callback) callback(n, axis, sign, face);
     }
   }
-  chk( 0, 0,-1, 2, -1);  // front
-  chk( 0, 0,+1, 2, +1);  // back
-  chk( 0,-1, 0, 1, -1);  // top
-  chk( 0,+1, 0, 1, +1);  // bottom
-  chk(-1, 0, 0, 0, -1);  // left(?)
-  chk(+1, 0, 0, 0, +1);  // right
+  chk( 0, 0,-1, 2, -1, 0);  // front
+  chk( 0, 0,+1, 2, +1, 1);  // back
+  chk( 0,-1, 0, 1, -1, 2);  // top
+  chk( 0,+1, 0, 1, +1, 3);  // bottom
+  chk(-1, 0, 0, 0, -1, 4);  // left(?)
+  chk(+1, 0, 0, 0, +1, 5);  // right
   return result;
 }
 
@@ -418,8 +420,9 @@ function animate() {
     var dirty = 0;
 
     var waspicked = PICKED;
+    var wasface = PICKED_FACE;
     PICKED = pickp() || {};
-    if (PICKED !== waspicked)
+    if (PICKED !== waspicked || PICKED_FACE !== wasface)
       ++dirty;
 
     for (var x = 0; x < WORLD.NX; ++x) {
@@ -481,7 +484,6 @@ function pick(x, y, z, pitch, yaw, verbose) {
   }
   
   for (var i = 0; i < 3000; ++i) {
-    if (verbose) console.log('PK', x, y, z);
     // check out of bounds
     if ((px < 0 ? x < 0 : x > WORLD.NX + 1) ||
         (py < 0 ? y < 0 : y > WORLD.NY + 1) ||
@@ -495,8 +497,17 @@ function pick(x, y, z, pitch, yaw, verbose) {
     var dx = next(x, px);
     var dy = next(y, py);
     var dz = next(z, pz);
-    var h = Math.min(dx, dy, dz) * 1.001;
-    if (verbose) console.log('   K', dx, dy, dz, h);
+    var h = 1.001;
+    if (dz < dx && dz < dy) {
+      h *= dz;
+      PICKED_FACE = dz < 0 ? 0 : 1;
+    } else if (dy < dx) {
+      h *= dy;
+      PICKED_FACE = dy < 0 ? 2 : 3;
+    } else {
+      h *= dx;
+      PICKED_FACE = dx < 0 ? 4 : 5;
+    }
     x += h / px;
     y += h / py;
     z += h / pz;
@@ -518,7 +529,7 @@ function tick() {
     PLAYER.pitch.toFixed(2) + '&gt';
   if (PICKED && PICKED.tile)
     feedback += '<br>' + 'Picked: &lt;' + PICKED.x + ' ' + 
-      PICKED.y + ' ' + PICKED.z + '&gt;';
+      PICKED.y + ' ' + PICKED.z + '&gt; face ' + PICKED_FACE;
   document.getElementById('stats').innerHTML = feedback;
 }
 
