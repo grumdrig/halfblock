@@ -1,6 +1,8 @@
 // REFERENCES:
 // http://learningwebgl.com/blog/?page_id=1217
 // http://codeflow.org/entries/2010/dec/09/minecraft-like-rendering-experiments-in-opengl-4/
+// http://stackoverflow.com/questions/9046643/webgl-create-texture
+
 
 // OpenGL rendering things!
 
