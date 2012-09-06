@@ -528,8 +528,7 @@ function tick() {
     PLAYER.z.toFixed(2) + '&gt &lt;' + PLAYER.yaw.toFixed(2) + ' ' +
     PLAYER.pitch.toFixed(2) + '&gt';
   if (PICKED && PICKED.tile)
-    feedback += '<br>' + 'Picked: &lt;' + PICKED.x + ' ' + 
-      PICKED.y + ' ' + PICKED.z + '&gt; face ' + PICKED_FACE;
+    feedback += '<br>' + 'Picked: ' + PICKED + ' @' + PICKED_FACE;
   document.getElementById('stats').innerHTML = feedback;
 }
 
@@ -555,13 +554,38 @@ function topmost(x, z) {
 }
 
 
+function Block(x, y, z) {
+  this.x = x;
+  this.y = y;
+  this.z = z;
+
+  this.i = index(x,y,z);
+
+  if (y == 0) {
+    this.tile = 6;
+  } else {
+    var n = pinkNoise(x,y,z, 32, 2) + (2*y-WORLD.NY)/WORLD.NY;
+    if (n < 0) this.tile = 3;
+    if (n < -0.1) this.tile = 2;
+    if (n < -0.2) this.tile = 1;
+  
+    // Caves
+    if (Math.pow(noise(x/20, y/20, z/20), 3) < -0.1)
+      this.tile = 0;
+  }
+}
+
+Block.prototype.toString = function () {
+  return '[' + this.x + ' ' + this.y + ' ' + this.z + ']';
+}
+
+
 // Entry point for body.onload
 function webGLStart() {
   var canvas = document.getElementById("canvas");
 
   // Create world map
   WORLD = {
-    NBLOCKS: 0,
     LOGNX: 4,
     LOGNY: 4,
     LOGNZ: 4,
@@ -575,24 +599,11 @@ function webGLStart() {
   for (var x = 0; x < WORLD.NX; ++x) {
     for (var y = 0; y < WORLD.NY; ++y) {
       for (var z = 0; z < WORLD.NZ; ++z) {
-        var n = pinkNoise(x,y,z, 32, 2) + (2*y-WORLD.NY)/WORLD.NY;
-        var t = WORLD.map[index(x,y,z)] = { 
-          x: x, y: y, z: z, 
-          i: index(x,y,z),
-          id: ++WORLD.NBLOCKS
-        };
-        if (n < 0) t.tile = 3;
-        if (n < -0.1) t.tile = 2;
-        if (n < -0.2) t.tile = 1;
-
-        if (Math.pow(noise(x/20, y/20, z/20), 2) < 0.01)
-          t.tile = 0;
-
-        if (y == 0) t.tile = 6;
+        var t = WORLD.map[index(x,y,z)] = new Block(x, y, z);
       }
     }
   }
-  // Initialize lighing
+  // Initialize lighting
   for (var x = 0; x < WORLD.NX; ++x) {
     for (var z = 0; z < WORLD.NZ; ++z) {
       block(x, WORLD.NY-1, z).light = LIGHT_MAX;
