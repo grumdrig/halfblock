@@ -253,8 +253,8 @@ function blockFacing(b, face) {
   switch (face) {
   case 0: return block(b.x, b.y, b.z-1);
   case 1: return block(b.x, b.y, b.z+1);
-  case 2: return block(b.x, b.y+1, b.z);
-  case 3: return block(b.x, b.y-1, b.z);
+  case 2: return block(b.x, b.y-1, b.z);
+  case 3: return block(b.x, b.y+1, b.z);
   case 4: return block(b.x-1, b.y, b.z);
   case 5: return block(b.x+1, b.y, b.z);
   }
@@ -269,8 +269,8 @@ function neighbors(b, callback) {
   }
   chk( 0, 0,-1, 2, -1, 0);  // front
   chk( 0, 0,+1, 2, +1, 1);  // back
-  chk( 0,-1, 0, 1, -1, 2);  // top
-  chk( 0,+1, 0, 1, +1, 3);  // bottom
+  chk( 0,-1, 0, 1, -1, 2);  // bottom
+  chk( 0,+1, 0, 1, +1, 3);  // top
   chk(-1, 0, 0, 0, -1, 4);  // left(?)
   chk(+1, 0, 0, 0, +1, 5);  // right
   return result;
@@ -541,7 +541,7 @@ function pick(x, y, z, pitch, yaw) {
       PICKED_FACE = pz > 0 ? 0 : 1;
     } else if (dy < dx) {
       h *= dy;
-      PICKED_FACE = py < 0 ? 2 : 3;
+      PICKED_FACE = py > 0 ? 2 : 3;
     } else {
       h *= dx;
       PICKED_FACE = px > 0 ? 4 : 5;
