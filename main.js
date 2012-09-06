@@ -275,7 +275,7 @@ function drawScene() {
   mat4.identity(mvMatrix);
   mat4.rotateX(mvMatrix, PLAYER.pitch);
   mat4.rotateY(mvMatrix, PLAYER.yaw);
-  mat4.translate(mvMatrix, vec3.negate(PLAYER.position, [0,0,0]));
+  mat4.translate(mvMatrix, [-PLAYER.x, -PLAYER.y, -PLAYER.z]);
   mat4.translate(mvMatrix, [0, -EYE_HEIGHT, 0]);
 
   // Render the world
@@ -347,25 +347,27 @@ function animate() {
       ++KEYS.T;
     }
 
-    var facing = quat4.create([0,0,0,1]);
-    quat4.rotateY(facing, -PLAYER.yaw);
-    if (KEYS.A)   
-      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [-d, 0, 0]));
-    if (KEYS.D)   
-      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ d, 0, 0]));
-    if (KEYS.W)   
-      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0,-d]));
-    if (KEYS.S)   
-      vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0, d]));
+    if (KEYS.A || KEYS.D || KEYS.W || KEYS.S) {
+      var position = vec3.create([PLAYER.x, PLAYER.y, PLAYER.z]);
+      var facing = quat4.create([0,0,0,1]);
+      quat4.rotateY(facing, -PLAYER.yaw);
+      if (KEYS.A) vec3.add(position, quat4.multiplyVec3(facing, [-d, 0, 0]));
+      if (KEYS.D) vec3.add(position, quat4.multiplyVec3(facing, [ d, 0, 0]));
+      if (KEYS.W) vec3.add(position, quat4.multiplyVec3(facing, [ 0, 0,-d]));
+      if (KEYS.S) vec3.add(position, quat4.multiplyVec3(facing, [ 0, 0, d]));
+      PLAYER.x = position[0];
+      PLAYER.y = position[1];
+      PLAYER.z = position[2];
+    }
     if (PLAYER.flying && (KEYS[' '] || KEYS.R))
-      PLAYER.position[1] += d;
+      PLAYER.y += d;
     if (PLAYER.flying && (KEYS[16] || KEYS.F))
-      PLAYER.position[1] -= d;
+      PLAYER.y -= d;
     if (!PLAYER.flying && !PLAYER.falling && keyPressed(' ')) {
       PLAYER.dy = 5.5;
       PLAYER.falling = true;
-      if (block(PLAYER.position).tile) 
-        PLAYER.position[1] = Math.floor(PLAYER.position[1] + 1);
+      if (block(PLAYER).tile) 
+        PLAYER.y = Math.floor(PLAYER.y + 1);
     }
     // http://content.gpwiki.org/index.php/OpenGL%3aTutorials%3aUsing_Quaternions_to_represent_rotation
     // TODO though: can just do the math the simple way
@@ -379,17 +381,17 @@ function animate() {
       PLAYER.mouselook = !PLAYER.mouselook;
 
     if (!PLAYER.flying) {
-      var c = block(PLAYER.position);
+      var c = block(PLAYER);
       if (!PLAYER.falling) {
         if (c.tile) {
           // Rise from dirt
-          PLAYER.position[1] += d;
-          if (!block(PLAYER.position).tile) {
-            PLAYER.position[1] = Math.floor(PLAYER.position[1]);
+          PLAYER.y += d;
+          if (!block(PLAYER).tile) {
+            PLAYER.y = Math.floor(PLAYER.y);
           }
-        } else if (!block(PLAYER.position[0], 
-                          PLAYER.position[1]-1,
-                          PLAYER.position[2]).tile) {
+        } else if (!block(PLAYER.x, 
+                          PLAYER.y-1,
+                          PLAYER.z).tile) {
           // Fall off cliff
           PLAYER.falling = true;
           PLAYER.dy = 0;
@@ -399,11 +401,11 @@ function animate() {
           // Landed
           PLAYER.dy = 0;
           PLAYER.falling = false;
-          PLAYER.position[1] = Math.floor(PLAYER.position[1] + 1);
+          PLAYER.y = Math.floor(PLAYER.y + 1);
         } else {
           // Still falling
           PLAYER.dy -= 9.8 * elapsed / 1000;
-          PLAYER.position[1] += PLAYER.dy * elapsed / 1000;
+          PLAYER.y += PLAYER.dy * elapsed / 1000;
         }
       }
     }
@@ -463,9 +465,9 @@ function animate() {
 }
 
 function pickp(verbose) { 
-  return pick(PLAYER.position[0] + 0.5, 
-              PLAYER.position[1] + 0.5 + EYE_HEIGHT, 
-              PLAYER.position[2] + 0.5, 
+  return pick(PLAYER.x + 0.5, 
+              PLAYER.y + 0.5 + EYE_HEIGHT, 
+              PLAYER.z + 0.5, 
               PLAYER.pitch, 
               PLAYER.yaw,
               verbose) || {};
@@ -590,16 +592,18 @@ function webGLStart() {
   // Create player
 
   PLAYER = {
-    position: vec3.create([WORLD.NX/2, WORLD.NY/2, WORLD.NZ/2]),
+    x: WORLD.NX/2, 
+    y: WORLD.NY/2, 
+    z: WORLD.NZ/2,
     dy: 0,
     yaw: 0,
     pitch: 0,
     flying: false,
     mouselook: false,
   };
-  var c = topmost(PLAYER.position[0], PLAYER.position[2]);
+  var c = topmost(PLAYER.x, PLAYER.z);
   if (c)
-    PLAYER.position[1] = c.y + 1;
+    PLAYER.y = c.y + 1;
   else 
     PLAYER.flying = true;
 
