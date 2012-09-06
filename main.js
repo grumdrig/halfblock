@@ -248,6 +248,7 @@ function block(x, y, z) {
   return result;
 }
 
+
 function neighbors(b, callback) {
   var result = [];
   function chk(dx, dy, dz, axis, sign, face) {
@@ -342,6 +343,8 @@ function keyPressed(k) {
   return false;
 }
 
+function frac(x) { return x - Math.floor(x); }
+function carf(x) { return Math.ceil(x) - x; }
 
 function animate() {
   var timeNow = +new Date();
@@ -356,12 +359,29 @@ function animate() {
 
     // Movement keys
     if (KEYS.W || KEYS.A || KEYS.S || KEYS.D) {
+      var ox = PLAYER.x, oy = PLAYER.y, oz = PLAYER.z;
       var px = d * Math.cos(-PLAYER.yaw);
       var pz = d * Math.sin(-PLAYER.yaw);
       if (KEYS.W) { PLAYER.x -= pz; PLAYER.z -= px; }
       if (KEYS.A) { PLAYER.x -= px; PLAYER.z += pz; }
       if (KEYS.S) { PLAYER.x += pz; PLAYER.z += px; }
       if (KEYS.D) { PLAYER.x += px; PLAYER.z -= pz; }
+
+      // Check collisions
+      if (frac(PLAYER.x) < PLAYER.radius && 
+          (block(ox-1, oy,   oz).tile || block(ox-1, oy+1, oz).tile)) {
+        PLAYER.x = Math.floor(PLAYER.x) + PLAYER.radius;
+      } else if (carf(PLAYER.x) < PLAYER.radius && 
+                 (block(ox+1, oy,   oz).tile || block(ox+1, oy+1, oz).tile)) {
+        PLAYER.x = Math.ceil(PLAYER.x) - PLAYER.radius;
+      }
+      if (frac(PLAYER.z) < PLAYER.radius && 
+          (block(ox, oy, oz-1).tile || block(ox, oy+1, oz-1).tile)) {
+        PLAYER.z = Math.floor(PLAYER.z) + PLAYER.radius;
+      } else if (carf(PLAYER.z) < PLAYER.radius && 
+                 (block(ox, oy, oz+1).tile || block(ox, oy+1, oz+1).tile)) {
+        PLAYER.z = Math.ceil(PLAYER.z) - PLAYER.radius;
+      }
     }
     if (PLAYER.flying && (KEYS[' '] || KEYS.R))
       PLAYER.y += d;
@@ -639,6 +659,7 @@ function onLoad() {
     pitch: 0,
     flying: false,
     mouselook: false,
+    radius: 0.1,
   };
   var c = topmost(PLAYER.x, PLAYER.z);
   if (c)
