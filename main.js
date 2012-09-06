@@ -147,6 +147,7 @@ function chunkToBuffers() {
               var corners = [-1,-1, +1,-1, +1,+1, -1,+1];
               var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, c.light||0))
                 / LIGHT_MAX;
+              if (c === PICKED) light = 2;
               for (var ic = 0; ic < 12; ++ic) {
                 var d = triplet[ic % 3];
                 if (ic % 3 === coord)
@@ -159,12 +160,10 @@ function chunkToBuffers() {
               indices.push(vindex, vindex + 1, vindex + 2,
                            vindex, vindex + 2, vindex + 3);
 
-              var tile = c.tile
-              if (c === PICKED) tile = 0;
-              textures.push(tile,     15, 
-                            tile + 1, 15, 
-                            tile + 1, 16, 
-                            tile,     16);
+              textures.push(c.tile,     15, 
+                            c.tile + 1, 15, 
+                            c.tile + 1, 16, 
+                            c.tile,     16);
             }
           }
           for (var co = 0; co < 3; ++co)
