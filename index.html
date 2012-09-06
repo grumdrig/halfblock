@@ -49,10 +49,24 @@ body {
   margin-top: 20px;
 }
 
+#cancan {
+  position: relative;
+}
+
 #cancan, canvas {
   width: 500px;
   height: 500px;
   margin: auto auto;
+}
+
+#hud {
+  font-family: Helvetica;
+  font-size: 18px;
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  top: 0;
+  left: 0;
 }
 
 </style>
@@ -61,8 +75,10 @@ body {
 
 <body onload="webGLStart();">
 <div id="cancan">
-<div id=stats></div>
-<canvas id="canvas" width="500" height="500"></canvas>
+  <canvas id="canvas" width="500" height="500"></canvas>
+  <div id="hud">
+    <div id=stats></div>
+  </div>
 </div>
 </body>
 

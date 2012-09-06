@@ -513,13 +513,13 @@ function tick() {
   animate();
 
   var feedback = 
-    //'Render: ' + RENDERTIME.toFixed(2) + 'ms &mdash; ' +
-    '' + (1000/FRAMETIME).toFixed(2) + ' FPS &mdash; Player: ' +
+    //'Render: ' + RENDERTIME.toFixed(2) + 'ms<br>' +
+    '' + (1000/FRAMETIME).toFixed(2) + ' FPS<br>Player: ' +
     '&lt;' + PLAYER.x.toFixed(2) + ' ' + PLAYER.y.toFixed(2) + ' ' +
     PLAYER.z.toFixed(2) + '&gt &lt;' + PLAYER.yaw.toFixed(2) + ' ' +
     PLAYER.pitch.toFixed(2) + '&gt';
   if (PICKED && PICKED.tile)
-    feedback += ' &mdash; ' + 'Picked: &lt;' + PICKED.x + ' ' + 
+    feedback += '<br>' + 'Picked: &lt;' + PICKED.x + ' ' + 
       PICKED.y + ' ' + PICKED.z + '&gt;';
   document.getElementById('stats').innerHTML = feedback;
 }
