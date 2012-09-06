@@ -323,6 +323,15 @@ quat4.rotateY = function (quat, angle, dest) {
 }
 
 
+function keyPressed(k) {
+  if (KEYS[k] === 1) {
+    ++KEYS[k];
+    return true;
+  }
+  return false;
+}
+
+
 function animate() {
   var timeNow = +new Date();
   if (lastFrame) {
@@ -349,16 +358,15 @@ function animate() {
       vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0,-d]));
     if (KEYS.S)   
       vec3.add(PLAYER.position, quat4.multiplyVec3(facing, [ 0, 0, d]));
-    if (PLAYER.flying && (KEYS[32] || KEYS.R))
+    if (PLAYER.flying && (KEYS[' '] || KEYS.R))
       PLAYER.position[1] += d;
     if (PLAYER.flying && (KEYS[16] || KEYS.F))
       PLAYER.position[1] -= d;
-    if (!PLAYER.flying && !PLAYER.falling && KEYS[32] === 1) {
+    if (!PLAYER.flying && !PLAYER.falling && keyPressed(' ')) {
       PLAYER.dy = 5.5;
       PLAYER.falling = true;
       if (block(PLAYER.position).tile) 
         PLAYER.position[1] = Math.floor(PLAYER.position[1] + 1);
-      ++KEYS[32];
     }
     // http://content.gpwiki.org/index.php/OpenGL%3aTutorials%3aUsing_Quaternions_to_represent_rotation
     // TODO though: can just do the math the simple way
@@ -367,6 +375,9 @@ function animate() {
     if (KEYS.E) PLAYER.yaw += a;
     if (KEYS.Z) PLAYER.pitch = Math.max(PLAYER.pitch - a, -Math.PI/2);
     if (KEYS.X) PLAYER.pitch = Math.min(PLAYER.pitch + a,  Math.PI/2);
+
+    if (keyPressed('\t'))
+      PLAYER.mouselook = !PLAYER.mouselook;
 
     if (!PLAYER.flying) {
       var c = block(PLAYER.position);
@@ -607,13 +618,13 @@ function webGLStart() {
   TERRAIN_TEXTURE.image.src = "terrain.png";
 
   gl.clearColor(130/255, 202/255, 250/255, 1.0);  // Clear color is sky blue
-  gl.enable(gl.DEPTH_TEST);           // Enable Z-buffer
+  gl.enable(gl.DEPTH_TEST);                       // Enable Z-buffer
 
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
   window.addEventListener('mousemove', onmousemove, true);
   window.addEventListener('mousedown', onmousedown, true);
-  window.addEventListener('mouseup', onmouseup, true);
+  //canvas.addEventListener('oncontextmenu', function () { console.log('OCM');return false }, true);
 
   tick();
 }
@@ -647,8 +658,9 @@ function onmousemove(event) {
   lastY = event.pageY;
 }
 function onmousedown(event) {
-  //PLAYER.yaw = PLAYER.pitch = 0;
-  PLAYER.mouselook = !PLAYER.mouselook;
-}
-function onmouseup(event) {
+  if (PICKED && PICKED.tile) {
+    PICKED.tile = 0;
+    PICKED.dirty = true;
+    neighbors(PICKED).forEach(function (n) { n.dirty = true; });
+  }
 }
