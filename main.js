@@ -410,7 +410,7 @@ function animate() {
     PICKED = pickp() || {};
     if (PICKED !== waspicked) {
       ++dirty;
-      console.log('Picked', PICKED.x, PICKED.y, PICKED.z);
+      //console.log('Picked', PICKED.x, PICKED.y, PICKED.z);
     }
 
     for (var x = 0; x < WORLD.NX; ++x) {
@@ -452,12 +452,13 @@ function animate() {
   }
 }
 
-function pickp() { 
+function pickp(verbose) { 
   return pick(PLAYER.position[0] + 0.5, 
               PLAYER.position[1] + 0.5 + EYE_HEIGHT, 
               PLAYER.position[2] + 0.5, 
               PLAYER.pitch, 
-              PLAYER.yaw) || {};
+              PLAYER.yaw,
+              verbose) || {};
 }
 function pick(x, y, z, pitch, yaw, verbose) {
   // Compute length of ray which projects to length 1 on each axis
@@ -485,7 +486,8 @@ function pick(x, y, z, pitch, yaw, verbose) {
     var dx = next(x, px);
     var dy = next(y, py);
     var dz = next(z, pz);
-    var h = Math.min(dx, dy, dz);
+    var h = Math.min(dx, dy, dz) * 1.001;
+    if (verbose) console.log('   K', dx, dy, dz, h);
     x += h / px;
     y += h / py;
     z += h / pz;
@@ -582,7 +584,8 @@ function webGLStart() {
     dy: 0,
     yaw: 0,
     pitch: 0,
-    flying: false
+    flying: false,
+    mouselook: false,
   };
   var c = topmost(PLAYER.position[0], PLAYER.position[2]);
   if (c)
@@ -633,7 +636,7 @@ function onkeydown(event, count) {
 }
 
 function onmousemove(event) {
-  if (typeof lastX !== 'undefined') {
+  if (PLAYER.mouselook && typeof lastX !== 'undefined') {
     var xDelta = event.pageX - lastX;
     var yDelta = event.pageY - lastY;
     PLAYER.yaw += xDelta * 0.005;
@@ -644,7 +647,8 @@ function onmousemove(event) {
   lastY = event.pageY;
 }
 function onmousedown(event) {
-  PLAYER.yaw = PLAYER.pitch = 0;
+  //PLAYER.yaw = PLAYER.pitch = 0;
+  PLAYER.mouselook = !PLAYER.mouselook;
 }
 function onmouseup(event) {
 }
