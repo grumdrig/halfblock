@@ -718,6 +718,16 @@ function onLoad() {
   window.addEventListener('mousemove', onmousemove, true);
   window.addEventListener('mousedown', onmousedown, true);
   document.oncontextmenu = function () { return false };
+  /*
+  window.addEventListener('mouseout', function (event) {
+    event = event || window.event;
+    var from = event.relatedTarget || event.toElement;
+    console.log(from, from.nodeName);
+    if (false && PLAYER.mouselook) {
+      PLAYER.mouselook = !PLAYER.mouselook;
+      document.body.style.cursor = PLAYER.mouselook ? 'none' : '';
+    }});
+*/
 
   tick();
 }
