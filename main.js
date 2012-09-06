@@ -14,10 +14,11 @@ var pMatrix = mat4.create();   // projection matrix
 
 // Game objects
 
-var WORLD, WORLD1;
+var WORLD = {};
 var PLAYER;
 var PICKED = {};
 var PICKED_FACE = 0;
+var PICK_MAX = 8;
 
 // Map chunk dimensions
 var LOGNX = 4;
@@ -328,7 +329,11 @@ function coords(x, y, z) {
 
 
 function chunk(chunkx, chunkz) {
-  return chunkx & 1 ? WORLD1 : WORLD;  // for now!
+  var key = chunkx + ',' + chunkz;
+  var result = WORLD[key];
+  if (!result) 
+    result = WORLD[key] = new Chunk(chunkx, chunkz);
+  return result;
 }
 
 
@@ -405,8 +410,8 @@ function drawScene() {
   gl.uniformMatrix4fv(gl.data.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
 
-  WORLD.render();
-  WORLD1.render();
+  for (var i in WORLD)
+    WORLD[i].render();
 
   var alpha = 0.9;
   RENDERTIME = RENDERTIME * alpha + (1-alpha) * (+new Date() - atstart);
@@ -573,9 +578,11 @@ function animate() {
     }
     lastUpdate = timeNow;
     if (dirty) {
-      console.log('Update ', dirty);
-      WORLD.generateBuffers();
-      WORLD1.generateBuffers();
+      // TODO dirty per chunk
+      for (var i in WORLD) {
+        console.log('Update ', i, dirty);
+        WORLD[i].generateBuffers();
+      }
     }
   }
 }
@@ -594,6 +601,8 @@ function pick(x, y, z, pitch, yaw) {
   var px =  ph / Math.sin(yaw);
   var pz = -ph / Math.cos(yaw);
 
+  var dist = 0;
+
   function next(w, pw) { 
     return pw * (pw < 0 ? Math.ceil(w-1) - w : Math.floor(w+1) - w);
   }
@@ -601,6 +610,8 @@ function pick(x, y, z, pitch, yaw) {
   for (var i = 0; i < 3000; ++i) {
     // check out of bounds
     if (py < 0 ? y < 0 : y > NY + 1)
+      break;
+    if (dist > PICK_MAX)
       break;
     var b = block(x,y,z);
     if (b.tile) 
@@ -620,6 +631,7 @@ function pick(x, y, z, pitch, yaw) {
       h *= dx;
       PICKED_FACE = px > 0 ? 4 : 5;
     }
+    dist += h;
     x += h / px;
     y += h / py;
     z += h / pz;
@@ -703,8 +715,7 @@ function onLoad() {
   var canvas = document.getElementById("canvas");
 
   // Create world map
-  WORLD = new Chunk(0, 0);
-  WORLD1 = new Chunk(1, 0);
+  chunk(0, 0);
 
   // Create player
 
@@ -727,8 +738,8 @@ function onLoad() {
 
   initGL(canvas);
   initShaders();
-  WORLD.generateBuffers();
-  WORLD1.generateBuffers();
+  for (var i in WORLD)
+    WORLD[i].generateBuffers();
 
   // Init texture
 
