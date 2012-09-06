@@ -472,15 +472,14 @@ function animate() {
   }
 }
 
-function pickp(verbose) { 
+function pickp() { 
   return pick(PLAYER.x, 
               PLAYER.y + EYE_HEIGHT, 
               PLAYER.z, 
               PLAYER.pitch, 
-              PLAYER.yaw,
-              verbose) || {};
+              PLAYER.yaw);
 }
-function pick(x, y, z, pitch, yaw, verbose) {
+function pick(x, y, z, pitch, yaw) {
   // Compute length of ray which projects to length 1 on each axis
   var py = -1 / Math.sin(pitch);
   var ph = 1 / Math.cos(pitch);
