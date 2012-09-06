@@ -241,14 +241,22 @@ function block(x, y, z) {
   return WORLD.map[index(x,y,z)] || {};
 }
 
-function neighbors(x, y, z) {
+function neighbors(b, callback) {
   var result = [];
-  var i = index(x-1, y, z); if (i) result.push(block(i));
-  var i = index(x+1, y, z); if (i) result.push(block(i));
-  var i = index(x, y-1, z); if (i) result.push(block(i));
-  var i = index(x, y+1, z); if (i) result.push(block(i));
-  var i = index(x, y, z-1); if (i) result.push(block(i));
-  var i = index(x, y, z+1); if (i) result.push(block(i));
+  function chk(dx,dy,dz) {
+    var i = index(b.x + dx, b.y + dy, b.z + dz);
+    if (i) {
+      var n = block(i);
+      result.push(n);
+      if (callback) callback(n);
+    }
+  }
+  chk( 0, 0,-1);  // front
+  chk( 0, 0,+1);  // back
+  chk( 0,-1, 0);  // top
+  chk( 0,+1, 0);  // bottom
+  chk(-1, 0, 0);  // left(?)
+  chk(+1, 0, 0);  // right
   return result;
 }
 
@@ -428,7 +436,7 @@ function animate() {
           if (c.dirty) {
             ++dirty;
             c.dirty = false;
-            var ns = neighbors(x,y,z);
+            var ns = neighbors(c);
             var light;
             if (top) {
               light = LIGHT_MAX;
@@ -657,6 +665,6 @@ function onmousedown(event) {
   if (PICKED && PICKED.tile) {
     PICKED.tile = 0;
     PICKED.dirty = true;
-    neighbors(PICKED).forEach(function (n) { n.dirty = true; });
+    neighbors(PICKED, function (n) { n.dirty = true; });
   }
 }
