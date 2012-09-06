@@ -288,7 +288,7 @@ function drawScene() {
   mat4.rotateX(mvMatrix, PLAYER.pitch);
   mat4.rotateY(mvMatrix, PLAYER.yaw);
   mat4.translate(mvMatrix, [-PLAYER.x, -PLAYER.y, -PLAYER.z]);
-  mat4.translate(mvMatrix, [0, -EYE_HEIGHT, 0]);
+  mat4.translate(mvMatrix, [0.5, 0.5 - EYE_HEIGHT, 0.5]);
 
   // Render the world
 
@@ -379,6 +379,7 @@ function animate() {
     if (KEYS.E) PLAYER.yaw += a;
     if (KEYS.Z) PLAYER.pitch = Math.max(PLAYER.pitch - a, -Math.PI/2);
     if (KEYS.X) PLAYER.pitch = Math.min(PLAYER.pitch + a,  Math.PI/2);
+    if (keyPressed('0')) PLAYER.yaw = PLAYER.pitch = 0;
 
     // Toggles
     if (keyPressed('T')) PLAYER.flying = !PLAYER.flying;
@@ -472,9 +473,9 @@ function animate() {
 }
 
 function pickp(verbose) { 
-  return pick(PLAYER.x + 0.5, 
-              PLAYER.y + 0.5 + EYE_HEIGHT, 
-              PLAYER.z + 0.5, 
+  return pick(PLAYER.x, 
+              PLAYER.y + EYE_HEIGHT, 
+              PLAYER.z, 
               PLAYER.pitch, 
               PLAYER.yaw,
               verbose) || {};
