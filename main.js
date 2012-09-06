@@ -375,7 +375,7 @@ function animate() {
 
     // Toggles
     if (keyPressed('T')) PLAYER.flying = !PLAYER.flying;
-    if (keyPressed('\t')) {
+    if (keyPressed('\t') || keyPressed(27)) {
       PLAYER.mouselook = !PLAYER.mouselook;
       document.body.style.cursor = PLAYER.mouselook ? 'none' : '';
     }
