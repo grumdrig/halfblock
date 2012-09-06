@@ -421,10 +421,8 @@ function animate() {
 
     var waspicked = PICKED;
     PICKED = pickp() || {};
-    if (PICKED !== waspicked) {
+    if (PICKED !== waspicked)
       ++dirty;
-      //console.log('Picked', PICKED.x, PICKED.y, PICKED.z);
-    }
 
     for (var x = 0; x < WORLD.NX; ++x) {
       for (var z = 0; z < WORLD.NZ; ++z) {
@@ -514,9 +512,16 @@ function tick() {
   drawScene();
   animate();
 
-  document.getElementById('stats').innerHTML = 
-    'Render: ' + RENDERTIME.toFixed(2) + ' ms &mdash; ' +
-    'Frame: ' + FRAMETIME.toFixed(2) + ' ms    ';
+  var feedback = 
+    //'Render: ' + RENDERTIME.toFixed(2) + 'ms &mdash; ' +
+    '' + (1000/FRAMETIME).toFixed(2) + ' FPS &mdash; Player: ' +
+    '&lt;' + PLAYER.x.toFixed(2) + ' ' + PLAYER.y.toFixed(2) + ' ' +
+    PLAYER.z.toFixed(2) + '&gt &lt;' + PLAYER.yaw.toFixed(2) + ' ' +
+    PLAYER.pitch.toFixed(2) + '&gt';
+  if (PICKED && PICKED.tile)
+    feedback += ' &mdash; ' + 'Picked: &lt;' + PICKED.x + ' ' + 
+      PICKED.y + ' ' + PICKED.z + '&gt;';
+  document.getElementById('stats').innerHTML = feedback;
 }
 
 
