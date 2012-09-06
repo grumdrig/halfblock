@@ -214,6 +214,7 @@ function coords(i) {
 
 function index(x, y, z) {
   if (typeof x === 'object') {
+    if (!x) debugger;
     if (typeof x.x === 'undefined') {
       // assuming vec3 or array
       z = x[2];
@@ -235,18 +236,22 @@ function index(x, y, z) {
 }
 
 function block(x, y, z) {
-  return WORLD.map[index(x,y,z)] || {};
+  var i = index(x, y, z);
+  var result = WORLD.map[i];
+  if (!result) {
+    // Manufacture a fake block
+    var c = coords(i);
+    result = new Block(c.x, c.y, c.z);
+  }
+  return result;
 }
 
 function neighbors(b, callback) {
   var result = [];
   function chk(dx, dy, dz, axis, sign, face) {
-    var i = index(b.x + dx, b.y + dy, b.z + dz);
-    if (i) {
-      var n = block(i);
-      result.push(n);
-      if (callback) callback(n, axis, sign, face);
-    }
+    var n = block(b.x + dx, b.y + dy, b.z + dz);
+    result.push(n);
+    if (callback) callback(n, axis, sign, face);
   }
   chk( 0, 0,-1, 2, -1, 0);  // front
   chk( 0, 0,+1, 2, +1, 1);  // back
@@ -561,16 +566,22 @@ function Block(x, y, z) {
 
   this.i = index(x,y,z);
 
-  if (y == 0) {
+  this.light = LIGHT_MIN;
+  this.dirty = true;
+}
+
+Block.prototype.generateTerrain = function () {
+  if (this.y == 0) {
     this.tile = 6;
   } else {
-    var n = pinkNoise(x,y,z, 32, 2) + (2*y-WORLD.NY)/WORLD.NY;
+    var n = pinkNoise(this.x, this.y, this.z, 32, 2) + 
+      (2 * this.y - WORLD.NY) / WORLD.NY;
     if (n < 0) this.tile = 3;
     if (n < -0.1) this.tile = 2;
     if (n < -0.2) this.tile = 1;
   
     // Caves
-    if (Math.pow(noise(x/20, y/20, z/20), 3) < -0.1)
+    if (Math.pow(noise(this.x/20, this.y/20, this.z/20), 3) < -0.1)
       this.tile = 0;
   }
 }
@@ -580,8 +591,7 @@ Block.prototype.toString = function () {
 }
 
 
-// Entry point for body.onload
-function webGLStart() {
+function onLoad() {
   var canvas = document.getElementById("canvas");
 
   // Create world map
@@ -600,6 +610,7 @@ function webGLStart() {
     for (var y = 0; y < WORLD.NY; ++y) {
       for (var z = 0; z < WORLD.NZ; ++z) {
         var t = WORLD.map[index(x,y,z)] = new Block(x, y, z);
+        t.generateTerrain();
       }
     }
   }
