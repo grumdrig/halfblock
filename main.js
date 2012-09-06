@@ -14,6 +14,7 @@ var pMatrix = mat4.create();   // projection matrix
 
 var WORLD;
 var PLAYER;
+var PICKED = {};
 
 var RENDERTIME = 0;
 var FRAMETIME = 0;
@@ -158,10 +159,12 @@ function chunkToBuffers() {
               indices.push(vindex, vindex + 1, vindex + 2,
                            vindex, vindex + 2, vindex + 3);
 
-              textures.push(c.tile,     15, 
-                            c.tile + 1, 15, 
-                            c.tile + 1, 16, 
-                            c.tile,     16);
+              var tile = c.tile
+              if (c === PICKED) tile = 0;
+              textures.push(tile,     15, 
+                            tile + 1, 15, 
+                            tile + 1, 16, 
+                            tile,     16);
             }
           }
           for (var co = 0; co < 3; ++co)
@@ -402,6 +405,14 @@ function animate() {
     // This shitty method will propagate changes faster in some
     // directions than others
     var dirty = 0;
+
+    var waspicked = PICKED;
+    PICKED = pickp() || {};
+    if (PICKED !== waspicked) {
+      ++dirty;
+      console.log('Picked', PICKED.x, PICKED.y, PICKED.z);
+    }
+
     for (var x = 0; x < WORLD.NX; ++x) {
       for (var z = 0; z < WORLD.NZ; ++z) {
         var top = true;
@@ -439,6 +450,47 @@ function animate() {
       chunkToBuffers();
     }
   }
+}
+
+function pickp() { 
+  return pick(PLAYER.position[0] + 0.5, 
+              PLAYER.position[1] + 0.5 + EYE_HEIGHT, 
+              PLAYER.position[2] + 0.5, 
+              PLAYER.pitch, 
+              PLAYER.yaw) || {};
+}
+function pick(x, y, z, pitch, yaw, verbose) {
+  // Compute length of ray which projects to length 1 on each axis
+  var py = -1 / Math.sin(pitch);
+  var ph = 1 / Math.cos(pitch);
+  var px = ph / Math.sin(yaw);
+  var pz = -ph / Math.cos(yaw);
+
+  function next(w, pw) { 
+    return pw * (pw < 0 ? Math.ceil(w-1) - w : Math.floor(w+1) - w);
+  }
+  
+  for (var i = 0; i < 3000; ++i) {
+    if (verbose) console.log('PK', x, y, z);
+    // check out of bounds
+    if ((px < 0 ? x < 0 : x > WORLD.NX + 1) ||
+        (py < 0 ? y < 0 : y > WORLD.NY + 1) ||
+        (pz < 0 ? z < 0 : z > WORLD.NZ + 1)) {
+      break;
+    }
+    var b = block(x,y,z);
+    if (b.tile) 
+      return b;
+
+    var dx = next(x, px);
+    var dy = next(y, py);
+    var dz = next(z, pz);
+    var h = Math.min(dx, dy, dz);
+    x += h / px;
+    y += h / py;
+    z += h / pz;
+  }
+  return null;
 }
 
 
@@ -481,9 +533,9 @@ function webGLStart() {
   // Create world map
   WORLD = {
     NBLOCKS: 0,
-    LOGNX: 6,
-    LOGNY: 5,
-    LOGNZ: 6,
+    LOGNX: 4,
+    LOGNY: 4,
+    LOGNZ: 4,
   }
   WORLD.NX = 1 << WORLD.LOGNX;
   WORLD.NY = 1 << WORLD.LOGNY;
