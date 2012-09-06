@@ -19,6 +19,15 @@ var PLAYER;
 var PICKED = {};
 var PICKED_FACE = 0;
 
+// Map chunk dimensions
+var LOGNX = 4;
+var LOGNY = 4;
+var LOGNZ = 4;
+var NX = 1 << LOGNX;
+var NY = 1 << LOGNY;
+var NZ = 1 << LOGNZ;
+var NNN = NX * NY * NZ;
+
 var RENDERTIME = 0;
 var FRAMETIME = 0;
 
@@ -136,14 +145,45 @@ function mvPopMatrix() {
 }
 
 
-function chunkToBuffers() {
+function Chunk(x, z) {
+  this.chunkx = x;
+  this.chunkz = z;
+
+  this.blocks = Array(NNN);
+
+  // Fill the map with terrain
+  for (var x = 0; x < NX; ++x) {
+    for (var y = 0; y < NY; ++y) {
+      for (var z = 0; z < NZ; ++z) {
+        var c = coords(x, y, z);
+        this.blocks[c.i] = new Block(c);
+        this.blocks[c.i].generateTerrain();
+      }
+    }
+  }
+
+  // Initialize lighting
+  for (var x = 0; x < NX; ++x) {
+    for (var z = 0; z < NZ; ++z) {
+      var c = coords(x, NY-1, z);
+      for (var y = NY-1; y >= 0; --y) {
+        var b = this.blocks[coords(x, y, z).i];
+        b.light = (y === NY-1) ? LIGHT_MAX : 0;
+        b.dirty = true;
+      }
+    }
+  }
+}
+
+
+Chunk.prototype.generateBuffers = function () {
   var vertices = [];
   var textures = [];
   var indices = [];
   var lighting = [];
-  for (var x = 0; x < WORLD.NX; ++x) {
-    for (var z = 0; z < WORLD.NZ; ++z) {
-      for (var y = WORLD.NY-1; y >= 0; --y) {
+  for (var x = 0; x < NX; ++x) {
+    for (var z = 0; z < NZ; ++z) {
+      for (var y = NY-1; y >= 0; --y) {
         var triplet = [x,y,z];
         var c = block(x,y,z); 
         if (c.tile) {
@@ -153,7 +193,7 @@ function chunkToBuffers() {
               var corners = [-1,-1, +1,-1, +1,+1, -1,+1];
               var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
                 / LIGHT_MAX;
-              if (c.y >= WORLD.NY-1 && face === FACE_TOP) 
+              if (c.y >= NY-1 && face === FACE_TOP) 
                 light = 1;  // Account for topmost block against non-block
               if (c === PICKED && face === PICKED_FACE) 
                 light = 2;
@@ -181,30 +221,53 @@ function chunkToBuffers() {
     }
   }
 
-  WORLD.vertexPositionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexPositionBuffer);
+  this.vertexPositionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexPositionBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-  WORLD.vertexPositionBuffer.itemSize = 3;
-  WORLD.vertexPositionBuffer.numItems = vertices.length / 3;
+  this.vertexPositionBuffer.itemSize = 3;
+  this.vertexPositionBuffer.numItems = vertices.length / 3;
 
-  WORLD.vertexIndexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, WORLD.vertexIndexBuffer);
+  this.vertexIndexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.vertexIndexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), 
                 gl.STATIC_DRAW);
-  WORLD.vertexIndexBuffer.itemSize = 1;
-  WORLD.vertexIndexBuffer.numItems = indices.length;
+  this.vertexIndexBuffer.itemSize = 1;
+  this.vertexIndexBuffer.numItems = indices.length;
 
-  WORLD.vertexTextureCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexTextureCoordBuffer);
+  this.vertexTextureCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexTextureCoordBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textures), gl.STATIC_DRAW);
-  WORLD.vertexTextureCoordBuffer.itemSize = 2;
-  WORLD.vertexTextureCoordBuffer.numItems = textures.length / 2;
+  this.vertexTextureCoordBuffer.itemSize = 2;
+  this.vertexTextureCoordBuffer.numItems = textures.length / 2;
 
-  WORLD.vertexLightingBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexLightingBuffer);
+  this.vertexLightingBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexLightingBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lighting), gl.STATIC_DRAW);
-  WORLD.vertexLightingBuffer.itemSize = 3;
-  WORLD.vertexLightingBuffer.numItems = lighting.length / 3;
+  this.vertexLightingBuffer.itemSize = 3;
+  this.vertexLightingBuffer.numItems = lighting.length / 3;
+}
+
+
+Chunk.prototype.render = function () {
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexPositionBuffer);
+  gl.vertexAttribPointer(gl.data.aVertexPosition,
+                         this.vertexPositionBuffer.itemSize,
+                         gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexTextureCoordBuffer);
+  gl.vertexAttribPointer(gl.data.aTextureCoord,
+                         this.vertexTextureCoordBuffer.itemSize,
+                         gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexLightingBuffer);
+  gl.vertexAttribPointer(gl.data.aLighting,
+                         this.vertexLightingBuffer.itemSize,
+                         gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.vertexIndexBuffer);
+
+  gl.drawElements(gl.TRIANGLES, this.vertexIndexBuffer.numItems,
+                  gl.UNSIGNED_SHORT, 0);
 }
 
 
@@ -236,9 +299,9 @@ function coords(x, y, z) {
     result.x = Math.floor(result.x);
   } else if (typeof y === 'undefined') {
     result = {
-      x: x % WORLD.NX,
-      y: (x >> WORLD.LOGNX) % WORLD.NY,
-      z: (x >> (WORLD.LOGNX + WORLD.LOGNY)) % WORLD.NZ
+      x: x % NX,
+      y: (x >> LOGNX) % NY,
+      z: (x >> (LOGNX + LOGNY)) % NZ
     }
   } else {
     result = {
@@ -247,19 +310,30 @@ function coords(x, y, z) {
       z: Math.floor(z)
     }
   }
-  if (result.x < 0 || result.x >= WORLD.NX || 
-      result.y < 0 || result.y >= WORLD.NY || 
-      result.z < 0 || result.z >= WORLD.NZ)
+
+  result.chunkx = result.x >> LOGNX;
+  result.chunkz = result.z >> LOGNZ;
+
+  if (result.y < 0 || result.y >= NY) {
     result.outofbounds = true;
-  else
-    result.i = result.x + result.y * WORLD.NX + result.z * WORLD.NX * WORLD.NY;
+  } else {
+    var dx = result.x - (result.chunkx << LOGNX);
+    var dz = result.z - (result.chunkz << LOGNZ);
+    result.i = dx + (result.y << LOGNX) + (dz << (LOGNX + LOGNY));
+  }
   return result;
 }
+
+
+function chunk(chunkx, chunkz) {
+  return WORLD;  // for now!
+}
+
 
 function block(x, y, z) {
   var c = coords(x, y, z);
   if (!c.outofbounds) {
-    return WORLD.map[c.i];
+    return chunk(c.chunkx, c.chunkz).blocks[c.i];
   } else {
     // Manufacture an ad hoc temporary block
     return new Block(c);
@@ -321,33 +395,15 @@ function drawScene() {
 
   // Render the world
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexPositionBuffer);
-  gl.vertexAttribPointer(gl.data.aVertexPosition,
-                         WORLD.vertexPositionBuffer.itemSize,
-                         gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexTextureCoordBuffer);
-  gl.vertexAttribPointer(gl.data.aTextureCoord,
-                         WORLD.vertexTextureCoordBuffer.itemSize,
-                         gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, WORLD.vertexLightingBuffer);
-  gl.vertexAttribPointer(gl.data.aLighting,
-                         WORLD.vertexLightingBuffer.itemSize,
-                         gl.FLOAT, false, 0, 0);
-
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
   gl.uniform1i(gl.data.uSampler, 0);
-
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, WORLD.vertexIndexBuffer);
 
   // Set matrix uniforms
   gl.uniformMatrix4fv(gl.data.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
 
-  gl.drawElements(gl.TRIANGLES, WORLD.vertexIndexBuffer.numItems,
-                  gl.UNSIGNED_SHORT, 0);
+  WORLD.render();
 
   var alpha = 0.9;
   RENDERTIME = RENDERTIME * alpha + (1-alpha) * (+new Date() - atstart);
@@ -481,10 +537,10 @@ function animate() {
     if (PICKED !== waspicked || PICKED_FACE !== wasface)
       ++dirty;
 
-    for (var x = 0; x < WORLD.NX; ++x) {
-      for (var z = 0; z < WORLD.NZ; ++z) {
+    for (var x = 0; x < NX; ++x) {
+      for (var z = 0; z < NZ; ++z) {
         var top = true;
-        for (var y = WORLD.NY-1; y >= 0; --y) {
+        for (var y = NY-1; y >= 0; --y) {
           var c = block(x,y,z);
           top = top && !c.tile;
 
@@ -515,7 +571,7 @@ function animate() {
     lastUpdate = timeNow;
     if (dirty) {
       console.log('Update ', dirty);
-      chunkToBuffers();
+      WORLD.generateBuffers();
     }
   }
 }
@@ -540,9 +596,9 @@ function pick(x, y, z, pitch, yaw) {
   
   for (var i = 0; i < 3000; ++i) {
     // check out of bounds
-    if ((px < 0 ? x < 0 : x > WORLD.NX + 1) ||
-        (py < 0 ? y < 0 : y > WORLD.NY + 1) ||
-        (pz < 0 ? z < 0 : z > WORLD.NZ + 1)) {
+    if ((px < 0 ? x < 0 : x > NX + 1) ||
+        (py < 0 ? y < 0 : y > NY + 1) ||
+        (pz < 0 ? z < 0 : z > NZ + 1)) {
       break;
     }
     var b = block(x,y,z);
@@ -601,7 +657,7 @@ function handleLoadedTexture(texture) {
 
 
 function topmost(x, z) {
-  for (var y = WORLD.NY-1; y >= 0; --y) {
+  for (var y = NY-1; y >= 0; --y) {
     var c = block(x,y,z);
     if (c.tile) return c;
   }
@@ -626,7 +682,7 @@ Block.prototype.generateTerrain = function () {
     this.tile = 6;
   } else {
     var n = pinkNoise(this.x, this.y, this.z, 32, 2) + 
-      (2 * this.y - WORLD.NY) / WORLD.NY;
+      (2 * this.y - NY) / NY;
     if (n < 0) this.tile = 3;
     if (n < -0.1) this.tile = 2;
     if (n < -0.2) this.tile = 1;
@@ -646,44 +702,14 @@ function onLoad() {
   var canvas = document.getElementById("canvas");
 
   // Create world map
-  WORLD = {
-    LOGNX: 4,
-    LOGNY: 4,
-    LOGNZ: 4,
-  }
-  WORLD.NX = 1 << WORLD.LOGNX;
-  WORLD.NY = 1 << WORLD.LOGNY;
-  WORLD.NZ = 1 << WORLD.LOGNZ;
-  WORLD.NNN = WORLD.NX * WORLD.NY * WORLD.NZ;
-  WORLD.map = Array(WORLD.NNN);
-  // Fill the map with terrain
-  for (var x = 0; x < WORLD.NX; ++x) {
-    for (var y = 0; y < WORLD.NY; ++y) {
-      for (var z = 0; z < WORLD.NZ; ++z) {
-        var c = coords(x, y, z);
-        WORLD.map[c.i] = new Block(c);
-        WORLD.map[c.i].generateTerrain();
-      }
-    }
-  }
-  // Initialize lighting
-  for (var x = 0; x < WORLD.NX; ++x) {
-    for (var z = 0; z < WORLD.NZ; ++z) {
-      block(x, WORLD.NY-1, z).light = LIGHT_MAX;
-      for (var y = WORLD.NY-2; y >= 0; --y) {
-        var c = block(x,y,z);
-        c.light = 0;
-        c.dirty = true;
-      }
-    }
-  }
+  WORLD = new Chunk(0, 0);
 
   // Create player
 
   PLAYER = {
-    x: WORLD.NX/2, 
-    y: WORLD.NY/2, 
-    z: WORLD.NZ/2,
+    x: NX/2, 
+    y: NY/2, 
+    z: NZ/2,
     dy: 0,
     yaw: 0,
     pitch: 0,
@@ -699,7 +725,7 @@ function onLoad() {
 
   initGL(canvas);
   initShaders();
-  chunkToBuffers();
+  WORLD.generateBuffers();
 
   // Init texture
 
