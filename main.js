@@ -542,28 +542,32 @@ function animate() {
 
   var UPDATE_PERIOD_MS = 100;
   if (timeNow > lastUpdate + UPDATE_PERIOD_MS) {
-    UPDATE_STAT.start();
-    var waspicked = PICKED;
-    var wasface = PICKED_FACE;
-    PICKED = pickp();
-    if (PICKED !== waspicked || PICKED_FACE !== wasface) {
-      if (PICKED) PICKED.invalidate();
-      if (waspicked) waspicked.invalidate();
-    }
-
-    var c = coords(PLAYER);
-    makeChunk(c.chunkx - NX, c.chunkz);
-    makeChunk(c.chunkx + NX, c.chunkz);
-    makeChunk(c.chunkx, c.chunkz - NZ);
-    makeChunk(c.chunkx, c.chunkz + NX);
-
-    for (var i in WORLD)
-      WORLD[i].update();
-
-    UPDATE_STAT.end();
-
+    updateWorld();
     lastUpdate = timeNow;
   }
+}
+
+
+function updateWorld() {
+  UPDATE_STAT.start();
+  var waspicked = PICKED;
+  var wasface = PICKED_FACE;
+  PICKED = pickp();
+  if (PICKED !== waspicked || PICKED_FACE !== wasface) {
+    if (PICKED) PICKED.invalidate();
+    if (waspicked) waspicked.invalidate();
+  }
+  
+  var c = coords(PLAYER);
+  makeChunk(c.chunkx - NX, c.chunkz);
+  makeChunk(c.chunkx + NX, c.chunkz);
+  makeChunk(c.chunkx, c.chunkz - NZ);
+  makeChunk(c.chunkx, c.chunkz + NX);
+  
+  for (var i in WORLD)
+    WORLD[i].update();
+  
+  UPDATE_STAT.end();
 }
 
 
