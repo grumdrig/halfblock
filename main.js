@@ -194,7 +194,7 @@ Chunk.prototype.generateBuffers = function () {
           function nabe(n, coord, sign, face) {
             if (!n.tile) {
               var vindex = vertices.length / 3;
-              var corners = [-1,-1, +1,-1, +1,+1, -1,+1];
+              var corners = [0,0, 1,0, 1,1, 0,1];
               var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
                 / LIGHT_MAX;
               if (c.y >= NY-1 && face === FACE_TOP) 
@@ -204,9 +204,11 @@ Chunk.prototype.generateBuffers = function () {
               for (var ic = 0; ic < 12; ++ic) {
                 var d = triplet[ic % 3];
                 if (ic % 3 === coord)
-                  vertices.push(d + sign/2);
+                  vertices.push(d + sign);
+                else if (sign > 0)
+                  vertices.push(d + corners.shift());
                 else
-                  vertices.push(d + corners.shift() * sign / 2);
+                  vertices.push(d + corners.pop());
                 lighting.push(light);
               }
               
@@ -453,12 +455,12 @@ function neighbors(b, callback) {
     result.push(n);
     if (callback) callback(n, axis, sign, face);
   }
-  chk( 0, 0,-1, 2, -1, FACE_FRONT);
-  chk( 0, 0,+1, 2, +1, FACE_BACK);
-  chk( 0,-1, 0, 1, -1, FACE_BOTTOM);
-  chk( 0,+1, 0, 1, +1, FACE_TOP);
-  chk(-1, 0, 0, 0, -1, FACE_RIGHT);
-  chk(+1, 0, 0, 0, +1, FACE_LEFT);
+  chk( 0, 0,-1, 2, 0, FACE_FRONT);
+  chk( 0, 0,+1, 2, 1, FACE_BACK);
+  chk( 0,-1, 0, 1, 0, FACE_BOTTOM);
+  chk( 0,+1, 0, 1, 1, FACE_TOP);
+  chk(-1, 0, 0, 0, 0, FACE_RIGHT);
+  chk(+1, 0, 0, 0, 1, FACE_LEFT);
   return result;
 }
 
@@ -490,8 +492,7 @@ function drawScene(camera) {
   mat4.rotateX(mvMatrix, camera.pitch);
   mat4.rotateY(mvMatrix, camera.yaw);
   mat4.translate(mvMatrix, [-camera.x, -camera.y, -camera.z]);
-  // TODO: Not at all sure why the 0.5s
-  mat4.translate(mvMatrix, [0.5, 0.5 - EYE_HEIGHT, 0.5]);
+  mat4.translate(mvMatrix, [0, -EYE_HEIGHT, 0]);
 
   // Render the world
 
@@ -556,8 +557,8 @@ function updateWorld() {
 
 
 function processInput(avatar, elapsed) {
-  var d = elapsed * 3;  // walk at 3 m/s
-  var a = elapsed * 2;  // spin at 2 radians/s
+  var d = elapsed * 3;  // m/s: walk speed (per axis)
+  var a = elapsed * 2;  // radians/s: spin rate
   
   // Movement keys
   if (KEYS.W || KEYS.A || KEYS.S || KEYS.D) {
@@ -885,8 +886,9 @@ function onmousemove(event) {
   if (PLAYER.mouselook && typeof lastX !== 'undefined') {
     var xDelta = event.pageX - lastX;
     var yDelta = event.pageY - lastY;
-    PLAYER.yaw += xDelta * 0.005;
-    PLAYER.pitch += yDelta * 0.005;
+    var spinRate = 0.01;
+    PLAYER.yaw += xDelta * spinRate;
+    PLAYER.pitch += yDelta * spinRate;
     PLAYER.pitch = Math.max(Math.min(Math.PI/2, PLAYER.pitch), -Math.PI/2);
   }
   lastX = event.pageX;
