@@ -194,7 +194,9 @@ Chunk.prototype.generateBuffers = function () {
           function nabe(n, coord, sign, face) {
             if (!n.tile) {
               var vindex = vertices.length / 3;
-              var corners = [0,0, 1,0, 1,1, 0,1];
+              var corners = (face === 1 || face === 2 || face === 5) ?
+                [0,0, 1,0, 1,1, 0,1] :
+                [0,0, 0,1, 1,1, 1,0];
               var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
                 / LIGHT_MAX;
               if (c.y >= NY-1 && face === FACE_TOP) 
@@ -205,10 +207,8 @@ Chunk.prototype.generateBuffers = function () {
                 var d = triplet[ic % 3];
                 if (ic % 3 === coord)
                   vertices.push(d + sign);
-                else if (sign > 0)
-                  vertices.push(d + corners.shift());
                 else
-                  vertices.push(d + corners.pop());
+                  vertices.push(d + corners.shift());
                 lighting.push(light);
               }
               
@@ -477,7 +477,7 @@ function drawScene(camera) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Cull backfaces, which seems to not at all affect speed
-  // gl.enable(gl.CULL_FACE);
+  gl.enable(gl.CULL_FACE);
 
   // Set up the projection
   var aspectRatio = gl.viewportWidth / gl.viewportHeight;
