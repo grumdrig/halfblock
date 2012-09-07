@@ -148,17 +148,19 @@ function mvPopMatrix() {
 
 
 function Chunk(x, z) {
+  x &= ~(NX - 1);
+  z &= ~(NZ - 1);
   this.chunkx = x;
   this.chunkz = z;
 
   this.blocks = Array(NNN);
 
-  // Fill the map with terrain
+  // Generate blocks
   for (var ix = 0; ix < NX; ++ix) {
-    var x = ix + this.chunkx * NX;
+    var x = ix + this.chunkx;
     for (var y = 0; y < NY; ++y) {
       for (var iz = 0; iz < NZ; ++iz) {
-        var z = iz + this.chunkz * NZ;
+        var z = iz + this.chunkz;
         var c = coords(x, y, z);
         var b = this.blocks[c.i] = new Block(c);
         b.generateTerrain();
@@ -178,9 +180,9 @@ Chunk.prototype.generateBuffers = function () {
   var indices = [];
   var lighting = [];
   for (var ix = 0; ix < NX; ++ix) {
-    var x = ix + this.chunkx * NX;
+    var x = ix + this.chunkx;
     for (var iz = 0; iz < NZ; ++iz) {
-      var z = iz + this.chunkz * NZ;
+      var z = iz + this.chunkz;
       for (var y = NY-1; y >= 0; --y) {
         var triplet = [x,y,z];
         var c = block(x,y,z); 
@@ -287,9 +289,9 @@ Chunk.prototype.update = function () {
   // This shitty method will propagate changes faster in some
   // directions than others
   for (var ix = 0; ix < NX; ++ix) {
-    var x = ix + this.chunkx * NX;
+    var x = ix + this.chunkx;
     for (var iz = 0; iz < NZ; ++iz) {
-      var z = iz + this.chunkz * NZ;
+      var z = iz + this.chunkz;
       var top = true;
       for (var y = NY-1; y >= 0; --y) {
         var c = block(x,y,z);
@@ -329,9 +331,9 @@ Chunk.prototype.update = function () {
 
 
 Chunk.prototype.centerPoint = function () {
-  return {x: this.chunkx * NX + NX / 2,
+  return {x: this.chunkx + NX / 2,
           y: NY / 2,
-          z: this.chunkz * NZ + NZ / 2};
+          z: this.chunkz + NZ / 2};
 }
 
 
@@ -386,11 +388,11 @@ function coords(x, y, z) {
     }
   }
 
-  result.chunkx = result.x >> LOGNX;
-  result.chunkz = result.z >> LOGNZ;
+  result.chunkx = result.x & ~(NX - 1);
+  result.chunkz = result.z & ~(NZ - 1);
 
-  var dx = result.x - (result.chunkx << LOGNX);
-  var dz = result.z - (result.chunkz << LOGNZ);
+  var dx = result.x - result.chunkx;
+  var dz = result.z - result.chunkz;
   result.i = dx + (result.y << LOGNX) + (dz << (LOGNX + LOGNY));
 
   if (result.y < 0 || result.y >= NY)
@@ -403,11 +405,15 @@ function coords(x, y, z) {
 
 
 function chunk(chunkx, chunkz) {
+  chunkx &= ~(NX - 1);
+  chunkz &= ~(NZ - 1);
   return WORLD[chunkx + ',' + chunkz];
 }
 
 
 function makeChunk(chunkx, chunkz) {
+  chunkx &= ~(NX - 1);
+  chunkz &= ~(NZ - 1);
   var result = chunk(chunkx, chunkz);
   if (!result)
     result = WORLD[chunkx + ',' + chunkz] = new Chunk(chunkx, chunkz);
@@ -627,10 +633,10 @@ function animate() {
     }
 
     var c = coords(PLAYER);
-    makeChunk(c.chunkx - 1, c.chunkz);
-    makeChunk(c.chunkx + 1, c.chunkz);
-    makeChunk(c.chunkx, c.chunkz - 1);
-    makeChunk(c.chunkx, c.chunkz + 1);
+    makeChunk(c.chunkx - NX, c.chunkz);
+    makeChunk(c.chunkx + NX, c.chunkz);
+    makeChunk(c.chunkx, c.chunkz - NZ);
+    makeChunk(c.chunkx, c.chunkz + NX);
 
     for (var i in WORLD)
       WORLD[i].update();
@@ -758,13 +764,9 @@ Block.prototype.generateTerrain = function () {
   }
 }
 
-Block.prototype.chunk = function () {
-  return chunk(this.x >> LOGNX, this.z >> LOGNZ);
-}
-
 Block.prototype.invalidate = function () {
   this.dirty = true;
-  this.chunk().dirty = true;
+  chunk(this.x, this.y).dirty = true;
 }
 
 Block.prototype.toString = function () {
