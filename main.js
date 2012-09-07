@@ -713,11 +713,9 @@ function tick() {
     RENDER_STAT + '<br>' + 
     FPS_STAT + '<br>' + 
     UPDATE_STAT + '<br>' +
-    'Player: &lt;' + PLAYER.x.toFixed(2) + ' ' + PLAYER.y.toFixed(2) + ' ' +
-    PLAYER.z.toFixed(2) + '&gt &lt;' + PLAYER.yaw.toFixed(2) + ' ' +
-    PLAYER.pitch.toFixed(2) + '&gt';
+    'Player: ' + PLAYER;
   if (PICKED && PICKED.tile)
-    feedback += '<br>' + 'Picked: ' + PICKED + ' @' + PICKED_FACE;
+    feedback += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
   document.getElementById('stats').innerHTML = feedback;
 }
 
@@ -781,26 +779,40 @@ Block.prototype.toString = function () {
 }
 
 
+function Camera(init) {
+  init = init || {};
+  this.x = init.x || 0;
+  this.y = init.y || 0;
+  this.z = init.z || 0;
+  this.yaw = init.yaw || 0;
+  this.pitch = init.pitch || 0;
+  this.horizontalFieldOfView = init.horizontalFieldOfView || Math.PI/4;
+  this.viewDistance = init.viewDistance || 100;
+}
+
+Camera.prototype.toString = function () {
+  return '&lt;' + this.x.toFixed(2) + ' ' + this.y.toFixed(2) + ' ' +
+    this.z.toFixed(2) + '&gt &lt;' + this.yaw.toFixed(2) + ' ' +
+    this.pitch.toFixed(2) + '&gt';
+}
+
 function onLoad() {
   var canvas = document.getElementById("canvas");
 
-  makeChunk(0, 0);
+  makeChunk(0,     0);
+  makeChunk(0,   -NZ);
+  makeChunk(-NX,   0);
+  makeChunk(-NX, -NZ);
 
   // Create player
 
-  PLAYER = {
-    x: NX/2, 
-    y: NY/2, 
-    z: NZ/2,
-    dy: 0,
-    yaw: 0,
-    pitch: 0,
-    flying: false,
-    mouselook: false,
-    radius: 0.1,
-    horizontalFieldOfView: Math.PI/4,
-    viewDistance: 100,
-  };
+  PLAYER = new Camera();
+
+  PLAYER.dy = 0;
+  PLAYER.flying = false;
+  PLAYER.mouselook = false;
+  PLAYER.radius = 0.1;
+
   var c = topmost(PLAYER.x, PLAYER.z);
   if (c)
     PLAYER.y = c.y + 1;
