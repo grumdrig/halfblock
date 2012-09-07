@@ -306,7 +306,7 @@ Chunk.prototype.update = function () {
   }
 
   if (ndirty) {
-    console.log('Update ', this.chunkx, this.chunkz, ':', ndirty);
+    //console.log('Update ', this.chunkx, this.chunkz, ':', ndirty);
     this.generateBuffers();
   }
 
@@ -360,9 +360,10 @@ function coords(x, y, z) {
   var dz = result.z - (result.chunkz << LOGNZ);
   result.i = dx + (result.y << LOGNX) + (dz << (LOGNX + LOGNY));
 
-  if (result.y < 0 || result.y >= NY ||
-      !chunk(result.chunkx, result.chunkz))
+  if (result.y < 0 || result.y >= NY)
     result.outofbounds = true;
+  if (!chunk(result.chunkx, result.chunkz))
+    result.unloaded = true;
 
   return result;
 }
@@ -383,7 +384,7 @@ function makeChunk(chunkx, chunkz) {
 
 function block(x, y, z) {
   var c = coords(x, y, z);
-  if (!c.outofbounds) {
+  if (!c.outofbounds && !c.unloaded) {
     return chunk(c.chunkx, c.chunkz).blocks[c.i];
   } else {
     // Manufacture an ad hoc temporary block
