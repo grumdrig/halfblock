@@ -16,7 +16,7 @@ var pMatrix = mat4.create();   // projection matrix
 
 var WORLD = {};
 var PLAYER;
-var PICKED = {};
+var PICKED = null;
 var PICKED_FACE = 0;
 var PICK_MAX = 8;
 
@@ -153,22 +153,14 @@ function Chunk(x, z) {
   this.blocks = Array(NNN);
 
   // Fill the map with terrain
-  for (var x = 0; x < NX; ++x) {
+  for (var ix = 0; ix < NX; ++ix) {
+    var x = ix + this.chunkx * NX;
     for (var y = 0; y < NY; ++y) {
-      for (var z = 0; z < NZ; ++z) {
+      for (var iz = 0; iz < NZ; ++iz) {
+        var z = iz + this.chunkz * NZ;
         var c = coords(x, y, z);
-        this.blocks[c.i] = new Block(c);
-        this.blocks[c.i].generateTerrain();
-      }
-    }
-  }
-
-  // Initialize lighting
-  for (var x = 0; x < NX; ++x) {
-    for (var z = 0; z < NZ; ++z) {
-      var c = coords(x, NY-1, z);
-      for (var y = NY-1; y >= 0; --y) {
-        var b = this.blocks[coords(x, y, z).i];
+        var b = this.blocks[c.i] = new Block(c);
+        b.generateTerrain();
         b.light = (y === NY-1) ? LIGHT_MAX : 0;
         b.dirty = true;
       }
@@ -274,6 +266,53 @@ Chunk.prototype.render = function () {
 }
 
 
+Chunk.prototype.update = function () {
+  // This shitty method will propagate changes faster in some
+  // directions than others
+  var ndirty = 0;
+
+  for (var ix = 0; ix < NX; ++ix) {
+    var x = ix + this.chunkx * NX;
+    for (var iz = 0; iz < NZ; ++iz) {
+      var z = iz + this.chunkz * NZ;
+      var top = true;
+      for (var y = NY-1; y >= 0; --y) {
+        var c = block(x,y,z);
+        top = top && !c.tile;
+        
+        if (c.dirty) {
+          ++ndirty;
+          c.dirty = false;
+          var ns = neighbors(c);
+          var light;
+          if (top) {
+            light = LIGHT_MAX;
+          } else {
+            light = LIGHT_MIN;
+            for (var i = 0; i < ns.length; ++i) {
+              if (!ns[i].tile)
+                light = Math.max(light, ns[i].light - 1);
+            }
+          }
+          if (c.light != light) {
+            c.light = light;
+            for (var i = 0; i < ns.length; ++i) 
+              if (ns[i].light < light-1)
+                ns[i].dirty = true;
+          }
+        }
+      }
+    }
+  }
+
+  if (ndirty) {
+    console.log('Update ', this.chunkx, this.chunkz, ':', ndirty);
+    this.generateBuffers();
+  }
+
+}
+
+
 function choice(n) {
   if (!n) n = 2;
   return Math.floor(Math.random() * n);
@@ -317,22 +356,27 @@ function coords(x, y, z) {
   result.chunkx = result.x >> LOGNX;
   result.chunkz = result.z >> LOGNZ;
 
-  if (result.y < 0 || result.y >= NY) {
+  var dx = result.x - (result.chunkx << LOGNX);
+  var dz = result.z - (result.chunkz << LOGNZ);
+  result.i = dx + (result.y << LOGNX) + (dz << (LOGNX + LOGNY));
+
+  if (result.y < 0 || result.y >= NY ||
+      !chunk(result.chunkx, result.chunkz))
     result.outofbounds = true;
-  } else {
-    var dx = result.x - (result.chunkx << LOGNX);
-    var dz = result.z - (result.chunkz << LOGNZ);
-    result.i = dx + (result.y << LOGNX) + (dz << (LOGNX + LOGNY));
-  }
+
   return result;
 }
 
 
 function chunk(chunkx, chunkz) {
-  var key = chunkx + ',' + chunkz;
-  var result = WORLD[key];
-  if (!result) 
-    result = WORLD[key] = new Chunk(chunkx, chunkz);
+  return WORLD[chunkx + ',' + chunkz];
+}
+
+
+function makeChunk(chunkx, chunkz) {
+  var result = chunk(chunkx, chunkz);
+  if (!result)
+    result = WORLD[chunkx + ',' + chunkz] = new Chunk(chunkx, chunkz);
   return result;
 }
 
@@ -535,55 +579,24 @@ function animate() {
 
   var UPDATE_PERIOD_MS = 100;
   if (timeNow > lastUpdate + UPDATE_PERIOD_MS) {
-    // This shitty method will propagate changes faster in some
-    // directions than others
-    var dirty = 0;
-
     var waspicked = PICKED;
     var wasface = PICKED_FACE;
-    PICKED = pickp() || {};
-    if (PICKED !== waspicked || PICKED_FACE !== wasface)
-      ++dirty;
-
-    for (var x = 0; x < NX; ++x) {
-      for (var z = 0; z < NZ; ++z) {
-        var top = true;
-        for (var y = NY-1; y >= 0; --y) {
-          var c = block(x,y,z);
-          top = top && !c.tile;
-
-          if (c.dirty) {
-            ++dirty;
-            c.dirty = false;
-            var ns = neighbors(c);
-            var light;
-            if (top) {
-              light = LIGHT_MAX;
-            } else {
-              light = LIGHT_MIN;
-              for (var i = 0; i < ns.length; ++i) {
-                if (!ns[i].tile)
-                  light = Math.max(light, ns[i].light - 1);
-              }
-            }
-            if (c.light != light) {
-              c.light = light;
-              for (var i = 0; i < ns.length; ++i) 
-                if (ns[i].light < light-1)
-                  ns[i].dirty = true;
-            }
-          }
-        }
-      }
+    PICKED = pickp();
+    if (PICKED !== waspicked || PICKED_FACE !== wasface) {
+      if (PICKED) PICKED.invalidate();
+      if (waspicked) waspicked.invalidate();
     }
+
+    var c = coords(PLAYER);
+    makeChunk(c.chunkx - 1, c.chunkz);
+    makeChunk(c.chunkx + 1, c.chunkz);
+    makeChunk(c.chunkx, c.chunkz - 1);
+    makeChunk(c.chunkx, c.chunkz + 1);
+
+    for (var i in WORLD)
+      WORLD[i].update();
+
     lastUpdate = timeNow;
-    if (dirty) {
-      // TODO dirty per chunk
-      for (var i in WORLD) {
-        console.log('Update ', i, dirty);
-        WORLD[i].generateBuffers();
-      }
-    }
   }
 }
 
@@ -706,6 +719,15 @@ Block.prototype.generateTerrain = function () {
   }
 }
 
+Block.prototype.chunk = function () {
+  return chunk(this.x >> LOGNX, this.z >> LOGNZ);
+}
+
+Block.prototype.invalidate = function () {
+  this.dirty = true;
+  this.chunk().dirty = true;
+}
+
 Block.prototype.toString = function () {
   return '[' + this.x + ' ' + this.y + ' ' + this.z + ']';
 }
@@ -713,9 +735,6 @@ Block.prototype.toString = function () {
 
 function onLoad() {
   var canvas = document.getElementById("canvas");
-
-  // Create world map
-  chunk(0, 0);
 
   // Create player
 
@@ -736,10 +755,10 @@ function onLoad() {
   else 
     PLAYER.flying = true;
 
+  makeChunk(0, 0);
+
   initGL(canvas);
   initShaders();
-  for (var i in WORLD)
-    WORLD[i].generateBuffers();
 
   // Init texture
 
@@ -806,7 +825,7 @@ function onmousedown(event) {
   if (PICKED && PICKED.tile) {
     if (event.button === 0) {
       PICKED.tile = 0;
-      PICKED.dirty = true;
+      PICKED.invalidate();
     } else {
       var b = blockFacing(PICKED, PICKED_FACE);
       if (!b.outofbounds) {
