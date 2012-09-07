@@ -464,7 +464,7 @@ function neighbors(b, callback) {
 
 
 
-function drawScene() {
+function drawScene(camera) {
   if (!TERRAIN_TEXTURE.loaded)
     return;  // Wait for texture
 
@@ -479,17 +479,18 @@ function drawScene() {
 
   // Set up the projection
   var aspectRatio = gl.viewportWidth / gl.viewportHeight;
-  mat4.perspective(PLAYER.horizontalFieldOfView / aspectRatio * 180 / Math.PI, 
+  mat4.perspective(camera.horizontalFieldOfView / aspectRatio * 180 / Math.PI, 
                    aspectRatio,
                    0.1,                  // near clipping plane
-                   PLAYER.viewDistance,  // far clipping plane
+                   camera.viewDistance,  // far clipping plane
                    pMatrix);
 
-  // Position for player
+  // Position for camera
   mat4.identity(mvMatrix);
-  mat4.rotateX(mvMatrix, PLAYER.pitch);
-  mat4.rotateY(mvMatrix, PLAYER.yaw);
-  mat4.translate(mvMatrix, [-PLAYER.x, -PLAYER.y, -PLAYER.z]);
+  mat4.rotateX(mvMatrix, camera.pitch);
+  mat4.rotateY(mvMatrix, camera.yaw);
+  mat4.translate(mvMatrix, [-camera.x, -camera.y, -camera.z]);
+  // TODO: Not at all sure why the 0.5s
   mat4.translate(mvMatrix, [0.5, 0.5 - EYE_HEIGHT, 0.5]);
 
   // Render the world
@@ -529,23 +530,6 @@ function keyPressed(k) {
 
 function frac(x) { return x - Math.floor(x); }
 function carf(x) { return Math.ceil(x) - x; }
-
-function animate() {
-  var timeNow = +new Date();
-  if (lastFrame) {
-    FPS_STAT.end(lastFrame);
-    var elapsed = (timeNow - lastFrame) / 1000;
-    processInput(PLAYER, elapsed);
-    ballistics(PLAYER, elapsed);
-  }
-  lastFrame = timeNow;
-
-  var UPDATE_PERIOD_MS = 100;
-  if (timeNow > lastUpdate + UPDATE_PERIOD_MS) {
-    updateWorld();
-    lastUpdate = timeNow;
-  }
-}
 
 
 function updateWorld() {
@@ -716,9 +700,25 @@ function pick(x, y, z, pitch, yaw) {
 
 
 function tick() {
+  // Monkey with the clock
+  var timeNow = +new Date();
+  if (!lastFrame) lastFrame = timeNow;
+  FPS_STAT.end(lastFrame);
+  var elapsed = (timeNow - lastFrame) / 1000;
+  lastFrame = timeNow;
+
   requestAnimFrame(tick);
-  drawScene();
-  animate();
+
+  drawScene(PLAYER);
+
+  processInput(PLAYER, elapsed);
+  ballistics(PLAYER, elapsed);
+
+  var UPDATE_PERIOD_MS = 100;
+  if (timeNow > lastUpdate + UPDATE_PERIOD_MS) {
+    updateWorld();
+    lastUpdate = timeNow;
+  }
 
   var feedback = 
     RENDER_STAT + '<br>' + 
