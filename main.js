@@ -30,8 +30,10 @@ var NZ = 1 << LOGNZ;
 var NNN = NX * NY * NZ;
 var CHUNKR = Math.sqrt(NX * NX + NY * NY);
 
-var RENDERTIME = 0;
-var FRAMETIME = 0;
+var RENDER_STAT = new Stat('Render');
+var UPDATE_STAT = new Stat('Update');
+var FPS_STAT = new Stat('FPS');
+FPS_STAT.invert = true;
 
 var lastFrame = 0;
 var lastUpdate = 0;
@@ -52,6 +54,8 @@ var FACE_BOTTOM = 2;
 var FACE_TOP = 3;
 var FACE_RIGHT = 4;
 var FACE_LEFT = 5;
+
+
 
 function initGL(canvas) {
   try {
@@ -464,7 +468,7 @@ function drawScene() {
   if (!TERRAIN_TEXTURE.loaded)
     return;  // Wait for texture
 
-  var atstart = +new Date();
+  RENDER_STAT.start();
 
   // Start from scratch
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
@@ -502,8 +506,7 @@ function drawScene() {
     if (WORLD[i].visible)
       WORLD[i].render();
 
-  var alpha = 0.9;
-  RENDERTIME = RENDERTIME * alpha + (1-alpha) * (+new Date() - atstart);
+  RENDER_STAT.end();
 }
 
 quat4.rotateX = function (quat, angle, dest) {
@@ -531,8 +534,8 @@ function animate() {
   var timeNow = +new Date();
   if (lastFrame) {
     var elapsed = timeNow - lastFrame;
-    var alpha = 0.9;
-    FRAMETIME = FRAMETIME * alpha + (1-alpha) * elapsed;
+
+    FPS_STAT.end(lastFrame);
 
     var d = elapsed * .003;
     var a = elapsed * .002;
@@ -624,6 +627,7 @@ function animate() {
 
   var UPDATE_PERIOD_MS = 100;
   if (timeNow > lastUpdate + UPDATE_PERIOD_MS) {
+    UPDATE_STAT.start();
     var waspicked = PICKED;
     var wasface = PICKED_FACE;
     PICKED = pickp();
@@ -640,6 +644,8 @@ function animate() {
 
     for (var i in WORLD)
       WORLD[i].update();
+
+    UPDATE_STAT.end();
 
     lastUpdate = timeNow;
   }
@@ -704,9 +710,10 @@ function tick() {
   animate();
 
   var feedback = 
-    //'Render: ' + RENDERTIME.toFixed(2) + 'ms<br>' +
-    '' + (1000/FRAMETIME).toFixed(2) + ' FPS<br>Player: ' +
-    '&lt;' + PLAYER.x.toFixed(2) + ' ' + PLAYER.y.toFixed(2) + ' ' +
+    RENDER_STAT + '<br>' + 
+    FPS_STAT + '<br>' + 
+    UPDATE_STAT + '<br>' +
+    'Player: &lt;' + PLAYER.x.toFixed(2) + ' ' + PLAYER.y.toFixed(2) + ' ' +
     PLAYER.z.toFixed(2) + '&gt &lt;' + PLAYER.yaw.toFixed(2) + ' ' +
     PLAYER.pitch.toFixed(2) + '&gt';
   if (PICKED && PICKED.tile)
@@ -879,4 +886,40 @@ function onmousedown(event) {
     }
   }
   return false;
+}
+
+
+function Stat(name, alpha, beta) {
+  this.name = name;
+  this.alpha = alpha || 0.95;
+  this.beta = beta || 0.99;
+  this.low = 0;
+  this.high = 0;
+  this.value = 0;
+  this.places = 1;
+}
+
+Stat.prototype.start = function () {
+  this.startTime = +new Date();
+}
+
+Stat.prototype.end = function (startTime) {
+  if (typeof startTime === 'undefined') startTime = this.startTime;
+  var elapsed = +new Date() - startTime;
+  this.value = this.alpha * this.value + (1-this.alpha) * elapsed;
+  this.low = elapsed < this.low ? elapsed : 
+    this.beta * this.low + (1 - this.beta) * this.value;
+  this.high = elapsed > this.high ? elapsed : 
+    this.beta * this.high + (1 - this.beta) * this.value;
+}
+
+Stat.prototype.toString = function () {
+  var v = this.value, l = this.low, h = this.high;
+  if (this.invert) {
+    v = 1000/v;
+    l = 1000/h;
+    h = 1000/l;
+  }
+  return this.name + ': ' + v.toFixed(this.places) +  
+    ' (' + l.toFixed(this.places) + ' ' + h.toFixed(this.places) + ')';
 }
