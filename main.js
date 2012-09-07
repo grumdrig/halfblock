@@ -533,95 +533,10 @@ function carf(x) { return Math.ceil(x) - x; }
 function animate() {
   var timeNow = +new Date();
   if (lastFrame) {
-    var elapsed = timeNow - lastFrame;
-
     FPS_STAT.end(lastFrame);
-
-    var d = elapsed * .003;
-    var a = elapsed * .002;
-    var m = mat4.create();
-
-    // Movement keys
-    if (KEYS.W || KEYS.A || KEYS.S || KEYS.D) {
-      var ox = PLAYER.x, oy = PLAYER.y, oz = PLAYER.z;
-      var px = d * Math.cos(-PLAYER.yaw);
-      var pz = d * Math.sin(-PLAYER.yaw);
-      if (KEYS.W) { PLAYER.x -= pz; PLAYER.z -= px; }
-      if (KEYS.A) { PLAYER.x -= px; PLAYER.z += pz; }
-      if (KEYS.S) { PLAYER.x += pz; PLAYER.z += px; }
-      if (KEYS.D) { PLAYER.x += px; PLAYER.z -= pz; }
-
-      // Check collisions
-      if (frac(PLAYER.x) < PLAYER.radius && 
-          (block(ox-1, oy,   oz).tile || block(ox-1, oy+1, oz).tile)) {
-        PLAYER.x = Math.floor(PLAYER.x) + PLAYER.radius;
-      } else if (carf(PLAYER.x) < PLAYER.radius && 
-                 (block(ox+1, oy,   oz).tile || block(ox+1, oy+1, oz).tile)) {
-        PLAYER.x = Math.ceil(PLAYER.x) - PLAYER.radius;
-      }
-      if (frac(PLAYER.z) < PLAYER.radius && 
-          (block(ox, oy, oz-1).tile || block(ox, oy+1, oz-1).tile)) {
-        PLAYER.z = Math.floor(PLAYER.z) + PLAYER.radius;
-      } else if (carf(PLAYER.z) < PLAYER.radius && 
-                 (block(ox, oy, oz+1).tile || block(ox, oy+1, oz+1).tile)) {
-        PLAYER.z = Math.ceil(PLAYER.z) - PLAYER.radius;
-      }
-    }
-    if (PLAYER.flying && (KEYS[' '] || KEYS.R))
-      PLAYER.y += d;
-    if (PLAYER.flying && (KEYS[16] || KEYS.F))
-      PLAYER.y -= d;
-    if (!PLAYER.flying && !PLAYER.falling && keyPressed(' ')) {
-      PLAYER.dy = 5.5;
-      PLAYER.falling = true;
-      if (block(PLAYER).tile) 
-        PLAYER.y = Math.floor(PLAYER.y + 1);
-    }
-
-    // Rotations
-    if (KEYS.Q) PLAYER.yaw -= a;
-    if (KEYS.E) PLAYER.yaw += a;
-    if (KEYS.Z) PLAYER.pitch = Math.max(PLAYER.pitch - a, -Math.PI/2);
-    if (KEYS.X) PLAYER.pitch = Math.min(PLAYER.pitch + a,  Math.PI/2);
-    if (keyPressed('0')) PLAYER.yaw = PLAYER.pitch = 0;
-
-    // Toggles
-    if (keyPressed('T')) PLAYER.flying = !PLAYER.flying;
-    if (keyPressed('\t') || keyPressed(27)) {
-      PLAYER.mouselook = !PLAYER.mouselook;
-      document.body.style.cursor = PLAYER.mouselook ? 'none' : '';
-    }
-
-    // Physics
-    if (!PLAYER.flying) {
-      var c = block(PLAYER);
-      if (!PLAYER.falling) {
-        if (c.tile) {
-          // Rise from dirt
-          PLAYER.y += d;
-          if (!block(PLAYER).tile) {
-            PLAYER.y = Math.floor(PLAYER.y);
-          }
-        } else if (!block(PLAYER.x, 
-                          PLAYER.y-1,
-                          PLAYER.z).tile) {
-          // Fall off cliff
-          PLAYER.falling = true;
-          PLAYER.dy = 0;
-        }
-      } else { // falling
-        if (c.tile) {
-          // Landed
-          PLAYER.dy = 0;
-          PLAYER.falling = false;
-          PLAYER.y = Math.floor(PLAYER.y + 1);
-        } else {
-          // Still falling
-          PLAYER.dy -= 9.8 * elapsed / 1000;
-          PLAYER.y += PLAYER.dy * elapsed / 1000;
-        }
-      }
-    }
+    var elapsed = (timeNow - lastFrame) / 1000;
+    processInput(PLAYER, elapsed);
+    ballistics(PLAYER, elapsed);
   }
   lastFrame = timeNow;
 
@@ -650,6 +565,98 @@ function animate() {
     lastUpdate = timeNow;
   }
 }
+
+
+function processInput(avatar, elapsed) {
+  var d = elapsed * 3;  // walk at 3 m/s
+  var a = elapsed * 2;  // spin at 2 radians/s
+  
+  // Movement keys
+  if (KEYS.W || KEYS.A || KEYS.S || KEYS.D) {
+    var ox = avatar.x, oy = avatar.y, oz = avatar.z;
+    var px = d * Math.cos(-avatar.yaw);
+    var pz = d * Math.sin(-avatar.yaw);
+    if (KEYS.W) { avatar.x -= pz; avatar.z -= px; }
+    if (KEYS.A) { avatar.x -= px; avatar.z += pz; }
+    if (KEYS.S) { avatar.x += pz; avatar.z += px; }
+    if (KEYS.D) { avatar.x += px; avatar.z -= pz; }
+    
+    // Check collisions
+    if (frac(avatar.x) < avatar.radius && 
+        (block(ox-1, oy,   oz).tile || block(ox-1, oy+1, oz).tile)) {
+      avatar.x = Math.floor(avatar.x) + avatar.radius;
+    } else if (carf(avatar.x) < avatar.radius && 
+               (block(ox+1, oy,   oz).tile || block(ox+1, oy+1, oz).tile)) {
+      avatar.x = Math.ceil(avatar.x) - avatar.radius;
+    }
+    if (frac(avatar.z) < avatar.radius && 
+        (block(ox, oy, oz-1).tile || block(ox, oy+1, oz-1).tile)) {
+      avatar.z = Math.floor(avatar.z) + avatar.radius;
+    } else if (carf(avatar.z) < avatar.radius && 
+               (block(ox, oy, oz+1).tile || block(ox, oy+1, oz+1).tile)) {
+      avatar.z = Math.ceil(avatar.z) - avatar.radius;
+    }
+  }
+  if (avatar.flying && (KEYS[' '] || KEYS.R))
+    avatar.y += d;
+  if (avatar.flying && (KEYS[16] || KEYS.F))
+    avatar.y -= d;
+  if (!avatar.flying && !avatar.falling && keyPressed(' ')) {
+    avatar.dy = 5.5;
+    avatar.falling = true;
+    if (block(avatar).tile) 
+      avatar.y = Math.floor(avatar.y + 1);
+  }
+  
+  // Rotations
+  if (KEYS.Q) avatar.yaw -= a;
+  if (KEYS.E) avatar.yaw += a;
+  if (KEYS.Z) avatar.pitch = Math.max(avatar.pitch - a, -Math.PI/2);
+  if (KEYS.X) avatar.pitch = Math.min(avatar.pitch + a,  Math.PI/2);
+  if (keyPressed('0')) avatar.yaw = avatar.pitch = 0;
+  
+  // Toggles
+  if (keyPressed('T')) avatar.flying = !avatar.flying;
+  if (keyPressed('\t') || keyPressed(27)) {
+    avatar.mouselook = !avatar.mouselook;
+    document.body.style.cursor = avatar.mouselook ? 'none' : '';
+  }
+}
+
+
+function ballistics(entity, elapsed) {
+  // Apply the laws of pseudo-physics
+  if (!entity.flying) {
+    var c = block(entity);
+    if (!entity.falling) {
+      if (c.tile) {
+        // Rise from dirt at 3 m/s
+        entity.y += 3 * elapsed;
+        if (!block(entity).tile) {
+          entity.y = Math.floor(entity.y);
+        }
+      } else if (!block(entity.x, 
+                        entity.y-1,
+                        entity.z).tile) {
+        // Fall off cliff
+        entity.falling = true;
+        entity.dy = 0;
+      }
+    } else { // falling
+      if (c.tile) {
+        // Landed
+        entity.dy = 0;
+        entity.falling = false;
+        entity.y = Math.floor(entity.y + 1);
+      } else {
+        // Still falling
+        entity.dy -= 9.8 * elapsed;
+        entity.y += entity.dy * elapsed;
+      }
+    }
+  }
+}
+
 
 function pickp() { 
   return pick(PLAYER.x, 
