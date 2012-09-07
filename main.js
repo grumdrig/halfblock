@@ -28,6 +28,7 @@ var NX = 1 << LOGNX;
 var NY = 1 << LOGNY;
 var NZ = 1 << LOGNZ;
 var NNN = NX * NY * NZ;
+var CHUNKR = Math.sqrt(NX * NX + NY * NY);
 
 var RENDERTIME = 0;
 var FRAMETIME = 0;
@@ -166,6 +167,8 @@ function Chunk(x, z) {
       }
     }
   }
+
+  this.ndirty = NNN;
 }
 
 
@@ -240,6 +243,8 @@ Chunk.prototype.generateBuffers = function () {
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lighting), gl.STATIC_DRAW);
   this.vertexLightingBuffer.itemSize = 3;
   this.vertexLightingBuffer.numItems = lighting.length / 3;
+
+  this.ndirty = 0;
 }
 
 
@@ -267,10 +272,20 @@ Chunk.prototype.render = function () {
 
 
 Chunk.prototype.update = function () {
+  this.visible = hDistance(PLAYER, this.centerPoint()) < PLAYER.viewDistance;
+    /* This bit of frustum culling is buggy and very possibly unneccesary
+    &&
+    -signedHDistanceFromLine(PLAYER, 
+                             PLAYER.yaw + PLAYER.horizontalFieldOfView/2,
+                             this.centerPoint()) < CHUNKR &&
+    signedHDistanceFromLine(PLAYER,
+                            PLAYER.yaw - PLAYER.horizontalFieldOfView/2,
+                            this.centerPoint()) < CHUNKR;
+    */
+  if (!this.visible) return;
+
   // This shitty method will propagate changes faster in some
   // directions than others
-  var ndirty = 0;
-
   for (var ix = 0; ix < NX; ++ix) {
     var x = ix + this.chunkx * NX;
     for (var iz = 0; iz < NZ; ++iz) {
@@ -281,7 +296,7 @@ Chunk.prototype.update = function () {
         top = top && !c.tile;
         
         if (c.dirty) {
-          ++ndirty;
+          ++this.ndirty;
           c.dirty = false;
           var ns = neighbors(c);
           var light;
@@ -304,12 +319,30 @@ Chunk.prototype.update = function () {
       }
     }
   }
-
-  if (ndirty) {
+  
+  if (this.ndirty > 0) {
     //console.log('Update ', this.chunkx, this.chunkz, ':', ndirty);
     this.generateBuffers();
   }
 
+}
+
+
+Chunk.prototype.centerPoint = function () {
+  return {x: this.chunkx * NX + NX / 2,
+          y: NY / 2,
+          z: this.chunkz * NZ + NZ / 2};
+}
+
+
+function hDistance(p, q) {
+  return Math.sqrt((p.x - q.x) * (p.x - q.x) + 
+                   (p.z - q.z) * (p.z - q.z));
+}
+
+function signedHDistanceFromLine(a, angle, p) {
+  // returns distance from line through point A at given angle to point P
+  return (p.z - a.z) * Math.sin(angle) - (p.x - a.x) * Math.cos(angle);
 }
 
 
@@ -435,7 +468,11 @@ function drawScene() {
   // gl.enable(gl.CULL_FACE);
 
   // Set up the projection
-  mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0,
+  var aspectRatio = gl.viewportWidth / gl.viewportHeight;
+  mat4.perspective(PLAYER.horizontalFieldOfView / aspectRatio * 180 / Math.PI, 
+                   aspectRatio,
+                   0.1,                  // near clipping plane
+                   PLAYER.viewDistance,  // far clipping plane
                    pMatrix);
 
   // Position for player
@@ -456,7 +493,8 @@ function drawScene() {
   gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
 
   for (var i in WORLD)
-    WORLD[i].render();
+    if (WORLD[i].visible)
+      WORLD[i].render();
 
   var alpha = 0.9;
   RENDERTIME = RENDERTIME * alpha + (1-alpha) * (+new Date() - atstart);
@@ -751,6 +789,8 @@ function onLoad() {
     flying: false,
     mouselook: false,
     radius: 0.1,
+    horizontalFieldOfView: Math.PI/4,
+    viewDistance: 100,
   };
   var c = topmost(PLAYER.x, PLAYER.z);
   if (c)
