@@ -736,6 +736,8 @@ Block.prototype.toString = function () {
 function onLoad() {
   var canvas = document.getElementById("canvas");
 
+  makeChunk(0, 0);
+
   // Create player
 
   PLAYER = {
@@ -754,8 +756,6 @@ function onLoad() {
     PLAYER.y = c.y + 1;
   else 
     PLAYER.flying = true;
-
-  makeChunk(0, 0);
 
   initGL(canvas);
   initShaders();
