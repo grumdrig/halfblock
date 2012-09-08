@@ -58,15 +58,20 @@ var FACE_LEFT = 5;
 
 
 function initGL(canvas) {
+  var problem = '';
   try {
-    gl = canvas.getContext("experimental-webgl");
-    gl.data = {};  // holds variables
-    gl.viewportWidth = canvas.width;
-    gl.viewportHeight = canvas.height;
+    gl = canvas.getContext("experimental-webgl") ||
+      canvas.getContext('webgl');
+    if (gl) {
+      gl.data = {};  // holds variables
+      gl.viewportWidth = canvas.width;
+      gl.viewportHeight = canvas.height;
+    }
   } catch (e) {
+    problem = e;
   }
   if (!gl) {
-    alert("Could not initialise WebGL, sorry...");
+    alert("Unable to initialize WebGL...\n" + problem);
   }
 }
 
