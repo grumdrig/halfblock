@@ -55,6 +55,14 @@ var FACE_TOP = 3;
 var FACE_RIGHT = 4;
 var FACE_LEFT = 5;
 
+var TILE_ROCK = 1;
+var TILE_DIRT = 2;
+var TILE_GRASS = 3;
+var TILE_FLAG = 4;
+var TILE_TESTPATTERN = 5;
+var TILE_BEDROCK = 6;
+var TILE_ICE = 7;
+var TILE_FLOWER = 8;
 
 
 function initGL(canvas) {
@@ -280,13 +288,13 @@ Chunk.prototype.update = function () {
     var c = this.blocks[i];
     var xz = c.x + NX * c.z;
     c.uncovered = (typeof tops[xz] === 'undefined');
-    if (c.uncovered && c.tile)
+    if (c.uncovered && c.solid())
       tops[xz] = c;
     if (c.dirty) {
       c.dirty = false;
       var ns = neighbors(c);
       var light;
-      if (c.tile) {
+      if (c.solid()) {
         light = 0;
       } else if (c.uncovered) {
         light = LIGHT_MAX;
@@ -550,17 +558,17 @@ function processInput(avatar, elapsed) {
     
     // Check collisions
     if (frac(avatar.x) < avatar.radius && 
-        (block(ox-1, oy,   oz).tile || block(ox-1, oy+1, oz).tile)) {
+        (block(ox-1, oy,   oz).solid() || block(ox-1, oy+1, oz).solid())) {
       avatar.x = Math.floor(avatar.x) + avatar.radius;
     } else if (carf(avatar.x) < avatar.radius && 
-               (block(ox+1, oy,   oz).tile || block(ox+1, oy+1, oz).tile)) {
+               (block(ox+1, oy,   oz).solid() || block(ox+1, oy+1, oz).solid())) {
       avatar.x = Math.ceil(avatar.x) - avatar.radius;
     }
     if (frac(avatar.z) < avatar.radius && 
-        (block(ox, oy, oz-1).tile || block(ox, oy+1, oz-1).tile)) {
+        (block(ox, oy, oz-1).solid() || block(ox, oy+1, oz-1).solid())) {
       avatar.z = Math.floor(avatar.z) + avatar.radius;
     } else if (carf(avatar.z) < avatar.radius && 
-               (block(ox, oy, oz+1).tile || block(ox, oy+1, oz+1).tile)) {
+               (block(ox, oy, oz+1).solid() || block(ox, oy+1, oz+1).solid())) {
       avatar.z = Math.ceil(avatar.z) - avatar.radius;
     }
   }
@@ -571,7 +579,7 @@ function processInput(avatar, elapsed) {
   if (!avatar.flying && !avatar.falling && keyPressed(' ')) {
     avatar.dy = 5.5;
     avatar.falling = true;
-    if (block(avatar).tile) 
+    if (block(avatar).solid()) 
       avatar.y = Math.floor(avatar.y + 1);
   }
   
@@ -596,21 +604,21 @@ function ballistics(entity, elapsed) {
   if (!entity.flying) {
     var c = block(entity);
     if (!entity.falling) {
-      if (c.tile) {
+      if (c.solid()) {
         // Rise from dirt at 3 m/s
         entity.y += 3 * elapsed;
-        if (!block(entity).tile) {
+        if (!block(entity).solid()) {
           entity.y = Math.floor(entity.y);
         }
       } else if (!block(entity.x, 
                         entity.y-1,
-                        entity.z).tile) {
+                        entity.z).solid()) {
         // Fall off cliff
         entity.falling = true;
         entity.dy = 0;
       }
     } else { // falling
-      if (c.tile) {
+      if (c.solid()) {
         // Landed
         entity.dy = 0;
         entity.falling = false;
@@ -726,7 +734,7 @@ function handleLoadedTexture(texture) {
 function topmost(x, z) {
   for (var y = NY-1; y >= 0; --y) {
     var c = block(x,y,z);
-    if (c.tile) return c;
+    if (c.solid()) return c;
   }
   return null;
 }
@@ -745,16 +753,25 @@ function Block(coord, chunk) {
   this.dirty = true;
 }
 
+
+Block.prototype.solid = function () {
+  return (this.tile == TILE_ROCK ||
+          this.tile == TILE_DIRT ||
+          this.tile == TILE_GRASS ||
+          this.tile == TILE_BEDROCK);
+}
+
+
 Block.prototype.generateTerrain = function () {
   if (this.y == 0) {
-    this.tile = 6;
+    this.tile = TILE_BEDROCK;
   } else {
     var n = pinkNoise(this.x, this.y, this.z, 32, 2) + 
       (2 * this.y - NY) / NY;
-    if (n < -0.2) this.tile = 1;
-    else if (n < -0.1) this.tile = 2;
-    else if (n < 0) this.tile = 3;
-    else if (this.y < NY/2) this.tile = 7;
+    if (n < -0.2) this.tile = TILE_ROCK;
+    else if (n < -0.1) this.tile = TILE_DIRT;
+    else if (n < 0) this.tile = TILE_GRASS;
+    else if (this.y < NY/2) this.tile = TILE_FLOWER;
   
     // Caves
     if (Math.pow(noise(this.x/20, this.y/20, this.z/20), 3) < -0.1)
@@ -786,7 +803,7 @@ Block.prototype.generateVertices = function () {
     var triplet = [this.x, this.y, this.z];
     var c = this;
     function nabe(n, coord, sign, face) {
-      if (!n.tile) {
+      if (!n.solid()) {
         var pindex = v.positions.length / 3;
         var corners = (face === 1 || face === 2 || face === 5) ?
           [0,0, 1,0, 1,1, 0,1] :
@@ -875,6 +892,11 @@ function onLoad() {
 
   gl.clearColor(130/255, 202/255, 250/255, 1.0);  // Clear color is sky blue
   gl.enable(gl.DEPTH_TEST);                       // Enable Z-buffer
+
+  // The following enable translucent blocks. But I need to render solids first and then semi-transparent ones in reverse-distance-order.
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.enable(gl.BLEND);
+  //gl.disable(gl.DEPTH_TEST);
 
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
