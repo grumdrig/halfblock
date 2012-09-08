@@ -60,7 +60,7 @@ var FACE_LEFT = 5;
 function initGL(canvas) {
   var problem = '';
   try {
-    gl = canvas.getContext("experimental-webgl") ||
+    gl = canvas.getContext('experimental-webgl') ||
       canvas.getContext('webgl');
     if (gl) {
       gl.data = {};  // holds variables
@@ -71,7 +71,7 @@ function initGL(canvas) {
     problem = e;
   }
   if (!gl) {
-    alert("Unable to initialize WebGL...\n" + problem);
+    alert('Unable to initialize WebGL...\n' + problem);
   }
 }
 
@@ -80,7 +80,7 @@ function getShader(gl, id) {
   var shaderScript = document.getElementById(id);
   if (!shaderScript) return null;
 
-  var str = "";
+  var str = '';
   var k = shaderScript.firstChild;
   while (k) {
     if (k.nodeType == 3) {
@@ -90,9 +90,9 @@ function getShader(gl, id) {
   }
 
   var shader;
-  if (shaderScript.type == "x-shader/x-fragment") {
+  if (shaderScript.type == 'x-shader/x-fragment') {
     shader = gl.createShader(gl.FRAGMENT_SHADER);
-  } else if (shaderScript.type == "x-shader/x-vertex") {
+  } else if (shaderScript.type == 'x-shader/x-vertex') {
     shader = gl.createShader(gl.VERTEX_SHADER);
   } else {
     return null;
@@ -111,8 +111,8 @@ function getShader(gl, id) {
 
 
 function initShaders() {
-  var fragmentShader = getShader(gl, "shader-fs");
-  var vertexShader   = getShader(gl, "shader-vs");
+  var fragmentShader = getShader(gl, 'shader-fs');
+  var vertexShader   = getShader(gl, 'shader-vs');
 
   gl.data.shaderProgram = gl.createProgram();
   gl.attachShader(gl.data.shaderProgram, vertexShader);
@@ -120,7 +120,7 @@ function initShaders() {
   gl.linkProgram(gl.data.shaderProgram);
 
   if (!gl.getProgramParameter(gl.data.shaderProgram, gl.LINK_STATUS)) {
-    alert("Could not initialise shaders");
+    alert('Could not initialise shaders');
   }
 
   gl.useProgram(gl.data.shaderProgram);
@@ -150,7 +150,7 @@ function mvPushMatrix() {
 
 function mvPopMatrix() {
   if (mvMatrixStack.length == 0) {
-    throw "Invalid popMatrix!";
+    throw 'Invalid popMatrix!';
   }
   mvMatrix = mvMatrixStack.pop();
 }
@@ -827,7 +827,7 @@ Camera.prototype.toString = function () {
 }
 
 function onLoad() {
-  var canvas = document.getElementById("canvas");
+  var canvas = document.getElementById('canvas');
 
   makeChunk(0,     0);
   makeChunk(0,   -NZ);
@@ -859,7 +859,7 @@ function onLoad() {
   TERRAIN_TEXTURE.image.onload = function() {
     handleLoadedTexture(TERRAIN_TEXTURE)
   }
-  TERRAIN_TEXTURE.image.src = "terrain.png";
+  TERRAIN_TEXTURE.image.src = 'terrain.png';
 
   gl.clearColor(130/255, 202/255, 250/255, 1.0);  // Clear color is sky blue
   gl.enable(gl.DEPTH_TEST);                       // Enable Z-buffer
