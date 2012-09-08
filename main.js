@@ -510,7 +510,11 @@ function updateWorld() {
   makeChunk(c.chunkx - NX, c.chunkz);
   makeChunk(c.chunkx + NX, c.chunkz);
   makeChunk(c.chunkx, c.chunkz - NZ);
-  makeChunk(c.chunkx, c.chunkz + NX);
+  makeChunk(c.chunkx, c.chunkz + NZ);
+  makeChunk(c.chunkx - NX, c.chunkz - NZ);
+  makeChunk(c.chunkx + NX, c.chunkz - NZ);
+  makeChunk(c.chunkx - NX, c.chunkz + NZ);
+  makeChunk(c.chunkx + NX, c.chunkz + NZ);
   
   for (var i in WORLD)
     if (WORLD[i].ndirty > 0)
