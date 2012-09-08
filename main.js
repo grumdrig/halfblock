@@ -714,8 +714,8 @@ function tick() {
 function handleLoadedTexture(texture) {
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
-    //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, 
+                gl.UNSIGNED_BYTE, texture.image);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.bindTexture(gl.TEXTURE_2D, null);
@@ -751,9 +751,10 @@ Block.prototype.generateTerrain = function () {
   } else {
     var n = pinkNoise(this.x, this.y, this.z, 32, 2) + 
       (2 * this.y - NY) / NY;
-    if (n < 0) this.tile = 3;
-    if (n < -0.1) this.tile = 2;
     if (n < -0.2) this.tile = 1;
+    else if (n < -0.1) this.tile = 2;
+    else if (n < 0) this.tile = 3;
+    else if (this.y < NY/2) this.tile = 7;
   
     // Caves
     if (Math.pow(noise(this.x/20, this.y/20, this.z/20), 3) < -0.1)
