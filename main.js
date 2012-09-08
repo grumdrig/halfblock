@@ -179,59 +179,26 @@ function Chunk(x, z) {
 
 
 Chunk.prototype.generateBuffers = function () {
-  var vertices = [];
+  var positions = [];
   var textures = [];
-  var indices = [];
   var lighting = [];
-  for (var ix = 0; ix < NX; ++ix) {
-    var x = ix + this.chunkx;
-    for (var iz = 0; iz < NZ; ++iz) {
-      var z = iz + this.chunkz;
-      for (var y = NY-1; y >= 0; --y) {
-        var triplet = [x,y,z];
-        var c = block(x,y,z); 
-        if (c.tile) {
-          function nabe(n, coord, sign, face) {
-            if (!n.tile) {
-              var vindex = vertices.length / 3;
-              var corners = (face === 1 || face === 2 || face === 5) ?
-                [0,0, 1,0, 1,1, 0,1] :
-                [0,0, 0,1, 1,1, 1,0];
-              var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
-                / LIGHT_MAX;
-              if (c.y >= NY-1 && face === FACE_TOP) 
-                light = 1;  // Account for topmost block against non-block
-              if (c === PICKED && face === PICKED_FACE) 
-                light = 2;
-              for (var ic = 0; ic < 12; ++ic) {
-                var d = triplet[ic % 3];
-                if (ic % 3 === coord)
-                  vertices.push(d + sign);
-                else
-                  vertices.push(d + corners.shift());
-                lighting.push(light);
-              }
-              
-              indices.push(vindex, vindex + 1, vindex + 2,
-                           vindex, vindex + 2, vindex + 3);
-
-              textures.push(c.tile,     15, 
-                            c.tile + 1, 15, 
-                            c.tile + 1, 16, 
-                            c.tile,     16);
-            }
-          }
-          neighbors(c, nabe);
-        }
-      }
-    }
+  for (var i = 0; i < NNN; ++i) {
+    var b = this.blocks[i];
+    if (!b.vertices) b.generateVertices();
+    positions.push.apply(positions, b.vertices.positions);
+    lighting.push.apply(lighting, b.vertices.lighting);
+    textures.push.apply(textures, b.vertices.textures);
   }
-
+  var indices = [];
+  for (var i = 0; i < positions.length / 3; i += 4)
+    indices.push(i, i + 1, i + 2,
+                 i, i + 2, i + 3);
+  
   this.vertexPositionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexPositionBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
   this.vertexPositionBuffer.itemSize = 3;
-  this.vertexPositionBuffer.numItems = vertices.length / 3;
+  this.vertexPositionBuffer.numItems = positions.length / 3;
 
   this.vertexIndexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.vertexIndexBuffer);
@@ -308,20 +275,20 @@ Chunk.prototype.update = function () {
           c.dirty = false;
           var ns = neighbors(c);
           var light;
-          if (top) {
+          if (c.tile) {
+            light = 0;
+          } else if (top) {
             light = LIGHT_MAX;
           } else {
             light = LIGHT_MIN;
-            for (var i = 0; i < ns.length; ++i) {
-              if (!ns[i].tile)
-                light = Math.max(light, ns[i].light - 1);
-            }
+            neighbors(c, function (n) {
+              light = Math.max(light, n.light - 1);
+            });
           }
           if (c.light != light) {
             c.light = light;
-            for (var i = 0; i < ns.length; ++i) 
-              if (ns[i].light < light-1)
-                ns[i].dirty = true;
+            c.vertices = null;  // force re-geom
+            neighbors(c, function (n) { n.invalidate() });
           }
         }
       }
@@ -783,11 +750,52 @@ Block.prototype.generateTerrain = function () {
 
 Block.prototype.invalidate = function () {
   this.dirty = true;
-  chunk(this.x, this.y).dirty = true;
+  this.vertices = null;
 }
 
 Block.prototype.toString = function () {
   return '[' + this.x + ' ' + this.y + ' ' + this.z + ']';
+}
+
+
+Block.prototype.generateVertices = function () {
+  var v = this.vertices = {
+    positions: [],
+    lighting: [],
+    textures: []
+  };
+    
+  if (this.tile) {
+    var triplet = [this.x, this.y, this.z];
+    var c = this;
+    function nabe(n, coord, sign, face) {
+      if (!n.tile) {
+        var corners = (face === 1 || face === 2 || face === 5) ?
+          [0,0, 1,0, 1,1, 0,1] :
+          [0,0, 0,1, 1,1, 1,0];
+        var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
+          / LIGHT_MAX;
+        if (c.y >= NY-1 && face === FACE_TOP) 
+          light = 1;  // Account for topmost block against non-block
+        if (c === PICKED && face === PICKED_FACE) 
+          light = 2;
+        for (var ic = 0; ic < 12; ++ic) {
+          var d = triplet[ic % 3];
+          if (ic % 3 === coord)
+            v.positions.push(d + sign);
+          else
+            v.positions.push(d + corners.shift());
+          v.lighting.push(light);
+        }
+        
+        v.textures.push(c.tile,     15, 
+                        c.tile + 1, 15, 
+                        c.tile + 1, 16, 
+                        c.tile,     16);
+      }
+    }
+    neighbors(c, nabe);
+  }
 }
 
 
@@ -905,8 +913,7 @@ function onmousedown(event) {
       var b = blockFacing(PICKED, PICKED_FACE);
       if (!b.outofbounds) {
         b.tile = PICKED.tile;
-        b.dirty = true;
-        neighbors(b, function (n) { n.dirty = true; });
+        b.invalidate();
       }
     }
   }
