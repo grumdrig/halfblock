@@ -189,17 +189,22 @@ Chunk.prototype.generateBuffers = function () {
   var positions = [];
   var textures = [];
   var lighting = [];
+  var indices = [];
   for (var i = 0; i < NNN; ++i) {
     var b = this.blocks[i];
     if (!b.vertices) b.generateVertices();
+    var pindex = positions.length / 3;
     positions.push.apply(positions, b.vertices.positions);
     lighting.push.apply(lighting, b.vertices.lighting);
     textures.push.apply(textures, b.vertices.textures);
+    for (var j = 0; j < b.vertices.indices.length; ++j)
+      indices.push(pindex + b.vertices.indices[j]);
   }
-  var indices = [];
-  for (var i = 0; i < positions.length / 3; i += 4)
-    indices.push(i, i + 1, i + 2,
-                 i, i + 2, i + 3);
+  if (!window.once) {
+    console.log(indices);
+    window.once = true;
+  }
+  
   
   this.vertexPositionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexPositionBuffer);
@@ -772,7 +777,8 @@ Block.prototype.generateVertices = function () {
   var v = this.vertices = {
     positions: [],
     lighting: [],
-    textures: []
+    textures: [],
+    indices: [],
   };
     
   if (this.tile) {
@@ -780,6 +786,7 @@ Block.prototype.generateVertices = function () {
     var c = this;
     function nabe(n, coord, sign, face) {
       if (!n.tile) {
+        var pindex = v.positions.length / 3;
         var corners = (face === 1 || face === 2 || face === 5) ?
           [0,0, 1,0, 1,1, 0,1] :
           [0,0, 0,1, 1,1, 1,0];
@@ -797,11 +804,15 @@ Block.prototype.generateVertices = function () {
             v.positions.push(d + corners.shift());
           v.lighting.push(light);
         }
-        
+
+        v.indices.push(pindex, pindex + 1, pindex + 2,
+                       pindex, pindex + 2, pindex + 3);
+
         v.textures.push(c.tile,     15, 
                         c.tile + 1, 15, 
                         c.tile + 1, 16, 
                         c.tile,     16);
+
       }
     }
     neighbors(c, nabe);
