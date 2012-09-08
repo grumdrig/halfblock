@@ -261,36 +261,32 @@ Chunk.prototype.update = function () {
 
   // This shitty method will propagate changes faster in some
   // directions than others
-  for (var ix = 0; ix < NX; ++ix) {
-    var x = ix + this.chunkx;
-    for (var iz = 0; iz < NZ; ++iz) {
-      var z = iz + this.chunkz;
-      var top = true;
-      for (var y = NY-1; y >= 0; --y) {
-        var c = block(x,y,z);
-        top = top && !c.tile;
-        
-        if (c.dirty) {
-          ++this.ndirty;
-          c.dirty = false;
-          var ns = neighbors(c);
-          var light;
-          if (c.tile) {
-            light = 0;
-          } else if (top) {
-            light = LIGHT_MAX;
-          } else {
-            light = LIGHT_MIN;
-            neighbors(c, function (n) {
-              light = Math.max(light, n.light - 1);
-            });
-          }
-          if (c.light != light) {
-            c.light = light;
-            c.vertices = null;  // force re-geom
-            neighbors(c, function (n) { n.invalidate() });
-          }
-        }
+  var tops = {};
+  for (var i = NNN-1; i >= 0; --i) {  // iterations runs from high y's to low
+    var c = this.blocks[i];
+    var xz = c.x + c.z * NX;
+    c.uncovered = (typeof tops[xz] === undefined);
+    if (c.uncovered && c.tile)
+      tops[xz] = c;
+    if (c.dirty) {
+      ++this.ndirty;
+      c.dirty = false;
+      var ns = neighbors(c);
+      var light;
+      if (c.tile) {
+        light = 0;
+      } else if (top) {
+        light = LIGHT_MAX;
+      } else {
+        light = LIGHT_MIN;
+        neighbors(c, function (n) {
+          light = Math.max(light, n.light - 1);
+        });
+      }
+      if (c.light != light) {
+        c.light = light;
+        c.vertices = null;  // force re-geom
+        neighbors(c, function (n) { n.invalidate() });
       }
     }
   }
