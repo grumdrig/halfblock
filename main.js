@@ -208,11 +208,6 @@ Chunk.prototype.generateBuffers = function () {
     for (var j = 0; j < b.vertices.indices.length; ++j)
       indices.push(pindex + b.vertices.indices[j]);
   }
-  if (!window.once) {
-    console.log(indices);
-    window.once = true;
-  }
-  
   
   this.vertexPositionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexPositionBuffer);
@@ -894,9 +889,11 @@ function onLoad() {
   gl.enable(gl.DEPTH_TEST);                       // Enable Z-buffer
 
   // The following enable translucent blocks. But I need to render solids first and then semi-transparent ones in reverse-distance-order.
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.enable(gl.BLEND);
+  //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  //gl.enable(gl.BLEND);
   //gl.disable(gl.DEPTH_TEST);
+
+  //gl.enable(gl.ALPHA_TEST);  // no dice in webgl
 
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
