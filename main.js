@@ -159,6 +159,8 @@ function Chunk(x, z) {
 
   this.blocks = Array(NNN);
 
+  WORLD[this.chunkx + ',' + this.chunkz] = this;
+
   // Generate blocks
   for (var ix = 0; ix < NX; ++ix) {
     var x = ix + this.chunkx;
@@ -166,7 +168,7 @@ function Chunk(x, z) {
       for (var iz = 0; iz < NZ; ++iz) {
         var z = iz + this.chunkz;
         var c = coords(x, y, z);
-        var b = this.blocks[c.i] = new Block(c);
+        var b = this.blocks[c.i] = new Block(c, this);
         b.generateTerrain();
         b.light = (y === NY-1) ? LIGHT_MAX : 0;
         b.dirty = true;
@@ -259,23 +261,24 @@ Chunk.prototype.update = function () {
     */
   if (!this.visible) return;
 
+  this.ndirty = 0;
+  
   // This shitty method will propagate changes faster in some
   // directions than others
   var tops = {};
   for (var i = NNN-1; i >= 0; --i) {  // iterations runs from high y's to low
     var c = this.blocks[i];
-    var xz = c.x + c.z * NX;
-    c.uncovered = (typeof tops[xz] === undefined);
+    var xz = c.x + NX * c.z;
+    c.uncovered = (typeof tops[xz] === 'undefined');
     if (c.uncovered && c.tile)
       tops[xz] = c;
     if (c.dirty) {
-      ++this.ndirty;
       c.dirty = false;
       var ns = neighbors(c);
       var light;
       if (c.tile) {
         light = 0;
-      } else if (top) {
+      } else if (c.uncovered) {
         light = LIGHT_MAX;
       } else {
         light = LIGHT_MIN;
@@ -291,11 +294,8 @@ Chunk.prototype.update = function () {
     }
   }
   
-  if (this.ndirty > 0) {
-    //console.log('Update ', this.chunkx, this.chunkz, ':', ndirty);
-    this.generateBuffers();
-  }
-
+  console.log('Update: ', this.chunkx, this.chunkz, ':', this.ndirty);
+  this.generateBuffers();
 }
 
 
@@ -385,7 +385,7 @@ function makeChunk(chunkx, chunkz) {
   chunkz &= ~(NZ - 1);
   var result = chunk(chunkx, chunkz);
   if (!result)
-    result = WORLD[chunkx + ',' + chunkz] = new Chunk(chunkx, chunkz);
+    result = new Chunk(chunkx, chunkz);
   return result;
 }
 
@@ -513,7 +513,8 @@ function updateWorld() {
   makeChunk(c.chunkx, c.chunkz + NX);
   
   for (var i in WORLD)
-    WORLD[i].update();
+    if (WORLD[i].ndirty > 0)
+      WORLD[i].update();
   
   UPDATE_STAT.end();
 }
@@ -688,7 +689,8 @@ function tick() {
     RENDER_STAT + '<br>' + 
     FPS_STAT + '<br>' + 
     UPDATE_STAT + '<br>' +
-    'Player: ' + PLAYER;
+    'Player: ' + PLAYER + '<br>' +
+    'Light: ' + block(PLAYER).light;
   if (PICKED && PICKED.tile)
     feedback += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
   document.getElementById('stats').innerHTML = feedback;
@@ -716,13 +718,14 @@ function topmost(x, z) {
 }
 
 
-function Block(coord) {
+function Block(coord, chunk) {
   this.x = coord.x;
   this.y = coord.y;
   this.z = coord.z;
 
   this.i = coord.i;
   this.outofbounds = coord.outofbounds;
+  this.chunk = chunk;
 
   this.light = LIGHT_MIN;
   this.dirty = true;
@@ -747,6 +750,8 @@ Block.prototype.generateTerrain = function () {
 Block.prototype.invalidate = function () {
   this.dirty = true;
   this.vertices = null;
+  if (this.chunk)
+    ++this.chunk.ndirty;
 }
 
 Block.prototype.toString = function () {
