@@ -910,6 +910,7 @@ function onmousedown(event) {
     if (event.button === 0) {
       PICKED.tile = 0;
       PICKED.invalidate();
+      neighbors(PICKED, function (n) { n.invalidate() });
     } else {
       var b = blockFacing(PICKED, PICKED_FACE);
       if (!b.outofbounds) {
