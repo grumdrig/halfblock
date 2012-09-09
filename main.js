@@ -766,7 +766,7 @@ Block.prototype.generateTerrain = function () {
     if (n < -0.2) this.tile = TILE_ROCK;
     else if (n < -0.1) this.tile = TILE_DIRT;
     else if (n < 0) this.tile = TILE_GRASS;
-    else if (this.y < NY/2) this.tile = TILE_FLOWER;
+    else if (n < 0.001) this.tile = TILE_FLOWER;
   
     // Caves
     if (Math.pow(noise(this.x/20, this.y/20, this.z/20), 3) < -0.1)
@@ -795,6 +795,14 @@ Block.prototype.generateVertices = function () {
   };
     
   if (this.tile === TILE_FLOWER) {
+    var n = blockFacing(this, FACE_TOP);
+    var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
+      / LIGHT_MAX;
+    if (this.y >= NY-1)
+      light = 1;  // Account for topmost block against non-block
+    if (this === PICKED)
+      light = 2;
+
     v.positions = [this.x,       this.y,     this.z + 0.5,
                    this.x + 1,   this.y,     this.z + 0.5,
                    this.x + 1,   this.y + 1, this.z + 0.5,
@@ -812,7 +820,7 @@ Block.prototype.generateVertices = function () {
                       this.tile,     16);
     }
     for (var i = 0; i < v.positions.length; ++i)
-      v.lighting.push(1);
+      v.lighting.push(light);
     
   } else if (this.tile) {
     var triplet = [this.x, this.y, this.z];
