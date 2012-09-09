@@ -795,8 +795,7 @@ Block.prototype.generateVertices = function () {
   };
     
   if (this.tile === TILE_FLOWER) {
-    var n = blockFacing(this, FACE_TOP);
-    var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
+    var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, this.light||0))
       / LIGHT_MAX;
     if (this.y >= NY-1)
       light = 1;  // Account for topmost block against non-block
