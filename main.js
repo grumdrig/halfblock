@@ -453,7 +453,7 @@ function drawScene(camera) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Cull backfaces, which seems to not at all affect speed
-  gl.enable(gl.CULL_FACE);
+  // gl.enable(gl.CULL_FACE);
 
   // Set up the projection
   var aspectRatio = gl.viewportWidth / gl.viewportHeight;
@@ -794,7 +794,27 @@ Block.prototype.generateVertices = function () {
     indices: [],
   };
     
-  if (this.tile) {
+  if (this.tile === TILE_FLOWER) {
+    v.positions = [this.x,       this.y,     this.z + 0.5,
+                   this.x + 1,   this.y,     this.z + 0.5,
+                   this.x + 1,   this.y + 1, this.z + 0.5,
+                   this.x,       this.y + 1, this.z + 0.5,
+                   this.x + 0.5, this.y,     this.z,
+                   this.x + 0.5, this.y,     this.z + 1,
+                   this.x + 0.5, this.y + 1, this.z + 1,
+                   this.x + 0.5, this.y + 1, this.z];
+    v.indices = [0, 1, 2,  0, 2, 3,
+                 4, 5, 6,  4, 6, 7];
+    for (var i = 0; i < 2; ++i) {
+      v.textures.push(this.tile,     15, 
+                      this.tile + 1, 15, 
+                      this.tile + 1, 16, 
+                      this.tile,     16);
+    }
+    for (var i = 0; i < v.positions.length; ++i)
+      v.lighting.push(1);
+    
+  } else if (this.tile) {
     var triplet = [this.x, this.y, this.z];
     var c = this;
     function nabe(n, coord, sign, face) {
