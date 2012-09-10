@@ -901,14 +901,17 @@ function geometryDecalX(b) {
   if (!WIREFRAME && b === PICKED)
     light = 2;
   
-  v.positions = [b.x,       b.y,     b.z + 0.5,
-                 b.x + 1,   b.y,     b.z + 0.5,
-                 b.x + 1,   b.y + 1, b.z + 0.5,
-                 b.x,       b.y + 1, b.z + 0.5,
-                 b.x + 0.5, b.y,     b.z,
-                 b.x + 0.5, b.y,     b.z + 1,
-                 b.x + 0.5, b.y + 1, b.z + 1,
-                 b.x + 0.5, b.y + 1, b.z];
+  var L = 0.2;
+  var R = 1 - L;
+  var H = R - L;
+  v.positions = [b.x + L,   b.y,     b.z + 0.5,
+                 b.x + R,   b.y,     b.z + 0.5,
+                 b.x + R,   b.y + H, b.z + 0.5,
+                 b.x + L,   b.y + H, b.z + 0.5,
+                 b.x + 0.5, b.y,     b.z + L,
+                 b.x + 0.5, b.y,     b.z + R,
+                 b.x + 0.5, b.y + H, b.z + R,
+                 b.x + 0.5, b.y + H, b.z + L];
   v.indices = [0, 1, 2,  0, 2, 3,
                4, 5, 6,  4, 6, 7];
   v.textures = [];
