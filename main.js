@@ -878,7 +878,7 @@ Block.prototype.invalidate = function () {
 }
 
 Block.prototype.toString = function () {
-  return '[' + this.x + ' ' + this.y + ' ' + this.z + ']';
+  return '[' + this.x + ',' + this.y + ',' + this.z + ']';
 }
 
 
@@ -1006,8 +1006,8 @@ function Camera(init) {
 }
 
 Camera.prototype.toString = function () {
-  return '&lt;' + this.x.toFixed(2) + ' ' + this.y.toFixed(2) + ' ' +
-    this.z.toFixed(2) + '&gt &lt;' + this.yaw.toFixed(2) + ' ' +
+  return '&lt;' + this.x.toFixed(2) + ',' + this.y.toFixed(2) + ',' +
+    this.z.toFixed(2) + '&gt &lt;' + this.yaw.toFixed(2) + ',' +
     this.pitch.toFixed(2) + '&gt';
 }
 
