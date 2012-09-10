@@ -634,8 +634,11 @@ function updateWorld() {
 
 
 function processInput(avatar, elapsed) {
-  var d = elapsed * 3;  // m/s: walk speed (per axis)
-  var a = elapsed * 2;  // radians/s: spin rate
+  var d = elapsed * 4.3;  // m/s: walk speed (per axis)
+  if (avatar.flying) {
+    d = elapsed * 10.8;   // m/s: flying speed
+  }
+  var a = elapsed * 2;    // radians/s: spin rate
   
   // Movement keys
   if (KEYS.W || KEYS.A || KEYS.S || KEYS.D) {
@@ -672,6 +675,7 @@ function processInput(avatar, elapsed) {
   if (avatar.flying && (KEYS[16] || KEYS.F))
     avatar.y -= d;
   if (!avatar.flying && !avatar.falling && keyPressed(' ')) {
+    // Jump!
     avatar.dy = 5.5;
     avatar.falling = true;
     if (block(avatar).type.solid) 
