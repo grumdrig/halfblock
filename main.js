@@ -1067,7 +1067,7 @@ function onLoad() {
   }
   TERRAIN_TEXTURE.image.src = 'terrain.png';
 
-  gl.clearColor(130/255, 202/255, 250/255, 1.0);  // Clear color is sky blue
+  gl.clearColor(0.5, 0.8, 0.98, 1.0);  // Clear color is sky blue
   gl.enable(gl.DEPTH_TEST);                       // Enable Z-buffer
 
   // The following enable translucent blocks. But I need to render solids first and then semi-transparent ones in reverse-distance-order.

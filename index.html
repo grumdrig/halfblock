@@ -38,8 +38,16 @@ void main(void) {
                                                vTextureCoord.t));
   if (textureColor.a <= 0.5) 
     discard;
-  else
-    gl_FragColor = vec4(textureColor.rgb * vLighting, textureColor.a);
+  else {
+    // see here for better fog probably
+    // http://www.geeks3d.com/20100228/fog-in-glsl-webgl/
+    textureColor = vec4(textureColor.rgb * vLighting, textureColor.a);
+    float fog = clamp((gl_FragCoord.z/gl_FragCoord.w - 10.0) / 10.0, 0.0, 1.0);
+    if (fog > 0.0) {
+      textureColor = fog * vec4(0.5,0.8,0.98,0) + (1.0 - fog) * textureColor;
+    }
+    gl_FragColor = textureColor;
+  }
 }
 </script>
 
