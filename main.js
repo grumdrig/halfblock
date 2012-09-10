@@ -61,41 +61,53 @@ var BLOCK_TYPES = {
     tile: 0,
     empty: true,
     opaque: false,
+    geometry: geometryEmpty,
   },
   rock: {
     tile: 1,
     solid: true,
     opaque: true,
+    geometry: geometryBlock,
   },
   dirt: {
     tile: 2,
     solid: true,
     opaque: true,
+    geometry: geometryBlock,
   },
   grass: {
     tile: 3,
     solid: true,
     opaque: true,
+    geometry: geometryBlock,
   },
   flag: {
     tile: 4,
+    solid: true,
+    opaque: true,
+    geometry: geometryBlock,
   },
   testpattern: {
-    tile: 5
+    tile: 5,
+    solid: true,
+    opaque: true,
+    geometry: geometryBlock,
   },
   bedrock: {
     tile:6,
     solid: true,
     opaque: true,
+    geometry: geometryBlock,
   },
   ice: {
     tile: 7,
     solid: true,
     translucent: true,
+    geometry: geometryBlock,
   },
   flower: {
     tile: 8,
-    //render: renderDecalX,
+    geometry: geometryDecalX,
   },
 };
   
@@ -235,7 +247,8 @@ Chunk.prototype.generateBuffers = function () {
   var indices = [];
   for (var i = 0; i < NNN; ++i) {
     var b = this.blocks[i];
-    if (!b.vertices) b.generateVertices();
+    if (!b.vertices) 
+      b.type.geometry(b);
     var pindex = positions.length / 3;
     positions.push.apply(positions, b.vertices.positions);
     lighting.push.apply(lighting, b.vertices.lighting);
@@ -820,77 +833,91 @@ Block.prototype.toString = function () {
 }
 
 
-Block.prototype.generateVertices = function () {
-  var v = this.vertices = {
+function geometryEmpty(b) {
+  b.vertices = _EMPTY_GEOMETRY;
+}
+var _EMPTY_GEOMETRY = {
+  positions: [],
+  lighting: [],
+  textures: [],
+  indices: [],
+};
+
+
+function geometryDecalX(b) {
+  var v = b.vertices = {};
+
+  var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, b.light||0))
+    / LIGHT_MAX;
+  if (b.y >= NY-1)
+    light = 1;  // Account for topmost block against non-block
+  if (b === PICKED)
+    light = 2;
+  
+  v.positions = [b.x,       b.y,     b.z + 0.5,
+                 b.x + 1,   b.y,     b.z + 0.5,
+                 b.x + 1,   b.y + 1, b.z + 0.5,
+                 b.x,       b.y + 1, b.z + 0.5,
+                 b.x + 0.5, b.y,     b.z,
+                 b.x + 0.5, b.y,     b.z + 1,
+                 b.x + 0.5, b.y + 1, b.z + 1,
+                 b.x + 0.5, b.y + 1, b.z];
+  v.indices = [0, 1, 2,  0, 2, 3,
+               4, 5, 6,  4, 6, 7];
+  v.textures = [];
+  for (var i = 0; i < 2; ++i) {
+    v.textures.push(b.type.tile,     15, 
+                    b.type.tile + 1, 15, 
+                    b.type.tile + 1, 16, 
+                    b.type.tile,     16);
+  }
+  v.lighting = [];
+  for (var i = 0; i < v.positions.length; ++i)
+    v.lighting.push(light);
+}
+
+
+function geometryBlock(b) {
+  var v = b.vertices = {
     positions: [],
     lighting: [],
     textures: [],
     indices: [],
   };
-    
-  if (this.type === BLOCK_TYPES.flower) {
-    var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, this.light||0))
-      / LIGHT_MAX;
-    if (this.y >= NY-1)
-      light = 1;  // Account for topmost block against non-block
-    if (this === PICKED)
-      light = 2;
-
-    v.positions = [this.x,       this.y,     this.z + 0.5,
-                   this.x + 1,   this.y,     this.z + 0.5,
-                   this.x + 1,   this.y + 1, this.z + 0.5,
-                   this.x,       this.y + 1, this.z + 0.5,
-                   this.x + 0.5, this.y,     this.z,
-                   this.x + 0.5, this.y,     this.z + 1,
-                   this.x + 0.5, this.y + 1, this.z + 1,
-                   this.x + 0.5, this.y + 1, this.z];
-    v.indices = [0, 1, 2,  0, 2, 3,
-                 4, 5, 6,  4, 6, 7];
-    for (var i = 0; i < 2; ++i) {
-      v.textures.push(this.type.tile,     15, 
-                      this.type.tile + 1, 15, 
-                      this.type.tile + 1, 16, 
-                      this.type.tile,     16);
-    }
-    for (var i = 0; i < v.positions.length; ++i)
-      v.lighting.push(light);
-    
-  } else if (this.type.tile) {
-    var triplet = [this.x, this.y, this.z];
-    var c = this;
-    function nabe(n, coord, sign, face) {
-      if (!n.type.opaque) {
-        var pindex = v.positions.length / 3;
-        var corners = (face === 1 || face === 2 || face === 5) ?
-          [0,0, 1,0, 1,1, 0,1] :
-          [0,0, 0,1, 1,1, 1,0];
-        var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
-          / LIGHT_MAX;
-        if (c.y >= NY-1 && face === FACE_TOP) 
-          light = 1;  // Account for topmost block against non-block
-        if (c === PICKED && face === PICKED_FACE) 
-          light = 2;
-        for (var ic = 0; ic < 12; ++ic) {
-          var d = triplet[ic % 3];
-          if (ic % 3 === coord)
-            v.positions.push(d + sign);
-          else
-            v.positions.push(d + corners.shift());
-          v.lighting.push(light);
-        }
-
-        v.indices.push(pindex, pindex + 1, pindex + 2,
-                       pindex, pindex + 2, pindex + 3);
-
-        v.textures.push(c.type.tile,     15, 
-                        c.type.tile + 1, 15, 
-                        c.type.tile + 1, 16, 
-                        c.type.tile,     16);
-
+  
+  var triplet = [b.x, b.y, b.z];
+  function nabe(n, coord, sign, face) {
+    if (!n.type.opaque) {
+      var pindex = v.positions.length / 3;
+      var corners = (face === 1 || face === 2 || face === 5) ?
+        [0,0, 1,0, 1,1, 0,1] :
+        [0,0, 0,1, 1,1, 1,0];
+      var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
+        / LIGHT_MAX;
+      if (b.y >= NY-1 && face === FACE_TOP) 
+        light = 1;  // Account for topmost block against non-block
+      if (b === PICKED && face === PICKED_FACE) 
+        light = 2;
+      for (var ic = 0; ic < 12; ++ic) {
+        var d = triplet[ic % 3];
+        if (ic % 3 === coord)
+          v.positions.push(d + sign);
+        else
+          v.positions.push(d + corners.shift());
+        v.lighting.push(light);
       }
+      
+      v.indices.push(pindex, pindex + 1, pindex + 2,
+                     pindex, pindex + 2, pindex + 3);
+      
+      v.textures.push(b.type.tile,     15, 
+                      b.type.tile + 1, 15, 
+                      b.type.tile + 1, 16, 
+                      b.type.tile,     16);
+      
     }
-    neighbors(c, nabe);
   }
+  neighbors(b, nabe);
 }
 
 
