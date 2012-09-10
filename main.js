@@ -40,7 +40,8 @@ var lastFrame = 0;
 var lastUpdate = 0;
 
 var LIGHT_MAX = 8;
-var LIGHT_SUN = 7;
+var LIGHT_SUN = 6;
+var LIGHT_LAMP = 8;
 var LIGHT_MIN = 2;
 
 var TERRAIN_TEXTURE;
@@ -110,6 +111,11 @@ var BLOCK_TYPES = {
   flower: {
     tile: 8,
     geometry: geometryDecalX,
+  },
+  lamp: {
+    tile: 9,
+    geometry: geometryDecalX,
+    luminosity: LIGHT_LAMP,
   },
 };
   
@@ -230,6 +236,18 @@ function Chunk(x, z) {
     }
   }
 
+  for (var n = 0; n < 4; ++n) {
+    var x = this.chunkx + 
+      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n)) * NX);
+    var z = this.chunkz + 
+      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n + 23.4)) * NZ);
+    var t = topmost(x, z);
+    if (t && t.y < NY-1) {
+      blockFacing(t, FACE_TOP).type = n ? BLOCK_TYPES.flower : 
+        BLOCK_TYPES.lamp;
+    }
+  }
+
   this.ndirty = this.blocks.length;
 }
 
@@ -344,10 +362,10 @@ Chunk.prototype.update = function () {
       var light;
       if (c.type.opaque) {
         light = 0;
-      } else if (c.uncovered) {
-        light = LIGHT_SUN;
       } else {
-        light = LIGHT_MIN;
+        light = c.type.luminosity || LIGHT_MIN;
+        if (c.uncovered && light < LIGHT_SUN)
+          light = LIGHT_SUN;
         neighbors(c, function (n) {
           light = Math.max(light, n.light - 1);
         });
@@ -844,7 +862,6 @@ Block.prototype.generateTerrain = function () {
     if (n < -0.2) this.type = BLOCK_TYPES.rock;
     else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
     else if (n < 0) this.type = BLOCK_TYPES.grass;
-    else if (n < 0.001) this.type = BLOCK_TYPES.flower;
     else this.type = BLOCK_TYPES.air;
 
     // Caves
@@ -1116,8 +1133,19 @@ function onkeydown(event, count) {
 
   KEYS[k] = KEYS[c] = count;
 
-  if (c === 'L' && canvas.requestFullscreen && canvas.requestPointerLock)
-    canvas.requestFullscreen();
+  if (count === 1) {
+    if (c === 'L' && canvas.requestFullscreen && canvas.requestPointerLock)
+      canvas.requestFullscreen();
+    
+    if (c === 'P' && PICKED) {
+      var b = blockFacing(PICKED, PICKED_FACE);
+      if (!b.outofbounds) {
+        b.type = BLOCK_TYPES.lamp;
+        b.invalidate();
+      }
+    }
+  }
+
 }
 
 function onmousemove(event) {
