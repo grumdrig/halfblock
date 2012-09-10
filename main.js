@@ -242,10 +242,8 @@ function Chunk(x, z) {
     var z = this.chunkz + 
       Math.round(Math.abs(noise(this.chunkx, this.chunkz, n + 23.4)) * NZ);
     var t = topmost(x, z);
-    if (t && t.y < NY-1) {
-      blockFacing(t, FACE_TOP).type = n ? BLOCK_TYPES.flower : 
-        BLOCK_TYPES.lamp;
-    }
+    if (t && t.y < NY-1)
+      blockFacing(t, FACE_TOP).type = BLOCK_TYPES.flower;
   }
 
   this.ndirty = this.blocks.length;
