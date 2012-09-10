@@ -40,6 +40,7 @@ var lastFrame = 0;
 var lastUpdate = 0;
 
 var LIGHT_MAX = 8;
+var LIGHT_SUN = 7;
 var LIGHT_MIN = 2;
 
 var TERRAIN_TEXTURE;
@@ -223,7 +224,7 @@ function Chunk(x, z) {
         var c = coords(x, y, z);
         var b = this.blocks[c.i] = new Block(c, this);
         b.generateTerrain();
-        b.light = (y === NY-1) ? LIGHT_MAX : 0;
+        b.light = (y === NY-1) ? LIGHT_SUN : 0;
         b.dirty = true;
       }
     }
@@ -344,7 +345,7 @@ Chunk.prototype.update = function () {
       if (c.type.opaque) {
         light = 0;
       } else if (c.uncovered) {
-        light = LIGHT_MAX;
+        light = LIGHT_SUN;
       } else {
         light = LIGHT_MIN;
         neighbors(c, function (n) {
