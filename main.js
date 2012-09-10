@@ -45,7 +45,7 @@ var LIGHT_LAMP = 8;
 var LIGHT_MIN = 2;
 
 var TERRAIN_TEXTURE;
-var EYE_HEIGHT = 1.6;
+var EYE_HEIGHT = 1.62;
 
 var KEYS = {};
 
@@ -1007,7 +1007,7 @@ function Camera(init) {
   this.z = init.z || 0;
   this.yaw = init.yaw || 0;
   this.pitch = init.pitch || 0;
-  this.horizontalFieldOfView = init.horizontalFieldOfView || Math.PI/4;
+  this.horizontalFieldOfView = init.horizontalFieldOfView || Math.PI/3;
   this.viewDistance = init.viewDistance || 50;
 }
 
