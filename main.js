@@ -56,7 +56,7 @@ var FACE_RIGHT = 4;
 var FACE_LEFT = 5;
 
 
-var TILES = {
+var BLOCK_TYPES = {
   air: {
     tile: 0,
     empty: true,
@@ -786,25 +786,25 @@ function Block(coord, chunk) {
   this.light = LIGHT_MIN;
   this.dirty = true;
 
-  this.type = TILES.air;
+  this.type = BLOCK_TYPES.air;
 }
 
 
 Block.prototype.generateTerrain = function () {
   if (this.y == 0) {
-    this.type = TILES.bedrock;
+    this.type = BLOCK_TYPES.bedrock;
   } else {
     var n = pinkNoise(this.x, this.y, this.z, 32, 2) + 
       (2 * this.y - NY) / NY;
-    if (n < -0.2) this.type = TILES.rock;
-    else if (n < -0.1) this.type = TILES.dirt;
-    else if (n < 0) this.type = TILES.grass;
-    else if (n < 0.001) this.type = TILES.flower;
-    else this.type = TILES.air;
+    if (n < -0.2) this.type = BLOCK_TYPES.rock;
+    else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
+    else if (n < 0) this.type = BLOCK_TYPES.grass;
+    else if (n < 0.001) this.type = BLOCK_TYPES.flower;
+    else this.type = BLOCK_TYPES.air;
 
     // Caves
     if (Math.pow(noise(this.x/20, this.y/20, this.z/20), 3) < -0.1)
-      this.type = TILES.air;
+      this.type = BLOCK_TYPES.air;
   }
 }
 
@@ -828,7 +828,7 @@ Block.prototype.generateVertices = function () {
     indices: [],
   };
     
-  if (this.type === TILES.flower) {
+  if (this.type === BLOCK_TYPES.flower) {
     var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, this.light||0))
       / LIGHT_MAX;
     if (this.y >= NY-1)
@@ -1009,7 +1009,7 @@ function onmousedown(event) {
   if (event.preventDefault) event.preventDefault();
   if (PICKED) {
     if (event.button === 0) {
-      PICKED.type = TILES.air;
+      PICKED.type = BLOCK_TYPES.air;
       PICKED.invalidate();
       neighbors(PICKED, function (n) { n.invalidate() });
     } else {
