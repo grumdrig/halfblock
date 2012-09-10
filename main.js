@@ -16,9 +16,11 @@ var pMatrix = mat4.create();   // projection matrix
 
 var WORLD = {};
 var PLAYER;
+
 var PICKED = null;
 var PICKED_FACE = 0;
 var PICK_MAX = 8;
+var WIREFRAME;
 
 // Map chunk dimensions
 var LOGNX = 4;
@@ -27,7 +29,6 @@ var LOGNZ = 4;
 var NX = 1 << LOGNX;
 var NY = 1 << LOGNY;
 var NZ = 1 << LOGNZ;
-var NNN = NX * NY * NZ;
 var CHUNKR = Math.sqrt(NX * NX + NY * NY);
 
 var RENDER_STAT = new Stat('Render');
@@ -118,7 +119,6 @@ function initGL(canvas) {
     gl = canvas.getContext('experimental-webgl') ||
       canvas.getContext('webgl');
     if (gl) {
-      gl.data = {};  // holds variables
       gl.viewportWidth = canvas.width;
       gl.viewportHeight = canvas.height;
     }
@@ -165,34 +165,27 @@ function getShader(gl, id) {
 }
 
 
-function initShaders() {
-  var fragmentShader = getShader(gl, 'shader-fs');
-  var vertexShader   = getShader(gl, 'shader-vs');
+function Shader(shader) {
+  var fragmentShader = getShader(gl, shader + '-fs');
+  var vertexShader   = getShader(gl, shader + '-vs');
 
-  gl.data.shaderProgram = gl.createProgram();
-  gl.attachShader(gl.data.shaderProgram, vertexShader);
-  gl.attachShader(gl.data.shaderProgram, fragmentShader);
-  gl.linkProgram(gl.data.shaderProgram);
+  this.program = gl.createProgram();
+  gl.attachShader(this.program, vertexShader);
+  gl.attachShader(this.program, fragmentShader);
+  gl.linkProgram(this.program);
 
-  if (!gl.getProgramParameter(gl.data.shaderProgram, gl.LINK_STATUS)) {
+  if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
     alert('Could not initialise shaders');
   }
+}
 
-  gl.useProgram(gl.data.shaderProgram);
+Shader.prototype.use = function () {
+  gl.useProgram(this.program);
+}
 
-  function locate(variable) {
-    var type = { a: 'Attrib', u: 'Uniform' }[variable[0]];
-    gl.data[variable] = gl['get' + type + 'Location'](gl.data.shaderProgram, variable);
-  }
-  locate('aVertexPosition');
-  gl.enableVertexAttribArray(gl.data.aVertexPosition);
-  locate('aTextureCoord');
-  gl.enableVertexAttribArray(gl.data.aTextureCoord);
-  locate('aLighting');
-  gl.enableVertexAttribArray(gl.data.aLighting);
-  locate('uSampler');
-  locate('uMVMatrix');
-  locate('uPMatrix');
+Shader.prototype.locate = function(variable) {
+  var type = { a: 'Attrib', u: 'Uniform' }[variable[0]];
+  this[variable] = gl['get' + type + 'Location'](this.program, variable);
 }
 
 
@@ -217,7 +210,7 @@ function Chunk(x, z) {
   this.chunkx = x;
   this.chunkz = z;
 
-  this.blocks = Array(NNN);
+  this.blocks = Array(NX * NY * NZ);
 
   WORLD[this.chunkx + ',' + this.chunkz] = this;
 
@@ -236,7 +229,7 @@ function Chunk(x, z) {
     }
   }
 
-  this.ndirty = NNN;
+  this.ndirty = this.blocks.length;
 }
 
 
@@ -245,7 +238,7 @@ Chunk.prototype.generateBuffers = function () {
   var textures = [];
   var lighting = [];
   var indices = [];
-  for (var i = 0; i < NNN; ++i) {
+  for (var i = 0; i < this.blocks.length; ++i) {
     var b = this.blocks[i];
     if (!b.vertices) 
       b.type.geometry(b);
@@ -270,12 +263,14 @@ Chunk.prototype.generateBuffers = function () {
   this.vertexIndexBuffer.itemSize = 1;
   this.vertexIndexBuffer.numItems = indices.length;
 
+  // One ST pair for every XYZ in the position buffer (I think)
   this.vertexTextureCoordBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexTextureCoordBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textures), gl.STATIC_DRAW);
   this.vertexTextureCoordBuffer.itemSize = 2;
   this.vertexTextureCoordBuffer.numItems = textures.length / 2;
 
+  // One RGB triple for each XYZ in the position buffer
   this.vertexLightingBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexLightingBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lighting), gl.STATIC_DRAW);
@@ -286,27 +281,35 @@ Chunk.prototype.generateBuffers = function () {
 }
 
 
-Chunk.prototype.render = function () {
+Chunk.prototype.bindBuffers = function () {
   gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexPositionBuffer);
-  gl.vertexAttribPointer(gl.data.aVertexPosition,
+  gl.vertexAttribPointer(SHADER.aVertexPosition,
                          this.vertexPositionBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexTextureCoordBuffer);
-  gl.vertexAttribPointer(gl.data.aTextureCoord,
+  gl.vertexAttribPointer(SHADER.aTextureCoord,
                          this.vertexTextureCoordBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexLightingBuffer);
-  gl.vertexAttribPointer(gl.data.aLighting,
+  gl.vertexAttribPointer(SHADER.aLighting,
                          this.vertexLightingBuffer.itemSize,
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.vertexIndexBuffer);
-
-  gl.drawElements(gl.TRIANGLES, this.vertexIndexBuffer.numItems,
-                  gl.UNSIGNED_SHORT, 0);
 }
+
+
+Chunk.prototype.render = function () {
+  //SHADER.use();
+  this.bindBuffers();
+  gl.drawElements(gl.TRIANGLES, 
+                  this.vertexIndexBuffer.numItems,
+                  gl.UNSIGNED_SHORT, 
+                  0);
+}
+
 
 
 Chunk.prototype.update = function () {
@@ -327,7 +330,8 @@ Chunk.prototype.update = function () {
   // This shitty method will propagate changes faster in some
   // directions than others
   var tops = {};
-  for (var i = NNN-1; i >= 0; --i) {  // iterations runs from high y's to low
+  for (var i = this.blocks.length-1; i >= 0; --i) {  
+    // iteration runs from high y's to low
     var c = this.blocks[i];
     var xz = c.x + NX * c.z;
     c.uncovered = (typeof tops[xz] === 'undefined');
@@ -496,6 +500,8 @@ function drawScene(camera) {
 
   RENDER_STAT.start();
 
+  SHADER.use();
+
   // Start from scratch
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -522,15 +528,39 @@ function drawScene(camera) {
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
-  gl.uniform1i(gl.data.uSampler, 0);
+  gl.uniform1i(SHADER.uSampler, 0);
 
   // Set matrix uniforms
-  gl.uniformMatrix4fv(gl.data.uPMatrix,  false,  pMatrix);
-  gl.uniformMatrix4fv(gl.data.uMVMatrix, false, mvMatrix);
+  gl.uniformMatrix4fv(SHADER.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(SHADER.uMVMatrix, false, mvMatrix);
 
   for (var i in WORLD)
     if (WORLD[i].visible)
       WORLD[i].render();
+
+  if (PICKED && WIREFRAME) {
+    gl.disable(gl.DEPTH_TEST);
+
+    mat4.translate(mvMatrix, [PICKED.x, PICKED.y, PICKED.z]);
+
+    WIREFRAME.shader.use();
+
+    gl.uniformMatrix4fv(WIREFRAME.shader.uPMatrix,  false,  pMatrix);
+    gl.uniformMatrix4fv(WIREFRAME.shader.uMVMatrix, false, mvMatrix);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, WIREFRAME.aPosBuffer);
+    gl.vertexAttribPointer(WIREFRAME.shader.aPos,
+                           WIREFRAME.aPosBuffer.itemSize,
+                           gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, WIREFRAME.indexBuffer);
+    gl.drawElements(gl.LINES, 
+                    WIREFRAME.indexBuffer.numItems,
+                    gl.UNSIGNED_SHORT, 
+                    0);
+
+    gl.enable(gl.DEPTH_TEST);
+  }
 
   RENDER_STAT.end();
 }
@@ -921,6 +951,30 @@ function geometryBlock(b) {
 }
 
 
+function Wireframe() {
+  var vertices = [
+    0,0,0, 1,0,0, 1,0,1, 0,0,1,  // bottom
+    0,1,0, 1,1,0, 1,1,1, 0,1,1]; // top
+  var indices = [
+    4,5, 5,6, 6,7, 7,4,  // top
+    0,1, 1,2, 2,3, 3,0,  // bottom
+    0,4, 1,5, 2,6, 3,7]; // sides
+
+  this.aPosBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.aPosBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+  this.aPosBuffer.itemSize = 3;
+  this.aPosBuffer.numItems = vertices.length / 3;
+
+  this.indexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), 
+                gl.STATIC_DRAW);
+  this.indexBuffer.itemSize = 1;
+  this.indexBuffer.numItems = indices.length;
+}
+
+
 function Camera(init) {
   init = init || {};
   this.x = init.x || 0;
@@ -962,7 +1016,26 @@ function onLoad() {
     PLAYER.flying = true;
 
   initGL(canvas);
-  initShaders();
+
+  SHADER = new Shader('shader');
+  SHADER.use();
+  SHADER.locate('aVertexPosition');
+  gl.enableVertexAttribArray(SHADER.aVertexPosition);
+  SHADER.locate('aTextureCoord');
+  gl.enableVertexAttribArray(SHADER.aTextureCoord);
+  SHADER.locate('aLighting');
+  gl.enableVertexAttribArray(SHADER.aLighting);
+  SHADER.locate('uSampler');
+  SHADER.locate('uMVMatrix');
+  SHADER.locate('uPMatrix');
+
+  WIREFRAME = new Wireframe();
+
+  WIREFRAME.shader = new Shader('wireframe');
+  WIREFRAME.shader.locate('aPos');
+  gl.enableVertexAttribArray(SHADER.aPos);
+  WIREFRAME.shader.locate('uMVMatrix');
+  WIREFRAME.shader.locate('uPMatrix');
 
   // Init texture
 

@@ -7,6 +7,24 @@
 <script type="text/javascript" src="webgl-utils.js"></script>
 <script type="text/javascript" src="perlin.js"></script>
 
+<script id="wireframe-fs" type="x-shader/x-fragment">
+precision mediump float;
+
+void main(void) {
+  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+}
+</script>
+<script id="wireframe-vs" type="x-shader/x-vertex">
+attribute vec3 aPos;
+
+uniform mat4 uMVMatrix;
+uniform mat4 uPMatrix;
+
+void main(void) {
+  gl_Position = uPMatrix * uMVMatrix * vec4(aPos, 1.0);
+}
+</script>
+
 <script id="shader-fs" type="x-shader/x-fragment">
 precision mediump float;
 
