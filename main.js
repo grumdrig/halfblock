@@ -539,11 +539,13 @@ function drawScene(camera) {
       WORLD[i].render();
 
   if (PICKED && WIREFRAME) {
-    gl.disable(gl.DEPTH_TEST);
 
     mat4.translate(mvMatrix, [PICKED.x, PICKED.y, PICKED.z]);
 
     WIREFRAME.shader.use();
+
+    gl.lineWidth(2);
+    gl.enable(gl.LINE_SMOOTH);
 
     gl.uniformMatrix4fv(WIREFRAME.shader.uPMatrix,  false,  pMatrix);
     gl.uniformMatrix4fv(WIREFRAME.shader.uMVMatrix, false, mvMatrix);
@@ -592,7 +594,7 @@ function updateWorld() {
   var waspicked = PICKED;
   var wasface = PICKED_FACE;
   PICKED = pickp();
-  if (PICKED !== waspicked || PICKED_FACE !== wasface) {
+  if (!WIREFRAME && (PICKED !== waspicked || PICKED_FACE !== wasface)) {
     if (PICKED) PICKED.invalidate();
     if (waspicked) waspicked.invalidate();
   }
@@ -881,7 +883,7 @@ function geometryDecalX(b) {
     / LIGHT_MAX;
   if (b.y >= NY-1)
     light = 1;  // Account for topmost block against non-block
-  if (b === PICKED)
+  if (!WIREFRAME && b === PICKED)
     light = 2;
   
   v.positions = [b.x,       b.y,     b.z + 0.5,
@@ -926,7 +928,7 @@ function geometryBlock(b) {
         / LIGHT_MAX;
       if (b.y >= NY-1 && face === FACE_TOP) 
         light = 1;  // Account for topmost block against non-block
-      if (b === PICKED && face === PICKED_FACE) 
+      if (!WIREFRAME && (b === PICKED && face === PICKED_FACE))
         light = 2;
       for (var ic = 0; ic < 12; ++ic) {
         var d = triplet[ic % 3];
