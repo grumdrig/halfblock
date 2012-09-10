@@ -1004,7 +1004,7 @@ function Camera(init) {
   this.yaw = init.yaw || 0;
   this.pitch = init.pitch || 0;
   this.horizontalFieldOfView = init.horizontalFieldOfView || Math.PI/4;
-  this.viewDistance = init.viewDistance || 100;
+  this.viewDistance = init.viewDistance || 50;
 }
 
 Camera.prototype.toString = function () {

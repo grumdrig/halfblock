@@ -30,27 +30,18 @@ precision mediump float;
 
 varying vec2 vTextureCoord;
 varying vec3 vLighting;
-//varying float vFog;
+varying float vFog;
 
 uniform sampler2D uSampler;
-
-const float fogDistance = 20.0;
 
 void main(void) {
   vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, 
                                                vTextureCoord.t));
-  if (textureColor.a <= 0.5) 
+  if (textureColor.a <= 0.5) {
     discard;
-  else {
+  } else {
     textureColor = vec4(textureColor.rgb * vLighting, textureColor.a);
-    float z = gl_FragCoord.z / gl_FragCoord.w;
-    //float fog = (z - 20.0) / 10.0;
-    float fog = exp(-z * z / (fogDistance * fogDistance));
-    fog = clamp(1.0 - fog, 0.0, 1.0);
-    fog *= fog;
-    if (fog > 0.0) {
-      textureColor = fog * vec4(0.5,0.8,0.98,0) + (1.0 - fog) * textureColor;
-    }
+    textureColor = vFog * vec4(0.5,0.8,0.98,0) + (1.0 - vFog) * textureColor;
     gl_FragColor = textureColor;
   }
 }
@@ -66,12 +57,16 @@ uniform mat4 uPMatrix;
 
 varying vec2 vTextureCoord;
 varying vec3 vLighting;
-//varying float vFog;
+varying float vFog;
+
+const float fogDistance = 20.0;
 
 void main(void) {
   gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
   vTextureCoord = aTextureCoord / 16.0;
   vLighting = aLighting;
+  float z = abs(gl_Position.z);  // Use length() if not enough fog at corners
+  vFog = clamp(1.0 - exp(-z * z / (fogDistance * fogDistance)), 0.0, 1.0);
 }
 </script>
 
