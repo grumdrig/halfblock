@@ -999,6 +999,29 @@ function onLoad() {
     }});
 */
 
+  document.addEventListener('fullscreenchange', fullscreenChange, false);
+  document.addEventListener('mozfullscreenchange', fullscreenChange, false);
+  document.addEventListener('webkitfullscreenchange', fullscreenChange, false);
+  
+  document.addEventListener('pointerlockchange', pointerLockChange, false);
+  document.addEventListener('mozpointerlockchange', pointerLockChange, false);
+  document.addEventListener('webkitpointerlockchange',pointerLockChange,false);
+  
+  document.addEventListener('pointerlockerror', pointerLockError, false);
+  document.addEventListener('mozpointerlockerror', pointerLockError, false);
+  document.addEventListener('webkitpointerlockerror', pointerLockError, false);
+
+  canvas.requestFullscreen = 
+    canvas.requestFullscreen || 
+    canvas.mozRequestFullscreen || 
+    canvas.mozRequestFullScreen ||
+    canvas.webkitRequestFullscreen;
+
+  canvas.requestPointerLock = 
+    canvas.requestPointerLock ||
+    canvas.mozRequestPointerLock || 
+    canvas.webkitRequestPointerLock;
+  
   tick();
 }
 
@@ -1017,20 +1040,35 @@ function onkeydown(event, count) {
     count = (KEYS[k] || 0) + 1;
 
   KEYS[k] = KEYS[c] = count;
+
+  if (c === 'L' && canvas.requestFullscreen && canvas.requestPointerLock)
+    canvas.requestFullscreen();
 }
 
 function onmousemove(event) {
-  if (PLAYER.mouselook && typeof lastX !== 'undefined') {
-    var xDelta = event.pageX - lastX;
-    var yDelta = event.pageY - lastY;
+  if (PLAYER.mouselook) {
+    if (typeof lastX === 'undefined') {
+      lastX = event.pageX;
+      lastY = event.pageY;
+    }
+    var movementX = event.movementX || 
+      event.mozMovementX || 
+      event.webkitMovementX ||
+      (event.pageX - lastX);
+    var movementY = event.movementY || 
+      event.mozMovementY ||
+      event.webkitMovementY ||
+      (event.pageY - lastY);
     var spinRate = 0.01;
-    PLAYER.yaw += xDelta * spinRate;
-    PLAYER.pitch += yDelta * spinRate;
+    PLAYER.yaw += movementX * spinRate;
+    PLAYER.pitch += movementY * spinRate;
     PLAYER.pitch = Math.max(Math.min(Math.PI/2, PLAYER.pitch), -Math.PI/2);
+    lastX = event.pageX;
+    lastY = event.pageY;
   }
-  lastX = event.pageX;
-  lastY = event.pageY;
 }
+
+
 function onmousedown(event) {
   event = event || window.event;
   if (event.preventDefault) event.preventDefault();
@@ -1084,4 +1122,28 @@ Stat.prototype.toString = function () {
   }
   return this.name + ': ' + v.toFixed(this.places) +  
     ' (' + l.toFixed(this.places) + ' ' + h.toFixed(this.places) + ')';
+}
+
+function fullscreenChange() {
+  if ((document.webkitFullscreenElement || 
+       document.mozFullscreenElement ||
+       document.mozFullScreenElement) === canvas) {
+    // Element is fullscreen, now we can request pointer lock
+    canvas.requestPointerLock();
+  }
+}
+
+
+function pointerLockChange() {
+  if ((document.mozPointerLockElement ||
+       document.webkitPointerLockElement) === canvas) {
+    console.log("Pointer Lock was successful.");
+  } else {
+    console.log("Pointer Lock was lost.");
+  }
+}
+
+
+function pointerLockError() {
+  console.log("Error while locking pointer.");
 }
