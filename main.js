@@ -55,16 +55,51 @@ var FACE_TOP = 3;
 var FACE_RIGHT = 4;
 var FACE_LEFT = 5;
 
-var TILE_ROCK = 1;
-var TILE_DIRT = 2;
-var TILE_GRASS = 3;
-var TILE_FLAG = 4;
-var TILE_TESTPATTERN = 5;
-var TILE_BEDROCK = 6;
-var TILE_ICE = 7;
-var TILE_FLOWER = 8;
 
-
+var TILES = {
+  air: {
+    tile: 0,
+    empty: true,
+    opaque: false,
+  },
+  rock: {
+    tile: 1,
+    solid: true,
+    opaque: true,
+  },
+  dirt: {
+    tile: 2,
+    solid: true,
+    opaque: true,
+  },
+  grass: {
+    tile: 3,
+    solid: true,
+    opaque: true,
+  },
+  flag: {
+    tile: 4,
+  },
+  testpattern: {
+    tile: 5
+  },
+  bedrock: {
+    tile:6,
+    solid: true,
+    opaque: true,
+  },
+  ice: {
+    tile: 7,
+    solid: true,
+    translucent: true,
+  },
+  flower: {
+    tile: 8,
+    //render: renderDecalX,
+  },
+};
+  
+    
 function initGL(canvas) {
   var problem = '';
   try {
@@ -283,13 +318,13 @@ Chunk.prototype.update = function () {
     var c = this.blocks[i];
     var xz = c.x + NX * c.z;
     c.uncovered = (typeof tops[xz] === 'undefined');
-    if (c.uncovered && c.solid())
+    if (c.uncovered && c.type.opaque)
       tops[xz] = c;
     if (c.dirty) {
       c.dirty = false;
       var ns = neighbors(c);
       var light;
-      if (c.solid()) {
+      if (c.type.opaque) {
         light = 0;
       } else if (c.uncovered) {
         light = LIGHT_MAX;
@@ -553,17 +588,21 @@ function processInput(avatar, elapsed) {
     
     // Check collisions
     if (frac(avatar.x) < avatar.radius && 
-        (block(ox-1, oy,   oz).solid() || block(ox-1, oy+1, oz).solid())) {
+        (block(ox-1, oy,   oz).type.solid || 
+         block(ox-1, oy+1, oz).type.solid)) {
       avatar.x = Math.floor(avatar.x) + avatar.radius;
     } else if (carf(avatar.x) < avatar.radius && 
-               (block(ox+1, oy,   oz).solid() || block(ox+1, oy+1, oz).solid())) {
+               (block(ox+1, oy,   oz).type.solid || 
+                block(ox+1, oy+1, oz).type.solid)) {
       avatar.x = Math.ceil(avatar.x) - avatar.radius;
     }
     if (frac(avatar.z) < avatar.radius && 
-        (block(ox, oy, oz-1).solid() || block(ox, oy+1, oz-1).solid())) {
+        (block(ox, oy, oz-1).type.solid || 
+         block(ox, oy+1, oz-1).type.solid)) {
       avatar.z = Math.floor(avatar.z) + avatar.radius;
     } else if (carf(avatar.z) < avatar.radius && 
-               (block(ox, oy, oz+1).solid() || block(ox, oy+1, oz+1).solid())) {
+               (block(ox, oy, oz+1).type.solid || 
+                block(ox, oy+1, oz+1).type.solid)) {
       avatar.z = Math.ceil(avatar.z) - avatar.radius;
     }
   }
@@ -574,7 +613,7 @@ function processInput(avatar, elapsed) {
   if (!avatar.flying && !avatar.falling && keyPressed(' ')) {
     avatar.dy = 5.5;
     avatar.falling = true;
-    if (block(avatar).solid()) 
+    if (block(avatar).type.solid) 
       avatar.y = Math.floor(avatar.y + 1);
   }
   
@@ -599,21 +638,21 @@ function ballistics(entity, elapsed) {
   if (!entity.flying) {
     var c = block(entity);
     if (!entity.falling) {
-      if (c.solid()) {
+      if (c.type.solid) {
         // Rise from dirt at 3 m/s
         entity.y += 3 * elapsed;
-        if (!block(entity).solid()) {
+        if (!block(entity).type.solid) {
           entity.y = Math.floor(entity.y);
         }
       } else if (!block(entity.x, 
                         entity.y-1,
-                        entity.z).solid()) {
+                        entity.z).type.solid) {
         // Fall off cliff
         entity.falling = true;
         entity.dy = 0;
       }
     } else { // falling
-      if (c.solid()) {
+      if (c.type.solid) {
         // Landed
         entity.dy = 0;
         entity.falling = false;
@@ -655,7 +694,7 @@ function pick(x, y, z, pitch, yaw) {
     if (dist > PICK_MAX)
       break;
     var b = block(x,y,z);
-    if (b.tile) 
+    if (!b.type.empty) 
       return b;
 
     var dx = next(x, px);
@@ -708,7 +747,7 @@ function tick() {
     UPDATE_STAT + '<br>' +
     'Player: ' + PLAYER + '<br>' +
     'Light: ' + block(PLAYER).light;
-  if (PICKED && PICKED.tile)
+  if (PICKED)
     feedback += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
   document.getElementById('stats').innerHTML = feedback;
 }
@@ -729,7 +768,7 @@ function handleLoadedTexture(texture) {
 function topmost(x, z) {
   for (var y = NY-1; y >= 0; --y) {
     var c = block(x,y,z);
-    if (c.solid()) return c;
+    if (c.type.solid) return c;
   }
   return null;
 }
@@ -746,31 +785,26 @@ function Block(coord, chunk) {
 
   this.light = LIGHT_MIN;
   this.dirty = true;
-}
 
-
-Block.prototype.solid = function () {
-  return (this.tile == TILE_ROCK ||
-          this.tile == TILE_DIRT ||
-          this.tile == TILE_GRASS ||
-          this.tile == TILE_BEDROCK);
+  this.type = TILES.air;
 }
 
 
 Block.prototype.generateTerrain = function () {
   if (this.y == 0) {
-    this.tile = TILE_BEDROCK;
+    this.type = TILES.bedrock;
   } else {
     var n = pinkNoise(this.x, this.y, this.z, 32, 2) + 
       (2 * this.y - NY) / NY;
-    if (n < -0.2) this.tile = TILE_ROCK;
-    else if (n < -0.1) this.tile = TILE_DIRT;
-    else if (n < 0) this.tile = TILE_GRASS;
-    else if (n < 0.001) this.tile = TILE_FLOWER;
-  
+    if (n < -0.2) this.type = TILES.rock;
+    else if (n < -0.1) this.type = TILES.dirt;
+    else if (n < 0) this.type = TILES.grass;
+    else if (n < 0.001) this.type = TILES.flower;
+    else this.type = TILES.air;
+
     // Caves
     if (Math.pow(noise(this.x/20, this.y/20, this.z/20), 3) < -0.1)
-      this.tile = 0;
+      this.type = TILES.air;
   }
 }
 
@@ -794,7 +828,7 @@ Block.prototype.generateVertices = function () {
     indices: [],
   };
     
-  if (this.tile === TILE_FLOWER) {
+  if (this.type === TILES.flower) {
     var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, this.light||0))
       / LIGHT_MAX;
     if (this.y >= NY-1)
@@ -813,19 +847,19 @@ Block.prototype.generateVertices = function () {
     v.indices = [0, 1, 2,  0, 2, 3,
                  4, 5, 6,  4, 6, 7];
     for (var i = 0; i < 2; ++i) {
-      v.textures.push(this.tile,     15, 
-                      this.tile + 1, 15, 
-                      this.tile + 1, 16, 
-                      this.tile,     16);
+      v.textures.push(this.type.tile,     15, 
+                      this.type.tile + 1, 15, 
+                      this.type.tile + 1, 16, 
+                      this.type.tile,     16);
     }
     for (var i = 0; i < v.positions.length; ++i)
       v.lighting.push(light);
     
-  } else if (this.tile) {
+  } else if (this.type.tile) {
     var triplet = [this.x, this.y, this.z];
     var c = this;
     function nabe(n, coord, sign, face) {
-      if (!n.solid()) {
+      if (!n.type.opaque) {
         var pindex = v.positions.length / 3;
         var corners = (face === 1 || face === 2 || face === 5) ?
           [0,0, 1,0, 1,1, 0,1] :
@@ -848,10 +882,10 @@ Block.prototype.generateVertices = function () {
         v.indices.push(pindex, pindex + 1, pindex + 2,
                        pindex, pindex + 2, pindex + 3);
 
-        v.textures.push(c.tile,     15, 
-                        c.tile + 1, 15, 
-                        c.tile + 1, 16, 
-                        c.tile,     16);
+        v.textures.push(c.type.tile,     15, 
+                        c.type.tile + 1, 15, 
+                        c.type.tile + 1, 16, 
+                        c.type.tile,     16);
 
       }
     }
@@ -973,15 +1007,15 @@ function onmousemove(event) {
 function onmousedown(event) {
   event = event || window.event;
   if (event.preventDefault) event.preventDefault();
-  if (PICKED && PICKED.tile) {
+  if (PICKED) {
     if (event.button === 0) {
-      PICKED.tile = 0;
+      PICKED.type = TILES.air;
       PICKED.invalidate();
       neighbors(PICKED, function (n) { n.invalidate() });
     } else {
       var b = blockFacing(PICKED, PICKED_FACE);
       if (!b.outofbounds) {
-        b.tile = PICKED.tile;
+        b.type = PICKED.type;
         b.invalidate();
       }
     }
