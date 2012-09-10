@@ -545,7 +545,6 @@ function drawScene(camera) {
     WIREFRAME.shader.use();
 
     gl.lineWidth(2);
-    gl.enable(gl.LINE_SMOOTH);
 
     gl.uniformMatrix4fv(WIREFRAME.shader.uPMatrix,  false,  pMatrix);
     gl.uniformMatrix4fv(WIREFRAME.shader.uMVMatrix, false, mvMatrix);
