@@ -24,7 +24,7 @@ var WIREFRAME;
 
 // Map chunk dimensions
 var LOGNX = 4;
-var LOGNY = 4;
+var LOGNY = 5;
 var LOGNZ = 4;
 var NX = 1 << LOGNX;
 var NY = 1 << LOGNY;
@@ -787,6 +787,7 @@ function tick() {
   if (!lastFrame) lastFrame = timeNow;
   FPS_STAT.end(lastFrame);
   var elapsed = (timeNow - lastFrame) / 1000;
+  if (elapsed > 0.1) elapsed = 0.1;  // Limit lagdeath
   lastFrame = timeNow;
 
   requestAnimFrame(tick);
