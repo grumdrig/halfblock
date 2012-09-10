@@ -30,8 +30,11 @@ precision mediump float;
 
 varying vec2 vTextureCoord;
 varying vec3 vLighting;
+//varying float vFog;
 
 uniform sampler2D uSampler;
+
+const float fogDistance = 20.0;
 
 void main(void) {
   vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, 
@@ -39,10 +42,12 @@ void main(void) {
   if (textureColor.a <= 0.5) 
     discard;
   else {
-    // see here for better fog probably
-    // http://www.geeks3d.com/20100228/fog-in-glsl-webgl/
     textureColor = vec4(textureColor.rgb * vLighting, textureColor.a);
-    float fog = clamp((gl_FragCoord.z/gl_FragCoord.w - 10.0) / 10.0, 0.0, 1.0);
+    float z = gl_FragCoord.z / gl_FragCoord.w;
+    //float fog = (z - 20.0) / 10.0;
+    float fog = exp(-z * z / (fogDistance * fogDistance));
+    fog = clamp(1.0 - fog, 0.0, 1.0);
+    fog *= fog;
     if (fog > 0.0) {
       textureColor = fog * vec4(0.5,0.8,0.98,0) + (1.0 - fog) * textureColor;
     }
@@ -61,6 +66,7 @@ uniform mat4 uPMatrix;
 
 varying vec2 vTextureCoord;
 varying vec3 vLighting;
+//varying float vFog;
 
 void main(void) {
   gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
