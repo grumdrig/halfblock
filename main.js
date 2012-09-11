@@ -22,6 +22,8 @@ var PICKED_FACE = 0;
 var PICK_MAX = 8;
 var WIREFRAME;
 
+var PARTICLES;
+
 // Map chunk dimensions
 var LOGNX = 4;
 var LOGNY = 5;
@@ -38,6 +40,8 @@ FPS_STAT.invert = true;
 
 var lastFrame = 0;
 var lastUpdate = 0;
+
+var GRAVITY = 9.8;  // m/s/s
 
 var LIGHT_MAX = 8;
 var LIGHT_SUN = 6;
@@ -193,6 +197,8 @@ Shader.prototype.use = function () {
 Shader.prototype.locate = function(variable) {
   var type = { a: 'Attrib', u: 'Uniform' }[variable[0]];
   this[variable] = gl['get' + type + 'Location'](this.program, variable);
+  if (type === 'Attrib')
+    gl.enableVertexAttribArray(this[variable]);
 }
 
 
@@ -267,32 +273,15 @@ Chunk.prototype.generateBuffers = function () {
       indices.push(pindex + b.vertices.indices[j]);
   }
   
-  this.vertexPositionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexPositionBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-  this.vertexPositionBuffer.itemSize = 3;
-  this.vertexPositionBuffer.numItems = positions.length / 3;
+  this.vertexPositionBuffer = makeBuffer(positions, 3);
 
-  this.vertexIndexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.vertexIndexBuffer);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), 
-                gl.STATIC_DRAW);
-  this.vertexIndexBuffer.itemSize = 1;
-  this.vertexIndexBuffer.numItems = indices.length;
-
-  // One ST pair for every XYZ in the position buffer (I think)
-  this.vertexTextureCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexTextureCoordBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textures), gl.STATIC_DRAW);
-  this.vertexTextureCoordBuffer.itemSize = 2;
-  this.vertexTextureCoordBuffer.numItems = textures.length / 2;
+  // One ST pair for every XYZ in the position buffer
+  this.vertexTextureCoordBuffer = makeBuffer(textures, 2);
 
   // One RGB triple for each XYZ in the position buffer
-  this.vertexLightingBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexLightingBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lighting), gl.STATIC_DRAW);
-  this.vertexLightingBuffer.itemSize = 3;
-  this.vertexLightingBuffer.numItems = lighting.length / 3;
+  this.vertexLightingBuffer = makeBuffer(lighting, 3);
+
+  this.vertexIndexBuffer = makeElementArrayBuffer(indices);
 
   this.ndirty = 0;
 }
@@ -555,6 +544,8 @@ function drawScene(camera) {
     if (WORLD[i].visible)
       WORLD[i].render();
 
+  PARTICLES.render();
+
   if (PICKED && WIREFRAME) {
 
     mat4.translate(mvMatrix, [PICKED.x, PICKED.y, PICKED.z]);
@@ -724,7 +715,7 @@ function ballistics(entity, elapsed) {
         entity.y = Math.floor(entity.y + 1);
       } else {
         // Still falling
-        entity.dy -= 9.8 * elapsed;
+        entity.dy -= GRAVITY * elapsed;
         entity.y += entity.dy * elapsed;
       }
     }
@@ -800,6 +791,9 @@ function tick() {
 
   processInput(PLAYER, elapsed);
   ballistics(PLAYER, elapsed);
+
+  for (var i in PARTICLES.particles)
+    PARTICLES.particles[i].tick(elapsed);
 
   var UPDATE_PERIOD_MS = 100;
   if (timeNow > lastUpdate + UPDATE_PERIOD_MS) {
@@ -985,11 +979,7 @@ function Wireframe() {
     0,1, 1,2, 2,3, 3,0,  // bottom
     0,4, 1,5, 2,6, 3,7]; // sides
 
-  this.aPosBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.aPosBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-  this.aPosBuffer.itemSize = 3;
-  this.aPosBuffer.numItems = vertices.length / 3;
+  this.aPosBuffer = makeBuffer(vertices, 3);
 
   this.indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
@@ -1031,7 +1021,7 @@ function onLoad() {
 
   PLAYER.dy = 0;
   PLAYER.flying = false;
-  PLAYER.mouselook = false;
+  PLAYER.mouselook = true;
   PLAYER.radius = 0.1;
 
   var c = topmost(PLAYER.x, PLAYER.z);
@@ -1045,11 +1035,8 @@ function onLoad() {
   SHADER = new Shader('shader');
   SHADER.use();
   SHADER.locate('aVertexPosition');
-  gl.enableVertexAttribArray(SHADER.aVertexPosition);
   SHADER.locate('aTextureCoord');
-  gl.enableVertexAttribArray(SHADER.aTextureCoord);
   SHADER.locate('aLighting');
-  gl.enableVertexAttribArray(SHADER.aLighting);
   SHADER.locate('uSampler');
   SHADER.locate('uMVMatrix');
   SHADER.locate('uPMatrix');
@@ -1058,9 +1045,10 @@ function onLoad() {
 
   WIREFRAME.shader = new Shader('wireframe');
   WIREFRAME.shader.locate('aPos');
-  gl.enableVertexAttribArray(SHADER.aPos);
   WIREFRAME.shader.locate('uMVMatrix');
   WIREFRAME.shader.locate('uPMatrix');
+
+  PARTICLES = new ParticleSystem();
 
   // Init texture
 
@@ -1150,8 +1138,14 @@ function onkeydown(event, count) {
         b.invalidate();
       }
     }
+    
+    if (c === 'K' && PICKED) {
+      for (var i = 0; i < 10; ++i) {
+        var f = blockFacing(PICKED, PICKED_FACE);
+        new Particle({x: f.x+0.5, y: f.y+0.5, z: f.z+0.5});
+      }
+    }
   }
-
 }
 
 function onmousemove(event) {
@@ -1255,4 +1249,112 @@ function pointerLockChange() {
 
 function pointerLockError() {
   console.log("Error while locking pointer.");
+}
+
+function tweak() { return (Math.random() - 0.5) * (Math.random() - 0.5) }
+
+function Particle(coords) {
+  this.x0 = coords.x + tweak();
+  this.y0 = coords.y + tweak();
+  this.z0 = coords.z + tweak();
+  this.dx = tweak();
+  this.dy = tweak();
+  this.dz = tweak();
+  this.life = 0.5 + Math.random();
+  this.id = PARTICLES.nextID++;
+  this.birthday = +new Date()/1000;
+  PARTICLES.add(this);
+}
+
+Particle.prototype.tick = function (elapsed) {
+  this.life -= elapsed;
+  if (this.life < 0)
+    PARTICLES.remove(this);
+}
+
+function ParticleSystem() {
+  this.nextID = 1;
+  this.particles = {};
+  this.shader = new Shader('particle');
+  this.shader.locate('aInitialPos');
+  this.shader.locate('aVelocity');
+  this.shader.locate('aBirthday');
+  this.shader.locate('uClock');
+  this.shader.locate('uMVMatrix');
+  this.shader.locate('uPMatrix');
+}
+
+ParticleSystem.prototype.add = function (p) {
+  this.particles[p.id] = p;
+  delete this.buffers;
+}
+
+ParticleSystem.prototype.remove = function (p) {
+  delete this.particles[p.id];
+  delete this.buffers;
+}
+
+function makeBuffer(data, itemsize) {
+  var buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+  buffer.itemSize = itemsize;
+  buffer.numItems = data.length / itemsize;
+  return buffer;
+}
+
+function makeElementArrayBuffer(data) {
+  var buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(data), 
+                gl.STATIC_DRAW);
+  buffer.itemSize = 1;
+  buffer.numItems = data.length;
+  return buffer;
+}
+
+ParticleSystem.prototype.render = function () {
+  this.shader.use();
+
+  gl.disable(gl.DEPTH_TEST);
+
+  if (!this.buffers) {
+    var aInitialPos = [];
+    var aVelocity = [];
+    var aBirthday = [];
+    for (var i in this.particles) {
+      var p = this.particles[i];
+      aInitialPos.push(p.x0, p.y0, p.z0);
+      aVelocity.push(p.dx, p.dy, p.dz);
+      aBirthday.push(p.birthday);
+    }
+    //console.log('BOOFERS', aInitialPos, aVelocity, aBirthday);
+    this.buffers = {};
+    this.buffers.aInitialPos = makeBuffer(aInitialPos, 3);
+    this.buffers.aVelocity = makeBuffer(aVelocity, 3);
+    this.buffers.aBirthday = makeBuffer(aBirthday, 1);
+  }
+
+  gl.uniform1f(this.shader.uClock, +new Date()/1000);
+  gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.aInitialPos);
+  gl.vertexAttribPointer(this.shader.aInitialPos,
+                         this.buffers.aInitialPos.itemSize,
+                         gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.aVelocity);
+  gl.vertexAttribPointer(this.shader.aVelocity,
+                         this.buffers.aVelocity.itemSize,
+                         gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.aBirthday);
+  gl.vertexAttribPointer(this.shader.aBirthday,
+                         this.buffers.aBirthday.itemSize,
+                         gl.FLOAT, false, 0, 0);
+ 
+  gl.drawArrays(gl.POINTS, 0, this.buffers.aInitialPos.numItems);
+
+  gl.enable(gl.DEPTH_TEST);
 }

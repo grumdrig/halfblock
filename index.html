@@ -8,6 +8,7 @@
 <script type="text/javascript" src="perlin.js"></script>
 
 <script id="wireframe-fs" type="x-shader/x-fragment">
+   ///////////////////////////////////////////////////
 precision mediump float;
 
 void main(void) {
@@ -15,6 +16,7 @@ void main(void) {
 }
 </script>
 <script id="wireframe-vs" type="x-shader/x-vertex">
+  ///////////////////////////////////////////////////
 attribute vec3 aPos;
 
 uniform mat4 uMVMatrix;
@@ -25,7 +27,34 @@ void main(void) {
 }
 </script>
 
+<script id="particle-fs" type="x-shader/x-fragment">
+  ///////////////////////////////////////////////////
+precision mediump float;
+
+void main(void) {
+  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+}
+</script>
+<script id="particle-vs" type="x-shader/x-vertex">
+  ///////////////////////////////////////////////////
+attribute vec3 aInitialPos;
+attribute vec3 aVelocity;
+attribute float aBirthday;
+uniform float uClock;
+uniform mat4 uMVMatrix;
+uniform mat4 uPMatrix;
+
+void main(void) {
+  float age = uClock - aBirthday;
+  vec3 pos = aInitialPos + age * aVelocity;
+  pos.y -= 9.8 * age * age;
+  gl_Position = uPMatrix * uMVMatrix * vec4(pos, 1.0);
+  gl_PointSize = 4.0;
+}
+</script>
+
 <script id="shader-fs" type="x-shader/x-fragment">
+  ///////////////////////////////////////////////////
 precision mediump float;
 
 varying vec2 vTextureCoord;
