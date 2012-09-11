@@ -799,8 +799,7 @@ function tick() {
   processInput(PLAYER, elapsed);
   ballistics(PLAYER, elapsed);
 
-  for (var i in PARTICLES.particles)
-    PARTICLES.particles[i].tick(elapsed);
+  PARTICLES.tick(elapsed);
 
   var UPDATE_PERIOD_MS = 100;
   if (timeNow > lastUpdate + UPDATE_PERIOD_MS) {
@@ -1155,7 +1154,7 @@ function onkeydown(event, count) {
     if (c === 'K' && PICKED) {
       for (var i = 0; i < 10; ++i) {
         var f = blockFacing(PICKED, PICKED_FACE);
-        new Particle({x: f.x+0.5, y: f.y+0.5, z: f.z+0.5});
+        PARTICLES.spawn({x: f.x+0.5, y: f.y+0.5, z: f.z+0.5});
       }
     }
   }
@@ -1194,7 +1193,7 @@ function onmousedown(event) {
       PICKED.invalidate();
       neighbors(PICKED, function (n) { n.invalidate() });
       for (var i = 0; i < 50; ++i)
-        new Particle({x: PICKED.x+0.5, y: PICKED.y+0.5, z: PICKED.z+0.5});
+        PARTICLES.spawn({x: PICKED.x+0.5, y: PICKED.y+0.5, z: PICKED.z+0.5});
     } else {
       var b = blockFacing(PICKED, PICKED_FACE);
       if (!b.outofbounds) {
@@ -1268,25 +1267,21 @@ function pointerLockError() {
 
 function tweak() { return (Math.random() - 0.5) }
 
-function Particle(near) {
-  this.dx = 2 * tweak();
-  this.dy = 0.5 + 3 * Math.random();
-  this.dz = 2 * tweak();
-  this.x0 = near.x;
-  this.y0 = near.y;
-  this.z0 = near.z;
-  this.life = 0.5 + Math.random() / 2;
-  this.id = PARTICLES.nextID++;
-  this.birthday = PLAYER.clock()/1000 - Math.random();
-  PARTICLES.add(this);
+ParticleSystem.prototype.spawn = function (near) {
+  var p = {
+    dx: 2 * tweak(),
+    dy: 0.5 + 3 * Math.random(),
+    dz: 2 * tweak(),
+    x0: near.x,
+    y0: near.y,
+    z0: near.z,
+    id: PARTICLES.nextID++,
+    birthday: PLAYER.clock()/1000 - Math.random(),
+    life: 0.5 + Math.random() / 2,
+  }
+  this.add(p);
+  this.bounceParticle(p);
 }
-
-Particle.prototype.tick = function (elapsed) {
-  this.life -= elapsed;
-  if (this.life < 0)
-    PARTICLES.remove(this);
-}
-
 
 function ParticleSystem() {
   this.nextID = 1;
@@ -1308,6 +1303,45 @@ ParticleSystem.prototype.add = function (p) {
 ParticleSystem.prototype.remove = function (p) {
   delete this.particles[p.id];
   delete this.buffers;
+}
+
+ParticleSystem.prototype.tick = function (elapsed) {
+  for (var i in this.particles) {
+    var p = this.particles[i];
+    p.life -= elapsed;
+    if (p.life < 0)
+      PARTICLES.remove(p);
+  }
+}
+
+ParticleSystem.prototype.bounceParticle = function (p) {
+  // Collide with whatever face will get hit first
+  var tx = ((p.dx > 0) ? carf(p.x0) : frac(p.x0)) / p.dx;
+  var tz = ((p.dz > 0) ? carf(p.z0) : frac(p.z0)) / p.dz;
+  var ty = p.dy + Math.sqrt(p.dy * p.dy + 2 * GRAVITY * frac(p.y0)) / 
+    2 * GRAVITY;
+  var t = Math.min(tx, ty, tz);
+  if (t < p.life) {
+    var np = {
+      x0: p.x0 + t * p.dx,
+      y0: p.y0 + t * p.dy + 0.5 * GRAVITY * t * t,
+      z0: p.z0 + t * p.dz,
+      dx: p.dx,
+      dy: p.dy,
+      dz: p.dz,
+      life: p.life - t,
+      birthday: p.birthday + t
+    }
+    p.life -= t;
+    var DAMPING = 0.5;
+    if (t === tx)
+      np.dx = -np.dx * DAMPING;
+    else if (t === tz)
+      np.dz = -np.dz * DAMPING;
+    else
+      np.dy = -np.dy * DAMPING;
+    this.add(np);
+  }
 }
 
 function makeBuffer(data, itemsize) {
