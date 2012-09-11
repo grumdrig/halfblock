@@ -6,101 +6,98 @@
 <script type="text/javascript" src="gl-matrix.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
 <script type="text/javascript" src="perlin.js"></script>
-
-<script id="wireframe-fs" type="x-shader/x-fragment">
-   ///////////////////////////////////////////////////
-precision mediump float;
-
-void main(void) {
-  gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-}
-</script>
-<script id="wireframe-vs" type="x-shader/x-vertex">
-  ///////////////////////////////////////////////////
-attribute vec3 aPos;
-
-uniform mat4 uMVMatrix;
-uniform mat4 uPMatrix;
-
-void main(void) {
-  gl_Position = uPMatrix * uMVMatrix * vec4(aPos, 1.0);
-}
-</script>
-
-<script id="particle-fs" type="x-shader/x-fragment">
-  ///////////////////////////////////////////////////
-precision mediump float;
-
-void main(void) {
-  gl_FragColor = vec4(0.4, 0.35, 0.25, 1.0);
-}
-</script>
-<script id="particle-vs" type="x-shader/x-vertex">
-  ///////////////////////////////////////////////////
-attribute vec3 aInitialPos;
-attribute vec3 aVelocity;
-attribute float aBirthday;
-uniform float uClock;
-uniform mat4 uMVMatrix;
-uniform mat4 uPMatrix;
-
-void main(void) {
-  float age = uClock - aBirthday;
-  vec3 pos = aInitialPos + age * aVelocity;
-  pos.y -= 3.2 * age * age;  // reduced gravity
-  if (uClock == aBirthday) pos.y += 3.0;
-  gl_Position = uPMatrix * uMVMatrix * vec4(pos, 1.0);
-  gl_PointSize = 7.0;
-}
-</script>
-
-<script id="shader-fs" type="x-shader/x-fragment">
-  ///////////////////////////////////////////////////
-precision mediump float;
-
-varying vec2 vTextureCoord;
-varying vec3 vLighting;
-varying float vFog;
-
-uniform sampler2D uSampler;
-
-void main(void) {
-  vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, 
-                                               vTextureCoord.t));
-  if (textureColor.a <= 0.5) {
-    discard;
-  } else {
-    textureColor = vec4(textureColor.rgb * vLighting, textureColor.a);
-    textureColor = vFog * vec4(0.5,0.8,0.98,0) + (1.0 - vFog) * textureColor;
-    gl_FragColor = textureColor;
-  }
-}
-</script>
-
-<script id="shader-vs" type="x-shader/x-vertex">
-attribute vec3 aVertexPosition;
-attribute vec2 aTextureCoord;
-attribute vec3 aLighting;
-
-uniform mat4 uMVMatrix;
-uniform mat4 uPMatrix;
-
-varying vec2 vTextureCoord;
-varying vec3 vLighting;
-varying float vFog;
-
-const float fogDistance = 20.0;
-
-void main(void) {
-  gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
-  vTextureCoord = aTextureCoord / 16.0;
-  vLighting = aLighting;
-  float z = abs(gl_Position.z);  // Use length() if not enough fog at corners
-  vFog = clamp(1.0 - exp(-z * z / (fogDistance * fogDistance)), 0.0, 1.0);
-}
-</script>
-
 <script type="text/javascript" src="main.js"></script>
+
+<!-- Shaders for wireframe selection box -->
+<script id="wireframe-vs" type="x-shader/x-vertex">
+  attribute vec3 aPos;
+
+  uniform mat4 uMVMatrix;
+  uniform mat4 uPMatrix;
+
+  void main(void) {
+    gl_Position = uPMatrix * uMVMatrix * vec4(aPos, 1.0);
+  }
+</script>
+<script id="wireframe-fs" type="x-shader/x-fragment">
+  precision mediump float;
+
+  void main(void) {
+    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+  }
+</script>
+
+<!-- Shaders for particles -->
+<script id="particle-vs" type="x-shader/x-vertex">
+  attribute vec3 aInitialPos;
+  attribute vec3 aVelocity;
+  attribute float aBirthday;
+  uniform float uClock;
+  uniform mat4 uMVMatrix;
+  uniform mat4 uPMatrix;
+
+  void main(void) {
+    float age = uClock - aBirthday;
+    vec3 pos = aInitialPos + age * aVelocity;
+    pos.y -= 3.2 * age * age;  // reduced gravity
+    if (uClock == aBirthday) pos.y += 3.0;
+    gl_Position = uPMatrix * uMVMatrix * vec4(pos, 1.0);
+    gl_PointSize = 7.0;
+  }
+</script>
+<script id="particle-fs" type="x-shader/x-fragment">
+  precision mediump float;
+  
+  void main(void) {
+    gl_FragColor = vec4(0.4, 0.35, 0.25, 1.0);
+  }
+</script>
+
+<!-- Block shader -->
+<script id="shader-vs" type="x-shader/x-vertex">
+  attribute vec3 aVertexPosition;
+  attribute vec2 aTextureCoord;
+  attribute vec3 aLighting;
+  
+  uniform mat4 uMVMatrix;
+  uniform mat4 uPMatrix;
+  
+  varying vec2 vTextureCoord;
+  varying vec3 vLighting;
+  varying float vFog;
+  
+  const float fogDistance = 20.0;
+  
+  void main(void) {
+    gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+    vTextureCoord = aTextureCoord / 16.0;
+    vLighting = aLighting;
+    float z = abs(gl_Position.z);  // Use length() if not enough fog at corners
+    vFog = clamp(1.0 - exp(-z * z / (fogDistance * fogDistance)), 0.0, 1.0);
+  }
+</script>
+<script id="shader-fs" type="x-shader/x-fragment">
+  precision mediump float;
+
+  varying vec2 vTextureCoord;
+  varying vec3 vLighting;
+  varying float vFog;
+  
+  uniform sampler2D uSampler;
+
+  void main(void) {
+    vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, 
+                                                 vTextureCoord.t));
+    if (textureColor.a <= 0.5) {
+      discard;
+    } else {
+      textureColor = vec4(textureColor.rgb * vLighting, textureColor.a);
+      textureColor = vFog * vec4(0.5,0.8,0.98,0) + (1.0 - vFog) * textureColor;
+      gl_FragColor = textureColor;
+    }
+  }
+</script>
+
 <style>
 body {
   height: 100%;
