@@ -607,6 +607,8 @@ function updateWorld() {
   }
   
   var c = coords(PLAYER);
+  makeChunk(c.chunkx, c.chunkz);
+  /*
   makeChunk(c.chunkx - NX, c.chunkz);
   makeChunk(c.chunkx + NX, c.chunkz);
   makeChunk(c.chunkx, c.chunkz - NZ);
@@ -615,6 +617,7 @@ function updateWorld() {
   makeChunk(c.chunkx + NX, c.chunkz - NZ);
   makeChunk(c.chunkx - NX, c.chunkz + NZ);
   makeChunk(c.chunkx + NX, c.chunkz + NZ);
+*/
   
   for (var i in WORLD)
     if (WORLD[i].ndirty > 0)
@@ -1265,16 +1268,16 @@ function pointerLockError() {
 
 function tweak() { return (Math.random() - 0.5) }
 
-function Particle(coords) {
-  this.x0 = coords.x + tweak();
-  this.y0 = coords.y + tweak();
-  this.z0 = coords.z + tweak();
-  this.dx = tweak();
-  this.dy = 0.5 + 2 * Math.random();
-  this.dz = tweak();
+function Particle(near) {
+  this.dx = 2 * tweak();
+  this.dy = 0.5 + 3 * Math.random();
+  this.dz = 2 * tweak();
+  this.x0 = near.x;
+  this.y0 = near.y;
+  this.z0 = near.z;
   this.life = 0.5 + Math.random() / 2;
   this.id = PARTICLES.nextID++;
-  this.birthday = PLAYER.clock()/1000;
+  this.birthday = PLAYER.clock()/1000 - Math.random();
   PARTICLES.add(this);
 }
 
@@ -1283,6 +1286,7 @@ Particle.prototype.tick = function (elapsed) {
   if (this.life < 0)
     PARTICLES.remove(this);
 }
+
 
 function ParticleSystem() {
   this.nextID = 1;
