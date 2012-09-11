@@ -122,8 +122,8 @@ var BLOCK_TYPES = {
     luminosity: LIGHT_LAMP,
   },
 };
-  
-    
+
+
 function initGL(canvas) {
   var problem = '';
   try {
@@ -186,7 +186,7 @@ function Shader(shader) {
   gl.linkProgram(this.program);
 
   if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
-    alert('Could not initialise shaders');
+    alert('Could not initialize shaders');
   }
 }
 
@@ -778,7 +778,7 @@ function pick(x, y, z, pitch, yaw) {
 
 function tick() {
   // Monkey with the clock
-  var timeNow = +new Date();
+  var timeNow = PLAYER.clock();
   if (!lastFrame) lastFrame = timeNow;
   FPS_STAT.end(lastFrame);
   var elapsed = (timeNow - lastFrame) / 1000;
@@ -999,6 +999,11 @@ function Camera(init) {
   this.pitch = init.pitch || 0;
   this.horizontalFieldOfView = init.horizontalFieldOfView || Math.PI/3;
   this.viewDistance = init.viewDistance || 50;
+  this.birthday = +new Date();
+}
+
+Camera.prototype.clock = function () {
+  return +new Date() - this.birthday;
 }
 
 Camera.prototype.toString = function () {
@@ -1251,18 +1256,18 @@ function pointerLockError() {
   console.log("Error while locking pointer.");
 }
 
-function tweak() { return (Math.random() - 0.5) * (Math.random() - 0.5) }
+function tweak() { return (Math.random() - 0.5) }
 
 function Particle(coords) {
   this.x0 = coords.x + tweak();
   this.y0 = coords.y + tweak();
   this.z0 = coords.z + tweak();
   this.dx = tweak();
-  this.dy = tweak();
+  this.dy = 0.5 + Math.random();
   this.dz = tweak();
-  this.life = 0.5 + Math.random();
+  this.life = 0.5 + Math.random() / 2;
   this.id = PARTICLES.nextID++;
-  this.birthday = +new Date()/1000;
+  this.birthday = PLAYER.clock()/1000;
   PARTICLES.add(this);
 }
 
@@ -1316,8 +1321,6 @@ function makeElementArrayBuffer(data) {
 ParticleSystem.prototype.render = function () {
   this.shader.use();
 
-  gl.disable(gl.DEPTH_TEST);
-
   if (!this.buffers) {
     var aInitialPos = [];
     var aVelocity = [];
@@ -1335,7 +1338,7 @@ ParticleSystem.prototype.render = function () {
     this.buffers.aBirthday = makeBuffer(aBirthday, 1);
   }
 
-  gl.uniform1f(this.shader.uClock, +new Date()/1000);
+  gl.uniform1f(this.shader.uClock, parseFloat(PLAYER.clock()/1000));
   gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
 
@@ -1355,6 +1358,4 @@ ParticleSystem.prototype.render = function () {
                          gl.FLOAT, false, 0, 0);
  
   gl.drawArrays(gl.POINTS, 0, this.buffers.aInitialPos.numItems);
-
-  gl.enable(gl.DEPTH_TEST);
 }

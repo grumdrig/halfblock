@@ -47,7 +47,8 @@ uniform mat4 uPMatrix;
 void main(void) {
   float age = uClock - aBirthday;
   vec3 pos = aInitialPos + age * aVelocity;
-  pos.y -= 9.8 * age * age;
+  pos.y -= 2.45 * age * age;  // quarter-gravity
+  if (uClock == aBirthday) pos.y += 3.0;
   gl_Position = uPMatrix * uMVMatrix * vec4(pos, 1.0);
   gl_PointSize = 4.0;
 }
