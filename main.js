@@ -41,7 +41,8 @@ FPS_STAT.invert = true;
 var lastFrame = 0;
 var lastUpdate = 0;
 
-var GRAVITY = 9.8;  // m/s/s
+var GRAVITY = 23;  // m/s/s
+var VJUMP = 7.7;   // m/s
 
 var LIGHT_MAX = 8;
 var LIGHT_SUN = 6;
@@ -120,6 +121,12 @@ var BLOCK_TYPES = {
     tile: 9,
     geometry: geometryDecalX,
     luminosity: LIGHT_LAMP,
+  },
+  candy: {
+    tile: 10,
+    solid: true,
+    opaque: true,
+    geometry: geometryBlock,
   },
 };
 
@@ -666,7 +673,7 @@ function processInput(avatar, elapsed) {
     avatar.y -= d;
   if (!avatar.flying && !avatar.falling && keyPressed(' ')) {
     // Jump!
-    avatar.dy = 5.5;
+    avatar.dy = VJUMP;
     avatar.falling = true;
     if (block(avatar).type.solid) 
       avatar.y = Math.floor(avatar.y + 1);
