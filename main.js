@@ -785,7 +785,7 @@ function tick() {
   var timeNow = PLAYER.clock();
   if (!lastFrame) lastFrame = timeNow;
   var elapsed = (timeNow - lastFrame) / 1000;
-  FPS_STAT.end(elapsed);
+  FPS_STAT.add(elapsed);
   if (elapsed > 0.1) elapsed = 0.1;  // Limit lagdeath
   lastFrame = timeNow;
 
@@ -1233,11 +1233,14 @@ Stat.prototype.start = function () {
 
 Stat.prototype.end = function (startTime) {
   if (typeof startTime === 'undefined') startTime = this.startTime;
-  var elapsed = +new Date() - startTime;
-  this.value = this.alpha * this.value + (1-this.alpha) * elapsed;
-  this.low = elapsed < this.low ? elapsed : 
+  this.add(+new Date() - startTime);
+}
+
+Stat.prototype.add = function (value) {
+  this.value = this.alpha * this.value + (1-this.alpha) * value;
+  this.low = value < this.low ? value : 
     this.beta * this.low + (1 - this.beta) * this.value;
-  this.high = elapsed > this.high ? elapsed : 
+  this.high = value > this.high ? value : 
     this.beta * this.high + (1 - this.beta) * this.value;
 }
 
