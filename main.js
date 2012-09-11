@@ -282,8 +282,6 @@ Chunk.prototype.generateBuffers = function () {
   this.vertexLightingBuffer = makeBuffer(lighting, 3);
 
   this.vertexIndexBuffer = makeElementArrayBuffer(indices);
-
-  this.ndirty = 0;
 }
 
 
@@ -345,7 +343,6 @@ Chunk.prototype.update = function () {
       tops[xz] = c;
     if (c.dirty) {
       c.dirty = false;
-      var ns = neighbors(c);
       var light;
       if (c.type.opaque) {
         light = 0;
@@ -368,7 +365,6 @@ Chunk.prototype.update = function () {
   console.log('Update: ', this.chunkx, this.chunkz, ':', this.ndirty);
   this.generateBuffers();
 }
-
 
 Chunk.prototype.centerPoint = function () {
   return {x: this.chunkx + NX / 2,
@@ -693,6 +689,7 @@ function processInput(avatar, elapsed) {
 function toggleMouselook() {
   PLAYER.mouselook = !PLAYER.mouselook;
   document.body.style.cursor = PLAYER.mouselook ? 'none' : '';
+  if (!PLAYER.mouselook) lastX = null;
 }
 
 
@@ -787,8 +784,8 @@ function tick() {
   // Monkey with the clock
   var timeNow = PLAYER.clock();
   if (!lastFrame) lastFrame = timeNow;
-  FPS_STAT.end(lastFrame);
   var elapsed = (timeNow - lastFrame) / 1000;
+  FPS_STAT.end(elapsed);
   if (elapsed > 0.1) elapsed = 0.1;  // Limit lagdeath
   lastFrame = timeNow;
 
@@ -813,8 +810,11 @@ function tick() {
     UPDATE_STAT + '<br>' +
     'Player: ' + PLAYER + '<br>' +
     'Light: ' + block(PLAYER).light;
-  if (PICKED)
+  if (PICKED) {
     feedback += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
+    var pf = blockFacing(PICKED, PICKED_FACE);
+    if (pf) feedback += ' &rarr; ' + pf;
+  }
   document.getElementById('stats').innerHTML = feedback;
 }
 
@@ -852,7 +852,7 @@ function Block(coord, chunk) {
   this.outofbounds = coord.outofbounds;
   this.chunk = chunk;
 
-  this.light = LIGHT_MIN;
+  this.light = 0;
   this.dirty = true;
 
   this.type = BLOCK_TYPES.air;
@@ -876,15 +876,19 @@ Block.prototype.generateTerrain = function () {
   }
 }
 
-Block.prototype.invalidate = function () {
+Block.prototype.invalidate = function (hard) {
   this.dirty = true;
-  this.vertices = null;
+  //if (hard) {
+    // e.g. when block type changes
+    this.vertices = null;
+    //this.light = -1;
+  //}
   if (this.chunk)
     ++this.chunk.ndirty;
 }
 
 Block.prototype.toString = function () {
-  return '[' + this.x + ',' + this.y + ',' + this.z + ']';
+  return '[' + this.x + ',' + this.y + ',' + this.z + '] &#9788;' + this.light;
 }
 
 
@@ -1153,7 +1157,7 @@ function onkeydown(event, count) {
       var b = blockFacing(PICKED, PICKED_FACE);
       if (!b.outofbounds) {
         b.type = BLOCK_TYPES.lamp;
-        b.invalidate();
+        b.invalidate(true);
       }
     }
     
@@ -1168,18 +1172,19 @@ function onkeydown(event, count) {
 
 function onmousemove(event) {
   if (PLAYER.mouselook) {
-    if (typeof lastX === 'undefined') {
-      lastX = event.pageX;
-      lastY = event.pageY;
+    var movementX, movementY;
+    if (typeof lastX === 'undefined' || lastX === null) {
+      movementX = movementY = 0;
+    } else {
+      movementX = event.movementX || 
+        event.mozMovementX || 
+        event.webkitMovementX ||
+        (event.pageX - lastX);
+      movementY = event.movementY || 
+        event.mozMovementY ||
+        event.webkitMovementY ||
+        (event.pageY - lastY);
     }
-    var movementX = event.movementX || 
-      event.mozMovementX || 
-      event.webkitMovementX ||
-      (event.pageX - lastX);
-    var movementY = event.movementY || 
-      event.mozMovementY ||
-      event.webkitMovementY ||
-      (event.pageY - lastY);
     var spinRate = 0.01;
     PLAYER.yaw += movementX * spinRate;
     PLAYER.pitch += movementY * spinRate;
@@ -1193,18 +1198,18 @@ function onmousemove(event) {
 function onmousedown(event) {
   event = event || window.event;
   if (event.preventDefault) event.preventDefault();
-  if (PICKED) {
+  if (PICKED && PLAYER.mouselook) {
     if (event.button === 0) {
       PICKED.type = BLOCK_TYPES.air;
-      PICKED.invalidate();
-      neighbors(PICKED, function (n) { n.invalidate() });
+      PICKED.invalidate(true);
+      neighbors(PICKED, function (n) { n.invalidate(true) });
       for (var i = 0; i < 50; ++i)
         PARTICLES.spawn({x: PICKED.x+0.5, y: PICKED.y+0.5, z: PICKED.z+0.5});
     } else {
       var b = blockFacing(PICKED, PICKED_FACE);
       if (!b.outofbounds) {
         b.type = PICKED.type;
-        b.invalidate();
+        b.invalidate(true);
       }
     }
   }
@@ -1239,9 +1244,9 @@ Stat.prototype.end = function (startTime) {
 Stat.prototype.toString = function () {
   var v = this.value, l = this.low, h = this.high;
   if (this.invert) {
-    v = 1000/v;
-    l = 1000/h;
-    h = 1000/l;
+    v = 1/v;
+    l = 1/h;
+    h = 1/l;
   }
   return this.name + ': ' + v.toFixed(this.places) +  
     ' (' + l.toFixed(this.places) + ' ' + h.toFixed(this.places) + ')';
