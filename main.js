@@ -826,6 +826,9 @@ function handleLoadedTexture(texture) {
                 gl.UNSIGNED_BYTE, texture.image);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  // These help not at all with texture atlas bleeding problem
+  //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.bindTexture(gl.TEXTURE_2D, null);
   texture.loaded = true;
 }
@@ -896,6 +899,9 @@ var _EMPTY_GEOMETRY = {
 };
 
 
+var ZERO = 0.01, ONE = 1-ZERO;
+var BOTTOM = 15 + ZERO, TOP = 16-ZERO;
+
 function geometryDecalX(b) {
   var v = b.vertices = {};
 
@@ -921,10 +927,10 @@ function geometryDecalX(b) {
                4, 5, 6,  4, 6, 7];
   v.textures = [];
   for (var i = 0; i < 2; ++i) {
-    v.textures.push(b.type.tile,     15, 
-                    b.type.tile + 1, 15, 
-                    b.type.tile + 1, 16, 
-                    b.type.tile,     16);
+    v.textures.push(b.type.tile + ZERO, BOTTOM, 
+                    b.type.tile + ONE,  BOTTOM, 
+                    b.type.tile + ONE,  TOP, 
+                    b.type.tile + ZERO, TOP);
   }
   v.lighting = [];
   for (var i = 0; i < v.positions.length; ++i)
@@ -965,10 +971,10 @@ function geometryBlock(b) {
       v.indices.push(pindex, pindex + 1, pindex + 2,
                      pindex, pindex + 2, pindex + 3);
       
-      v.textures.push(b.type.tile,     15, 
-                      b.type.tile + 1, 15, 
-                      b.type.tile + 1, 16, 
-                      b.type.tile,     16);
+      v.textures.push(b.type.tile + ZERO, BOTTOM, 
+                      b.type.tile + ONE,  BOTTOM, 
+                      b.type.tile + ONE,  TOP, 
+                      b.type.tile + ZERO, TOP);
       
     }
   }
