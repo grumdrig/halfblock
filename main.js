@@ -682,10 +682,14 @@ function processInput(avatar, elapsed) {
   
   // Toggles
   if (keyPressed('T')) avatar.flying = !avatar.flying;
-  if (keyPressed('\t') || keyPressed(27)) {
-    avatar.mouselook = !avatar.mouselook;
-    document.body.style.cursor = avatar.mouselook ? 'none' : '';
-  }
+  if (keyPressed('\t') || keyPressed(27)) 
+    toggleMouselook();
+}
+
+
+function toggleMouselook() {
+  PLAYER.mouselook = !PLAYER.mouselook;
+  document.body.style.cursor = PLAYER.mouselook ? 'none' : '';
 }
 
 
@@ -1026,7 +1030,7 @@ function onLoad() {
 
   PLAYER.dy = 0;
   PLAYER.flying = false;
-  PLAYER.mouselook = true;
+  PLAYER.mouselook = false;
   PLAYER.radius = 0.1;
 
   var c = topmost(PLAYER.x, PLAYER.z);
@@ -1061,6 +1065,7 @@ function onLoad() {
   TERRAIN_TEXTURE.image = new Image();
   TERRAIN_TEXTURE.image.onload = function() {
     handleLoadedTexture(TERRAIN_TEXTURE)
+    toggleMouselook();  // turn on mouselook
   }
   TERRAIN_TEXTURE.image.src = 'terrain.png';
 
@@ -1185,6 +1190,8 @@ function onmousedown(event) {
       PICKED.type = BLOCK_TYPES.air;
       PICKED.invalidate();
       neighbors(PICKED, function (n) { n.invalidate() });
+      for (var i = 0; i < 50; ++i)
+        new Particle({x: PICKED.x+0.5, y: PICKED.y+0.5, z: PICKED.z+0.5});
     } else {
       var b = blockFacing(PICKED, PICKED_FACE);
       if (!b.outofbounds) {
@@ -1263,7 +1270,7 @@ function Particle(coords) {
   this.y0 = coords.y + tweak();
   this.z0 = coords.z + tweak();
   this.dx = tweak();
-  this.dy = 0.5 + Math.random();
+  this.dy = 0.5 + 2 * Math.random();
   this.dz = tweak();
   this.life = 0.5 + Math.random() / 2;
   this.id = PARTICLES.nextID++;
@@ -1331,7 +1338,6 @@ ParticleSystem.prototype.render = function () {
       aVelocity.push(p.dx, p.dy, p.dz);
       aBirthday.push(p.birthday);
     }
-    //console.log('BOOFERS', aInitialPos, aVelocity, aBirthday);
     this.buffers = {};
     this.buffers.aInitialPos = makeBuffer(aInitialPos, 3);
     this.buffers.aVelocity = makeBuffer(aVelocity, 3);
