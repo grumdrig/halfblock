@@ -611,7 +611,7 @@ function updateWorld() {
   
   var c = coords(PLAYER);
   makeChunk(c.chunkx, c.chunkz);
-  /*
+
   makeChunk(c.chunkx - NX, c.chunkz);
   makeChunk(c.chunkx + NX, c.chunkz);
   makeChunk(c.chunkx, c.chunkz - NZ);
@@ -620,7 +620,6 @@ function updateWorld() {
   makeChunk(c.chunkx + NX, c.chunkz - NZ);
   makeChunk(c.chunkx - NX, c.chunkz + NZ);
   makeChunk(c.chunkx + NX, c.chunkz + NZ);
-*/
   
   for (var i in WORLD)
     if (WORLD[i].ndirty > 0)
@@ -877,6 +876,9 @@ Block.prototype.generateTerrain = function () {
     else if (n < 0) this.type = BLOCK_TYPES.grass;
     else this.type = BLOCK_TYPES.air;
 
+    if (Math.pow(noise(this.x/10, this.y/10, this.z/10 + 1000), 3) < -0.12)
+      this.type = BLOCK_TYPES.candy;
+
     // Caves
     if (Math.pow(noise(this.x/20, this.y/20, this.z/20), 3) < -0.1)
       this.type = BLOCK_TYPES.air;
@@ -1038,14 +1040,11 @@ Camera.prototype.toString = function () {
 function onLoad() {
   var canvas = document.getElementById('canvas');
 
-  makeChunk(0,     0);
-  makeChunk(0,   -NZ);
-  makeChunk(-NX,   0);
-  makeChunk(-NX, -NZ);
+  makeChunk(0, 0);
 
   // Create player
 
-  PLAYER = new Camera();
+  PLAYER = new Camera({x:NX/2, z:NZ/2});
 
   PLAYER.dy = 0;
   PLAYER.flying = false;
