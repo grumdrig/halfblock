@@ -353,6 +353,7 @@ Chunk.prototype.update = function () {
         if (c.uncovered && light < LIGHT_SUN)
           light = LIGHT_SUN;
         neighbors(c, function (n) {
+          if (!n) debugger;
           light = Math.max(light, n.light - 1);
         });
       }
@@ -464,31 +465,34 @@ function block(x, y, z) {
   return new Block(co);
 }
 
+var _DZ = NX * NY;
+var _DY = NX;
+var _DX = 1;
 function blockFacing(b, face) {
   switch (face) {
-  case FACE_FRONT:  return block(b.x, b.y, b.z-1);
-  case FACE_BACK:   return block(b.x, b.y, b.z+1);
-  case FACE_BOTTOM: return block(b.x, b.y-1, b.z);
-  case FACE_TOP:    return block(b.x, b.y+1, b.z);
-  case FACE_RIGHT:  return block(b.x-1, b.y, b.z);
-  case FACE_LEFT:   return block(b.x+1, b.y, b.z);
+  case FACE_FRONT: 
+    return b.z-b.chunk.chunkz > 0 ? b.chunk.blocks[b.i - _DZ] : block(b.x, b.y,b. z-1);
+  case FACE_BACK:  
+    return b.z-b.chunk.chunkz < NZ-1 ? b.chunk.blocks[b.i + _DZ] : block(b.x, b.y, b.z+1);
+  case FACE_BOTTOM:
+    return b.y > 0 ? b.chunk.blocks[b.i - _DY] : block(b.x, b.y-1, b.z);
+  case FACE_TOP:   
+    return b.y < NY-1 ? b.chunk.blocks[b.i + _DY] : block(b.x, b.y+1, b.z);
+  case FACE_RIGHT: 
+    return b.x-b.chunk.chunkx > 0 ? b.chunk.blocks[b.i - _DX] : block(b.x-1, b.y, b.z);
+  case FACE_LEFT:  
+    return b.x-b.chunk.chunkx < NX-1 ? b.chunk.blocks[b.i + _DX] : block(b.x+1, b.y, b.z);
   }
 }
 
+// Calls back callback(neighbor, axis, sign, face)
 function neighbors(b, callback) {
-  var result = [];
-  function chk(dx, dy, dz, axis, sign, face) {
-    var n = block(b.x + dx, b.y + dy, b.z + dz);
-    result.push(n);
-    if (callback) callback(n, axis, sign, face);
-  }
-  chk( 0, 0,-1, 2, 0, FACE_FRONT);
-  chk( 0, 0,+1, 2, 1, FACE_BACK);
-  chk( 0,-1, 0, 1, 0, FACE_BOTTOM);
-  chk( 0,+1, 0, 1, 1, FACE_TOP);
-  chk(-1, 0, 0, 0, 0, FACE_RIGHT);
-  chk(+1, 0, 0, 0, 1, FACE_LEFT);
-  return result;
+  callback(blockFacing(b, FACE_FRONT),  2, 0, FACE_FRONT);
+  callback(blockFacing(b, FACE_BACK),   2, 1, FACE_BACK);
+  callback(blockFacing(b, FACE_BOTTOM), 1, 0, FACE_BOTTOM);
+  callback(blockFacing(b, FACE_TOP),    1, 1, FACE_TOP);
+  callback(blockFacing(b, FACE_RIGHT),  0, 0, FACE_RIGHT);
+  callback(blockFacing(b, FACE_LEFT),   0, 1, FACE_LEFT);
 }
 
 
@@ -891,7 +895,7 @@ function Block(coord, chunk) {
   this.outofbounds = coord.outofbounds;
   this.chunk = chunk;
 
-  this.light = 0;
+  this.light = coord >= NY ? LIGHT_SUN : 0;
   this.dirty = true;
 
   this.type = BLOCK_TYPES.air;
@@ -930,8 +934,8 @@ Block.prototype.invalidate = function (hard) {
 }
 
 Block.prototype.toString = function () {
-  return this.type.name + ' [' + this.x + ',' + this.y + ',' + this.z + 
-                             '] &#9788;' + this.light;
+  return this.type.name + ' [' + this.x + ',' + this.y + ',' + this.z + '] ' +
+    '&#9788;' + this.light + (this.outofbounds ? ' OOB' : '');
 }
 
 
