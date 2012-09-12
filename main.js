@@ -273,7 +273,8 @@ function Chunk(x, z) {
       for (var y = NY-1; y >= 0; --y) {
         var c = coords(x, y, z);
         var b = this.blocks[c.i];
-        b.light = b.opaque ? 0 : unsheltered ? LIGHT_SUN : LIGHT_MIN;
+        b.light = Math.max(b.type.luminosity || 0,
+                           b.opaque ? 0 : unsheltered ? LIGHT_SUN : LIGHT_MIN);
         b.dirty = !unsheltered;
         if (b.dirty) ++this.ndirty;
         unsheltered = unsheltered && !b.opaque;
@@ -358,31 +359,14 @@ Chunk.prototype.update = function () {
     // iteration runs from high y's to low
     var c = this.blocks[i];
     var xz = c.x + NX * c.z;
-    c.uncovered = (typeof tops[xz] === 'undefined');
+    c.uncovered = !tops[xz];
     if (c.uncovered && c.type.opaque)
       tops[xz] = c;
-    if (c.dirty) {
-      c.dirty = false;
-      var light;
-      if (c.type.opaque) {
-        light = 0;
-      } else {
-        light = c.type.luminosity || LIGHT_MIN;
-        if (c.uncovered && light < LIGHT_SUN)
-          light = LIGHT_SUN;
-        neighbors(c, function (n) {
-          if (!n) debugger;
-          light = Math.max(light, n.light - 1);
-        });
-      }
-      if (c.light != light) {
-        c.light = light;
-        c.vertices = null;  // force re-geom
-        neighbors(c, function (n) { n.invalidate() });
-      }
-    }
+    if (c.dirty)
+      c.update();
   }
 }
+
 
 Chunk.prototype.centerPoint = function () {
   return {x: this.chunkx + NX / 2,
@@ -964,6 +948,27 @@ Block.prototype.invalidate = function () {
       ++this.chunk.ndirty;
   }
 }
+
+Block.prototype.update = function () {
+  this.dirty = false;
+  var light;
+  if (this.type.opaque) {
+    light = 0;
+  } else {
+    light = this.type.luminosity || LIGHT_MIN;
+    if (this.uncovered && light < LIGHT_SUN)
+      light = LIGHT_SUN;
+    neighbors(this, function (n) {
+      light = Math.max(light, n.light - 1);
+    });
+  }
+  if (this.light != light) {
+    this.light = light;
+    this.vertices = null;  // force re-geom
+    neighbors(this, function (n) { n.invalidate() });
+  }
+}
+
 
 Block.prototype.toString = function () {
   return this.type.name + ' [' + this.x + ',' + this.y + ',' + this.z + '] ' +
