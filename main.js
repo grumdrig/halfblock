@@ -31,7 +31,8 @@ var LOGNZ = 4;
 var NX = 1 << LOGNX;
 var NY = 1 << LOGNY;
 var NZ = 1 << LOGNZ;
-var CHUNKR = Math.sqrt(NX * NX + NY * NY);
+var CHUNK_RADIUS = Math.sqrt(NX * NX + NZ * NZ);
+var UPDATE_PERIOD = 0.1;  // sec
 
 var RENDER_STAT = new Stat('Render');
 var UPDATE_STAT = new Stat('Update');
@@ -239,6 +240,8 @@ function Chunk(x, z) {
 
   this.blocks = Array(NX * NY * NZ);
 
+  this.lastUpdate = 0;
+
   WORLD[this.chunkx + ',' + this.chunkz] = this;
 
   // Generate blocks
@@ -348,11 +351,15 @@ Chunk.prototype.render = function () {
 }
 
 
+Chunk.prototype.updatePeriod = function () {
+  return Math.max(UPDATE_PERIOD, 2 * this.hdistance / PLAYER.viewDistance);
+}
 
 Chunk.prototype.update = function () {
   this.ndirty = 0;
+  this.lastUpdate = PLAYER.clock();
   
-  // This shitty method will propagate changes faster in some
+  // This shitty method will propagate block updates faster in some
   // directions than others
   var tops = {};
   for (var i = this.blocks.length-1; i >= 0; --i) {  
@@ -634,9 +641,10 @@ function updateWorld() {
   
   for (var i in WORLD) {
     var c = WORLD[i];
-    c.hdistance = hDistance(PLAYER, c.centerPoint());
+    c.hdistance = Math.max(0, hDistance(PLAYER, c.centerPoint())-CHUNK_RADIUS);
     c.visible = (c.hdistance < PLAYER.viewDistance);
-    if (c.ndirty > 0 && c.visible) {
+    if (c.ndirty > 0 &&
+        PLAYER.clock() > c.lastUpdate + c.updatePeriod()) {
       c.update();
       console.log('Update: ', c.chunkx, c.chunkz, ':', c.ndirty);
       c.generateBuffers();
@@ -859,7 +867,6 @@ function tick() {
 
   PARTICLES.tick(elapsed);
 
-  var UPDATE_PERIOD = 0.1;
   if (timeNow > lastUpdate + UPDATE_PERIOD) {
     updateWorld();
     lastUpdate = timeNow;
