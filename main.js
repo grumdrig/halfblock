@@ -449,8 +449,28 @@ function makeChunk(chunkx, chunkz) {
   chunkx &= ~(NX - 1);
   chunkz &= ~(NZ - 1);
   var result = chunk(chunkx, chunkz);
-  if (!result)
+  if (!result) {
+    // New chunk needed
     result = new Chunk(chunkx, chunkz);
+
+    // Invalidate edges of neighboring chunks
+    if (chunk(chunkx - NX, chunkz))
+      for (var y = 0; y < NY; ++y)
+        for (var z = 0; z < NZ; ++z)
+          block(chunkx - 1, y, chunkz + z).invalidate();
+    if (chunk(chunkx + NX, chunkz))
+      for (var y = 0; y < NY; ++y)
+        for (var z = 0; z < NZ; ++z)
+          block(chunkx + NX, y, chunkz + z).invalidate();
+    if (chunk(chunkx, chunkz - NZ))
+      for (var y = 0; y < NY; ++y)
+        for (var x = 0; x < NX; ++x)
+          block(chunkx + x, y, chunkz - 1).invalidate();
+    if (chunk(chunkx, chunkz + NZ))
+      for (var y = 0; y < NY; ++y)
+        for (var x = 0; x < NX; ++x)
+          block(chunkx + x, y, chunkz + NZ).invalidate();
+  }
   return result;
 }
 
@@ -669,28 +689,24 @@ function processInput(avatar, elapsed) {
     var n = (dz > 0 && carf(av.z) > av.radius);
     if (w && s && blocked(av.x - av.radius, av.y, av.z - av.radius)) {
       // sw corner collision
-      console.log('sw');
       if (frac(av.x) > frac(av.z))
         avatar.x = Math.max(avatar.x, Math.floor(avatar.x) + avatar.radius);
       else
         avatar.z = Math.max(avatar.z, Math.floor(avatar.z) + avatar.radius);
     } else if (w && n && blocked(av.x - av.radius, av.y, av.z + av.radius)) {
       // nw corner collision
-      console.log('nw');
       if (frac(av.x) > carf(av.z))
         avatar.x = Math.max(avatar.x, Math.floor(avatar.x) + avatar.radius);
       else
         avatar.z = Math.min(avatar.z, Math.ceil(avatar.z) - avatar.radius);
     } else if (e && n && blocked(av.x + av.radius, av.y, av.z + av.radius)) {
       // ne corner collision
-      console.log('ne');
       if (carf(av.x) > carf(av.z))
         avatar.x = Math.min(avatar.x, Math.ceil(avatar.x) - avatar.radius);
       else
         avatar.z = Math.min(avatar.z, Math.ceil(avatar.z) - avatar.radius);
     } else if (e && s && blocked(av.x + av.radius, av.y, av.z - av.radius)) {
       // se corner collision
-      console.log('se');
       if (carf(av.x) > frac(av.z))
         avatar.x = Math.min(avatar.x, Math.ceil(avatar.x) - avatar.radius);
       else
@@ -922,15 +938,13 @@ Block.prototype.generateTerrain = function () {
   }
 }
 
-Block.prototype.invalidate = function (hard) {
-  this.dirty = true;
-  //if (hard) {
-    // e.g. when block type changes
+Block.prototype.invalidate = function () {
+  if (!this.dirty) {
+    this.dirty = true;
     this.vertices = null;
-    //this.light = -1;
-  //}
-  if (this.chunk)
-    ++this.chunk.ndirty;
+    if (this.chunk)
+      ++this.chunk.ndirty;
+  }
 }
 
 Block.prototype.toString = function () {
@@ -1204,7 +1218,6 @@ function onkeydown(event, count) {
       }
     }
 
-    console.log(c, k);
     if (k === 190 || k === 221) {  // right paren, brace or bracket
       var tooli = PLAYER.tool ? (PLAYER.tool.index + 1) % NBLOCKTYPES : 1;
       pickTool(tooli);
