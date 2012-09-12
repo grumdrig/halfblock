@@ -116,7 +116,7 @@ body {
   margin: auto auto;
 }
 
-canvas, #cancan, #hud, #stats {
+#canvas, #cancan, #hud, #stats {
   width: 640px;
   height: 480px;
 }
@@ -144,20 +144,42 @@ canvas, #cancan, #hud, #stats {
   height: 16px;
 }
 
+#inventory {
+  position: absolute;
+  left: 16px;
+  top: 412px;
+  width: 48px;
+  height: 48px;
+  border: solid 2px rgb(128, 128, 128);
+  background: rgba(128, 128, 128, 0.5);
+}
+
+#tool {
+  background: transparent;
+}
+
+#terrain {
+  display: none;
+}
+
 </style>
 </head>
 
 
 <body onload="onLoad()">
-<div id="cancan">
-  <canvas id="canvas" width="640" height="480"></canvas>
-  <div id="hud">
-    <div id="stats"></div>
-    <div id="reticule">
-      <img src="reticule.png">
+  <div id="cancan">
+    <canvas id="canvas" width="640" height="480"></canvas>
+    <div id="hud">
+      <div id="stats"></div>
+      <div id="reticule">
+        <img src="reticule.png">
+      </div>
+      <div id="inventory">
+        <canvas id="tool" width="48" height="48"></canvas>
+      </div>
     </div>
   </div>
-</div>
+  <img src="terrain.png" id="terrain">
 </body>
 
 </html>

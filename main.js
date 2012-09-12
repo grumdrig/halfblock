@@ -129,9 +129,13 @@ var BLOCK_TYPES = {
     geometry: geometryBlock,
   },
 };
-for (var i in BLOCK_TYPES)
+var NBLOCKTYPES = 0;
+for (var i in BLOCK_TYPES) {
+  BLOCK_TYPES[i].index = NBLOCKTYPES++;
   BLOCK_TYPES[i].name = i;
-
+}
+for (var i in BLOCK_TYPES)
+  BLOCK_TYPES[BLOCK_TYPES[i].index] = BLOCK_TYPES[i];
 
 function initGL(canvas) {
   var problem = '';
@@ -1058,8 +1062,8 @@ Camera.prototype.clock = function () {
 }
 
 Camera.prototype.toString = function () {
-  return '&lt;' + this.x.toFixed(2) + ',' + this.y.toFixed(2) + ',' +
-    this.z.toFixed(2) + '&gt &lt;' + this.yaw.toFixed(2) + ',' +
+  return '[' + this.x.toFixed(2) + ',' + this.y.toFixed(2) + ',' +
+    this.z.toFixed(2) + '] &lt;' + this.yaw.toFixed(2) + ',' +
     this.pitch.toFixed(2) + '&gt';
 }
 
@@ -1137,8 +1141,10 @@ function onLoad() {
     }
   });
   $('reticule').addEventListener('mousemove', function (event) {
-    if (!PLAYER.mouselook)
+    if (!PLAYER.mouselook) {
       toggleMouselook();
+      document.body.focus();  // get focus out of debug tools area
+    }
   }, true);
 
   document.addEventListener('fullscreenchange', fullscreenChange, false);
@@ -1187,19 +1193,23 @@ function onkeydown(event, count) {
     if (c === 'L' && canvas.requestFullscreen && canvas.requestPointerLock)
       canvas.requestFullscreen();
     
-    if (c === 'P' && PICKED) {
-      var b = blockFacing(PICKED, PICKED_FACE);
-      if (!b.outofbounds) {
-        b.type = BLOCK_TYPES.lamp;
-        b.invalidate(true);
-      }
-    }
-    
     if (c === 'K' && PICKED) {
       for (var i = 0; i < 10; ++i) {
         var f = blockFacing(PICKED, PICKED_FACE);
         PARTICLES.spawn({x: f.x+0.5, y: f.y+0.5, z: f.z+0.5});
       }
+    }
+
+    console.log(c, k);
+    if (k === 190 || k === 221) {  // right paren, brace or bracket
+      var tooli = PLAYER.tool ? (PLAYER.tool.index + 1) % NBLOCKTYPES : 1;
+      pickTool(tooli);
+    }
+    
+    if (k === 188 || k === 219) {  // left paren, brack or bracket
+      var tooli = PLAYER.tool ? 
+        (NBLOCKTYPES + PLAYER.tool.index - 1) % NBLOCKTYPES : NBLOCKTYPES - 1;
+      pickTool(tooli);
     }
   }
 }
@@ -1242,7 +1252,7 @@ function onmousedown(event) {
     } else {
       var b = blockFacing(PICKED, PICKED_FACE);
       if (!b.outofbounds) {
-        b.type = PICKED.type;
+        b.type = PLAYER.tool || PICKED.type;
         b.invalidate(true);
       }
     }
@@ -1450,4 +1460,21 @@ ParticleSystem.prototype.render = function () {
                          gl.FLOAT, false, 0, 0);
  
   gl.drawArrays(gl.POINTS, 0, this.buffers.aInitialPos.numItems);
+}
+
+
+function pickTool(blocktype) {
+  if (typeof blocktype !== 'object') 
+    blocktype = BLOCK_TYPES[blocktype];
+  if (blocktype === BLOCK_TYPES.air)
+    blocktype = null;
+  PLAYER.tool = blocktype;
+  var toolcan = $('tool');
+  var ctx = toolcan.getContext('2d');
+  ctx.clearRect(0, 0, toolcan.width, toolcan.height);
+  if (blocktype) {
+    ctx.drawImage($('terrain'), 
+                  16 * blocktype.tile, 0,  16, 16,
+                  0, 0,                    toolcan.width, toolcan.height);
+  }
 }
