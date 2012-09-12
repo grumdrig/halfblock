@@ -150,9 +150,11 @@ function initGL(canvas) {
   }
 }
 
+function $(id) { return document.getElementById(id) }
+
 
 function getShader(gl, id) {
-  var shaderScript = document.getElementById(id);
+  var shaderScript = $(id);
   if (!shaderScript) return null;
 
   var str = '';
@@ -806,7 +808,7 @@ function tick() {
     var pf = blockFacing(PICKED, PICKED_FACE);
     if (pf) feedback += ' &rarr; ' + pf;
   }
-  document.getElementById('stats').innerHTML = feedback;
+  $('stats').innerHTML = feedback;
 }
 
 
@@ -1020,7 +1022,7 @@ Camera.prototype.toString = function () {
 }
 
 function onLoad() {
-  var canvas = document.getElementById('canvas');
+  var canvas = $('canvas');
 
   makeChunk(0, 0);
 
@@ -1065,7 +1067,6 @@ function onLoad() {
   TERRAIN_TEXTURE.image = new Image();
   TERRAIN_TEXTURE.image.onload = function() {
     handleLoadedTexture(TERRAIN_TEXTURE)
-    toggleMouselook();  // turn on mouselook
   }
   TERRAIN_TEXTURE.image.src = 'terrain.png';
 
@@ -1084,16 +1085,18 @@ function onLoad() {
   window.addEventListener('mousemove', onmousemove, true);
   window.addEventListener('mousedown', onmousedown, true);
   document.oncontextmenu = function () { return false };
-  /*
   window.addEventListener('mouseout', function (event) {
-    event = event || window.event;
-    var from = event.relatedTarget || event.toElement;
-    console.log(from, from.nodeName);
-    if (false && PLAYER.mouselook) {
-      PLAYER.mouselook = !PLAYER.mouselook;
-      document.body.style.cursor = PLAYER.mouselook ? 'none' : '';
-    }});
-*/
+    if (PLAYER.mouselook) {
+      event = event || window.event;
+      var from = event.relatedTarget || event.toElement;
+      if (!from)
+        toggleMouselook();
+    }
+  });
+  $('reticule').addEventListener('mousemove', function (event) {
+    if (!PLAYER.mouselook)
+      toggleMouselook();
+  }, true);
 
   document.addEventListener('fullscreenchange', fullscreenChange, false);
   document.addEventListener('mozfullscreenchange', fullscreenChange, false);
