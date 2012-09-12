@@ -69,7 +69,6 @@ var BLOCK_TYPES = {
     tile: 0,
     empty: true,
     opaque: false,
-    geometry: geometryEmpty,
   },
   rock: {
     tile: 1,
@@ -251,12 +250,11 @@ function Chunk(x, z) {
         var c = coords(x, y, z);
         var b = this.blocks[c.i] = new Block(c, this);
         b.generateTerrain();
-        b.light = b.solid ? 0 : LIGHT_SUN;
-        b.dirty = true;
       }
     }
   }
 
+  // Plant some flowers
   for (var n = 0; n < 4; ++n) {
     var x = this.chunkx + 
       Math.round(Math.abs(noise(this.chunkx, this.chunkz, n)) * NX);
@@ -267,7 +265,21 @@ function Chunk(x, z) {
       blockFacing(t, FACE_TOP).type = BLOCK_TYPES.flower;
   }
 
-  this.ndirty = this.blocks.length;
+  // Initial quick lighting update, some of which we can know accurately
+  this.ndirty = 0;
+  for (var x = 0; x < NX; ++x) {
+    for (var z = 0; z < NZ; ++z) {
+      var unsheltered = true;
+      for (var y = NY-1; y >= 0; --y) {
+        var c = coords(x, y, z);
+        var b = this.blocks[c.i];
+        b.light = b.opaque ? 0 : unsheltered ? LIGHT_SUN : LIGHT_MIN;
+        b.dirty = !unsheltered;
+        if (b.dirty) ++this.ndirty;
+        unsheltered = unsheltered && !b.opaque;
+      }
+    }
+  }
 }
 
 
@@ -278,14 +290,16 @@ Chunk.prototype.generateBuffers = function () {
   var indices = [];
   for (var i = 0; i < this.blocks.length; ++i) {
     var b = this.blocks[i];
-    if (!b.vertices) 
-      b.type.geometry(b);
-    var pindex = positions.length / 3;
-    positions.push.apply(positions, b.vertices.positions);
-    lighting.push.apply(lighting, b.vertices.lighting);
-    textures.push.apply(textures, b.vertices.textures);
-    for (var j = 0; j < b.vertices.indices.length; ++j)
-      indices.push(pindex + b.vertices.indices[j]);
+    if (b.type.geometry) {
+      if (!b.vertices) 
+        b.type.geometry(b);
+      var pindex = positions.length / 3;
+      positions.push.apply(positions, b.vertices.positions);
+      lighting.push.apply(lighting, b.vertices.lighting);
+      textures.push.apply(textures, b.vertices.textures);
+      for (var j = 0; j < b.vertices.indices.length; ++j)
+        indices.push(pindex + b.vertices.indices[j]);
+    }
   }
   
   this.vertexPositionBuffer = makeBuffer(positions, 3);
@@ -951,17 +965,6 @@ Block.prototype.toString = function () {
   return this.type.name + ' [' + this.x + ',' + this.y + ',' + this.z + '] ' +
     '&#9788;' + this.light + (this.outofbounds ? ' OOB' : '');
 }
-
-
-function geometryEmpty(b) {
-  b.vertices = _EMPTY_GEOMETRY;
-}
-var _EMPTY_GEOMETRY = {
-  positions: [],
-  lighting: [],
-  textures: [],
-  indices: [],
-};
 
 
 var ZERO = 0.01, ONE = 1-ZERO;
