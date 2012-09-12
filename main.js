@@ -628,29 +628,64 @@ function processInput(avatar, elapsed) {
     var ox = avatar.x, oy = avatar.y, oz = avatar.z;
     var px = d * Math.cos(-avatar.yaw);
     var pz = d * Math.sin(-avatar.yaw);
-    if (KEYS.W) { avatar.x -= pz; avatar.z -= px; }
-    if (KEYS.A) { avatar.x -= px; avatar.z += pz; }
-    if (KEYS.S) { avatar.x += pz; avatar.z += px; }
-    if (KEYS.D) { avatar.x += px; avatar.z -= pz; }
-    
-    // Check collisions
-    if (frac(avatar.x) < avatar.radius && 
-        (block(ox-1, oy,   oz).type.solid || 
-         block(ox-1, oy+1, oz).type.solid)) {
-      avatar.x = Math.floor(avatar.x) + avatar.radius;
-    } else if (carf(avatar.x) < avatar.radius && 
-               (block(ox+1, oy,   oz).type.solid || 
-                block(ox+1, oy+1, oz).type.solid)) {
-      avatar.x = Math.ceil(avatar.x) - avatar.radius;
+    var dx, dy;
+    if (KEYS.W) { dx = -pz; dz = -px; }
+    if (KEYS.A) { dx = -px; dz = +pz; }
+    if (KEYS.S) { dx = +pz; dz = +px; }
+    if (KEYS.D) { dx = +px; dz = -pz; }
+    avatar.x += dx;
+    avatar.z += dz;
+
+    function blocked(x,y,z) { 
+      return (block(x,y,z).type.solid || 
+              block(x,y+1,z).type.solid ||
+              block(x,y+EYE_HEIGHT,z).type.solid);
     }
-    if (frac(avatar.z) < avatar.radius && 
-        (block(ox, oy, oz-1).type.solid || 
-         block(ox, oy+1, oz-1).type.solid)) {
-      avatar.z = Math.floor(avatar.z) + avatar.radius;
-    } else if (carf(avatar.z) < avatar.radius && 
-               (block(ox, oy, oz+1).type.solid || 
-                block(ox, oy+1, oz+1).type.solid)) {
-      avatar.z = Math.ceil(avatar.z) - avatar.radius;
+
+    // Check NSEW collisions
+    if (dx < 0 && blocked(avatar.x - avatar.radius, avatar.y, avatar.z))
+      avatar.x = Math.max(avatar.x, Math.floor(avatar.x) + avatar.radius);
+    if (dx > 0 && blocked(avatar.x + avatar.radius, avatar.y, avatar.z))
+      avatar.x = Math.min(avatar.x, Math.ceil(avatar.x) - avatar.radius);
+    if (dz < 0 && blocked(avatar.x, avatar.y, avatar.z - avatar.radius))
+      avatar.z = Math.max(avatar.z, Math.floor(avatar.z) + avatar.radius);
+    if (dz > 0 && blocked(avatar.x, avatar.y, avatar.z + avatar.radius))
+      avatar.z = Math.min(avatar.z, Math.ceil(avatar.z) - avatar.radius);
+    
+    // Check corner collisions
+    var av = avatar;
+    var w = (dx < 0 && frac(av.x) < av.radius);
+    var e = (dx > 0 && carf(av.x) > av.radius);
+    var s = (dz < 0 && frac(av.z) < av.radius);
+    var n = (dz > 0 && carf(av.z) > av.radius);
+    if (w && s && blocked(av.x - av.radius, av.y, av.z - av.radius)) {
+      // sw corner collision
+      console.log('sw');
+      if (frac(av.x) > frac(av.z))
+        avatar.x = Math.max(avatar.x, Math.floor(avatar.x) + avatar.radius);
+      else
+        avatar.z = Math.max(avatar.z, Math.floor(avatar.z) + avatar.radius);
+    } else if (w && n && blocked(av.x - av.radius, av.y, av.z + av.radius)) {
+      // nw corner collision
+      console.log('nw');
+      if (frac(av.x) > carf(av.z))
+        avatar.x = Math.max(avatar.x, Math.floor(avatar.x) + avatar.radius);
+      else
+        avatar.z = Math.min(avatar.z, Math.ceil(avatar.z) - avatar.radius);
+    } else if (e && n && blocked(av.x + av.radius, av.y, av.z + av.radius)) {
+      // ne corner collision
+      console.log('ne');
+      if (carf(av.x) > carf(av.z))
+        avatar.x = Math.min(avatar.x, Math.ceil(avatar.x) - avatar.radius);
+      else
+        avatar.z = Math.min(avatar.z, Math.ceil(avatar.z) - avatar.radius);
+    } else if (e && s && blocked(av.x + av.radius, av.y, av.z - av.radius)) {
+      // se corner collision
+      console.log('se');
+      if (carf(av.x) > frac(av.z))
+        avatar.x = Math.min(avatar.x, Math.ceil(avatar.x) - avatar.radius);
+      else
+        avatar.z = Math.max(avatar.z, Math.floor(avatar.z) + avatar.radius);
     }
   }
   if (avatar.flying && (KEYS[' '] || KEYS.R))
@@ -1033,7 +1068,7 @@ function onLoad() {
   PLAYER.dy = 0;
   PLAYER.flying = false;
   PLAYER.mouselook = false;
-  PLAYER.radius = 0.1;
+  PLAYER.radius = 5/16;
 
   var b = topmost(PLAYER.x, PLAYER.z);
   if (b)
