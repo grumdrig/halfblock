@@ -129,6 +129,8 @@ var BLOCK_TYPES = {
     geometry: geometryBlock,
   },
 };
+for (var i in BLOCK_TYPES)
+  BLOCK_TYPES[i].name = i;
 
 
 function initGL(canvas) {
@@ -243,7 +245,7 @@ function Chunk(x, z) {
         var c = coords(x, y, z);
         var b = this.blocks[c.i] = new Block(c, this);
         b.generateTerrain();
-        b.light = (y === NY-1) ? LIGHT_SUN : 0;
+        b.light = b.solid ? 0 : LIGHT_SUN;
         b.dirty = true;
       }
     }
@@ -313,7 +315,6 @@ Chunk.prototype.bindBuffers = function () {
 
 
 Chunk.prototype.render = function () {
-  //SHADER.use();
   this.bindBuffers();
   gl.drawElements(gl.TRIANGLES, 
                   this.vertexIndexBuffer.numItems,
@@ -324,18 +325,6 @@ Chunk.prototype.render = function () {
 
 
 Chunk.prototype.update = function () {
-  this.visible = hDistance(PLAYER, this.centerPoint()) < PLAYER.viewDistance;
-    /* This bit of frustum culling is buggy and very possibly unneccesary
-    &&
-    -signedHDistanceFromLine(PLAYER, 
-                             PLAYER.yaw + PLAYER.horizontalFieldOfView/2,
-                             this.centerPoint()) < CHUNKR &&
-    signedHDistanceFromLine(PLAYER,
-                            PLAYER.yaw - PLAYER.horizontalFieldOfView/2,
-                            this.centerPoint()) < CHUNKR;
-    */
-  if (!this.visible) return;
-
   this.ndirty = 0;
   
   // This shitty method will propagate changes faster in some
@@ -368,9 +357,6 @@ Chunk.prototype.update = function () {
       }
     }
   }
-  
-  console.log('Update: ', this.chunkx, this.chunkz, ':', this.ndirty);
-  this.generateBuffers();
 }
 
 Chunk.prototype.centerPoint = function () {
@@ -440,8 +426,6 @@ function coords(x, y, z) {
 
   if (result.y < 0 || result.y >= NY)
     result.outofbounds = true;
-  if (!chunk(result.chunkx, result.chunkz))
-    result.unloaded = true;
 
   return result;
 }
@@ -465,13 +449,13 @@ function makeChunk(chunkx, chunkz) {
 
 
 function block(x, y, z) {
-  var c = coords(x, y, z);
-  if (!c.outofbounds && !c.unloaded) {
-    return chunk(c.chunkx, c.chunkz).blocks[c.i];
-  } else {
-    // Manufacture an ad hoc temporary block
-    return new Block(c);
+  var co = coords(x, y, z);
+  if (!co.outofbounds) {
+    var ch = chunk(co.chunkx, co.chunkz);
+    if (ch) return ch.blocks[co.i];
   }
+  // Manufacture an ad hoc temporary block
+  return new Block(co);
 }
 
 function blockFacing(b, face) {
@@ -549,7 +533,7 @@ function drawScene(camera) {
 
   PARTICLES.render();
 
-  if (PICKED && WIREFRAME) {
+  if (PICKED) {
 
     mat4.translate(mvMatrix, [PICKED.x, PICKED.y, PICKED.z]);
 
@@ -604,14 +588,9 @@ function updateWorld() {
   var waspicked = PICKED;
   var wasface = PICKED_FACE;
   PICKED = pickp();
-  if (!WIREFRAME && (PICKED !== waspicked || PICKED_FACE !== wasface)) {
-    if (PICKED) PICKED.invalidate();
-    if (waspicked) waspicked.invalidate();
-  }
   
   var c = coords(PLAYER);
   makeChunk(c.chunkx, c.chunkz);
-
   makeChunk(c.chunkx - NX, c.chunkz);
   makeChunk(c.chunkx + NX, c.chunkz);
   makeChunk(c.chunkx, c.chunkz - NZ);
@@ -621,10 +600,16 @@ function updateWorld() {
   makeChunk(c.chunkx - NX, c.chunkz + NZ);
   makeChunk(c.chunkx + NX, c.chunkz + NZ);
   
-  for (var i in WORLD)
-    if (WORLD[i].ndirty > 0)
-      WORLD[i].update();
-  
+  for (var i in WORLD) {
+    var c = WORLD[i];
+    c.hdistance = hDistance(PLAYER, c.centerPoint());
+    c.visible = (c.hdistance < PLAYER.viewDistance);
+    if (c.ndirty > 0 && c.visible) {
+      c.update();
+      console.log('Update: ', c.chunkx, c.chunkz, ':', c.ndirty);
+      c.generateBuffers();
+    }
+  }  
   UPDATE_STAT.end();
 }
 
@@ -702,9 +687,9 @@ function toggleMouselook() {
 function ballistics(entity, elapsed) {
   // Apply the laws of pseudo-physics
   if (!entity.flying) {
-    var c = block(entity);
+    var b = block(entity);
     if (!entity.falling) {
-      if (c.type.solid) {
+      if (b.type.solid) {
         // Rise from dirt at 3 m/s
         entity.y += 3 * elapsed;
         if (!block(entity).type.solid) {
@@ -718,7 +703,7 @@ function ballistics(entity, elapsed) {
         entity.dy = 0;
       }
     } else { // falling
-      if (c.type.solid) {
+      if (b.type.solid) {
         // Landed
         entity.dy = 0;
         entity.falling = false;
@@ -804,8 +789,8 @@ function tick() {
 
   PARTICLES.tick(elapsed);
 
-  var UPDATE_PERIOD_MS = 100;
-  if (timeNow > lastUpdate + UPDATE_PERIOD_MS) {
+  var UPDATE_PERIOD = 0.1;
+  if (timeNow > lastUpdate + UPDATE_PERIOD) {
     updateWorld();
     lastUpdate = timeNow;
   }
@@ -842,8 +827,8 @@ function handleLoadedTexture(texture) {
 
 function topmost(x, z) {
   for (var y = NY-1; y >= 0; --y) {
-    var c = block(x,y,z);
-    if (c.type.solid) return c;
+    var b = block(x,y,z);
+    if (b.type.solid) return b;
   }
   return null;
 }
@@ -897,7 +882,8 @@ Block.prototype.invalidate = function (hard) {
 }
 
 Block.prototype.toString = function () {
-  return '[' + this.x + ',' + this.y + ',' + this.z + '] &#9788;' + this.light;
+  return this.type.name + ' [' + this.x + ',' + this.y + ',' + this.z + 
+                             '] &#9788;' + this.light;
 }
 
 
@@ -922,8 +908,6 @@ function geometryDecalX(b) {
     / LIGHT_MAX;
   if (b.y >= NY-1)
     light = 1;  // Account for topmost block against non-block
-  if (!WIREFRAME && b === PICKED)
-    light = 2;
   
   var L = 0.2;
   var R = 1 - L;
@@ -970,8 +954,6 @@ function geometryBlock(b) {
         / LIGHT_MAX;
       if (b.y >= NY-1 && face === FACE_TOP) 
         light = 1;  // Account for topmost block against non-block
-      if (!WIREFRAME && (b === PICKED && face === PICKED_FACE))
-        light = 2;
       for (var ic = 0; ic < 12; ++ic) {
         var d = triplet[ic % 3];
         if (ic % 3 === coord)
@@ -1044,16 +1026,16 @@ function onLoad() {
 
   // Create player
 
-  PLAYER = new Camera({x:NX/2, z:NZ/2});
+  PLAYER = new Camera({x:NX/2, y:NY/2, z:NZ/2});
 
   PLAYER.dy = 0;
   PLAYER.flying = false;
   PLAYER.mouselook = false;
   PLAYER.radius = 0.1;
 
-  var c = topmost(PLAYER.x, PLAYER.z);
-  if (c)
-    PLAYER.y = c.y + 1;
+  var b = topmost(PLAYER.x, PLAYER.z);
+  if (b)
+    PLAYER.y = b.y + 1;
   else 
     PLAYER.flying = true;
 
