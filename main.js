@@ -628,7 +628,7 @@ function processInput(avatar, elapsed) {
     var ox = avatar.x, oy = avatar.y, oz = avatar.z;
     var px = d * Math.cos(-avatar.yaw);
     var pz = d * Math.sin(-avatar.yaw);
-    var dx, dy;
+    var dx, dz;
     if (KEYS.W) { dx = -pz; dz = -px; }
     if (KEYS.A) { dx = -px; dz = +pz; }
     if (KEYS.S) { dx = +pz; dz = +px; }
