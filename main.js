@@ -639,7 +639,7 @@ function processInput(avatar, elapsed) {
     function blocked(x,y,z) { 
       return (block(x,y,z).type.solid || 
               block(x,y+1,z).type.solid ||
-              block(x,y+EYE_HEIGHT,z).type.solid);
+              block(x,y+avatar.height,z).type.solid);
     }
 
     // Check NSEW collisions
@@ -688,6 +688,14 @@ function processInput(avatar, elapsed) {
         avatar.z = Math.max(avatar.z, Math.floor(avatar.z) + avatar.radius);
     }
   }
+  // Head bumper
+  if (avatar.dy > 0 && 
+      block(avatar.x, avatar.y + avatar.height, avatar.z).type.solid) {
+    avatar.y = Math.min(avatar.y, 
+                        Math.floor(avatar.y + avatar.height) - avatar.height);
+    avatar.dy = 0;
+  }
+
   if (avatar.flying && (KEYS[' '] || KEYS.R))
     avatar.y += d;
   if (avatar.flying && (KEYS[16] || KEYS.F))
@@ -696,8 +704,6 @@ function processInput(avatar, elapsed) {
     // Jump!
     avatar.dy = VJUMP;
     avatar.falling = true;
-    if (block(avatar).type.solid) 
-      avatar.y = Math.floor(avatar.y + 1);
   }
   
   // Rotations
@@ -1068,7 +1074,8 @@ function onLoad() {
   PLAYER.dy = 0;
   PLAYER.flying = false;
   PLAYER.mouselook = false;
-  PLAYER.radius = 5/16;
+  PLAYER.radius = 0.3;
+  PLAYER.height = 1.8;
 
   var b = topmost(PLAYER.x, PLAYER.z);
   if (b)
