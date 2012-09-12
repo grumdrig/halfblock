@@ -637,9 +637,10 @@ function processInput(avatar, elapsed) {
     avatar.z += dz;
 
     function blocked(x,y,z) { 
-      return (block(x,y,z).type.solid || 
-              block(x,y+1,z).type.solid ||
-              block(x,y+avatar.height,z).type.solid);
+      for (var i = 0; Math.floor(y + i) < y + avatar.height; ++i)
+        if (block(x, y+i, z).type.solid)
+          return true;
+      return false;
     }
 
     // Check NSEW collisions
