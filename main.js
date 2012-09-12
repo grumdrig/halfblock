@@ -280,6 +280,10 @@ function Chunk(x, z) {
       }
     }
   }
+  // Do a few updates to avoid having to recreate the geometry a bunch of 
+  // times when we're updating in bulk
+  //for (var i = 0; i < 10 && this.ndirty > 50; ++i)
+  //  this.update();
 }
 
 
