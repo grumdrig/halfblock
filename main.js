@@ -47,7 +47,6 @@ var VJUMP = 7.7;   // m/s
 
 var LIGHT_MAX = 8;
 var LIGHT_SUN = 6;
-var LIGHT_LAMP = 8;
 var LIGHT_MIN = 2;
 
 var TERRAIN_TEXTURE;
@@ -120,7 +119,7 @@ var BLOCK_TYPES = {
   lamp: {
     tile: 9,
     geometry: geometryDecalX,
-    luminosity: LIGHT_LAMP,
+    luminosity: 8,
   },
   candy: {
     tile: 10,
@@ -298,61 +297,58 @@ function Chunk(x, z) {
 
 
 Chunk.prototype.generateBuffers = function () {
-  var positions = [];
-  var textures = [];
-  var lighting = [];
-  var indices = [];
+  var opaques = {}, translucents = {};
   for (var i = 0; i < this.blocks.length; ++i) {
     var b = this.blocks[i];
     if (b.type.geometry) {
       if (!b.vertices) 
         b.type.geometry(b);
-      var pindex = positions.length / 3;
-      positions.push.apply(positions, b.vertices.positions);
-      lighting.push.apply(lighting, b.vertices.lighting);
-      textures.push.apply(textures, b.vertices.textures);
+      var dest = b.type.translucent ? translucents : opaques;
+      if (!dest.indices) {
+        dest.aVertexPosition = [];
+        dest.aTextureCoord = [];
+        dest.aLighting = [];
+        dest.indices = [];
+      }
+      var pindex = dest.aVertexPosition.length / 3;
+      dest.aVertexPosition.push.apply(dest.aVertexPosition, 
+                                      b.vertices.positions);
+      dest.aLighting.push.apply(dest.aLighting, b.vertices.lighting);
+      dest.aTextureCoord.push.apply(dest.aTextureCoord, b.vertices.textures);
       for (var j = 0; j < b.vertices.indices.length; ++j)
-        indices.push(pindex + b.vertices.indices[j]);
+        dest.indices.push(pindex + b.vertices.indices[j]);
     }
   }
   
-  this.vertexPositionBuffer = makeBuffer(positions, 3);
-
-  // One ST pair for every XYZ in the position buffer
-  this.vertexTextureCoordBuffer = makeBuffer(textures, 2);
-
-  // One RGB triple for each XYZ in the position buffer
-  this.vertexLightingBuffer = makeBuffer(lighting, 3);
-
-  this.vertexIndexBuffer = makeElementArrayBuffer(indices);
+  function makebufs(set) {
+    if (!set.indices) return null;
+    return {
+      aVertexPosition: makeBuffer(set.aVertexPosition, 3),
+      aTextureCoord:   makeBuffer(set.aTextureCoord, 2),
+      aLighting:       makeBuffer(set.aLighting, 3),
+      indices:         makeElementArrayBuffer(set.indices)
+    };
+  }
+  this.opaqueBuffers = makebufs(opaques);
+  this.translucentBuffers = makebufs(translucents);
 }
 
 
-Chunk.prototype.bindBuffers = function () {
-  if (!this.vertexPositionBuffer) debugger;
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexPositionBuffer);
-  gl.vertexAttribPointer(SHADER.aVertexPosition,
-                         this.vertexPositionBuffer.itemSize,
+function pointToAttribute(shader, buffers, attribute) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffers[attribute]);
+  gl.vertexAttribPointer(shader[attribute],
+                         buffers[attribute].itemSize,
                          gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexTextureCoordBuffer);
-  gl.vertexAttribPointer(SHADER.aTextureCoord,
-                         this.vertexTextureCoordBuffer.itemSize,
-                         gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexLightingBuffer);
-  gl.vertexAttribPointer(SHADER.aLighting,
-                         this.vertexLightingBuffer.itemSize,
-                         gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.vertexIndexBuffer);
 }
 
 
-Chunk.prototype.render = function () {
-  this.bindBuffers();
+function renderChunkBuffers(buffers) {
+  pointToAttribute(SHADER, buffers, 'aVertexPosition');
+  pointToAttribute(SHADER, buffers, 'aTextureCoord');
+  pointToAttribute(SHADER, buffers, 'aLighting');
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
   gl.drawElements(gl.TRIANGLES, 
-                  this.vertexIndexBuffer.numItems,
+                  buffers.indices.numItems,
                   gl.UNSIGNED_SHORT, 
                   0);
 }
@@ -521,14 +517,14 @@ function blockFacing(b, face) {
   }
 }
 
-// Calls back callback(neighbor, axis, sign, face)
+// Calls back callback(neighbor, face)
 function neighbors(b, callback) {
-  callback(blockFacing(b, FACE_FRONT),  2, 0, FACE_FRONT);
-  callback(blockFacing(b, FACE_BACK),   2, 1, FACE_BACK);
-  callback(blockFacing(b, FACE_BOTTOM), 1, 0, FACE_BOTTOM);
-  callback(blockFacing(b, FACE_TOP),    1, 1, FACE_TOP);
-  callback(blockFacing(b, FACE_RIGHT),  0, 0, FACE_RIGHT);
-  callback(blockFacing(b, FACE_LEFT),   0, 1, FACE_LEFT);
+  callback(blockFacing(b, FACE_FRONT),  FACE_FRONT);
+  callback(blockFacing(b, FACE_BACK),   FACE_BACK);
+  callback(blockFacing(b, FACE_BOTTOM), FACE_BOTTOM);
+  callback(blockFacing(b, FACE_TOP),    FACE_TOP);
+  callback(blockFacing(b, FACE_RIGHT),  FACE_RIGHT);
+  callback(blockFacing(b, FACE_LEFT),   FACE_LEFT);
 }
 
 
@@ -544,9 +540,6 @@ function drawScene(camera) {
   // Start from scratch
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  // Cull backfaces, which seems to not at all affect speed
-  // gl.enable(gl.CULL_FACE);
 
   // Set up the projection
   var aspectRatio = gl.viewportWidth / gl.viewportHeight;
@@ -573,14 +566,32 @@ function drawScene(camera) {
   gl.uniformMatrix4fv(SHADER.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(SHADER.uMVMatrix, false, mvMatrix);
 
-  for (var i in WORLD)
-    if (WORLD[i].visible)
-      WORLD[i].render();
+  // Render opaque blocks
+  gl.disable(gl.CULL_FACE);  // don't cull backfaces (decals are 1-sided)
+  for (var i in WORLD) {
+    var c = WORLD[i];
+    if (c.visible && c.opaqueBuffers)
+      renderChunkBuffers(c.opaqueBuffers);
+  }
 
+  // Render particles
   PARTICLES.render();
 
-  if (PICKED) {
+  // Render translucent blocks
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.enable(gl.BLEND);
+  gl.enable(gl.CULL_FACE);  // cull backfaces!
+  for (var i in WORLD) {
+    var c = WORLD[i];
+    if (c.visible && c.translucentBuffers)
+      renderChunkBuffers(c.translucentBuffers);
+  }
+  gl.disable(gl.BLEND);
+  gl.disable(gl.CULL_FACE);
 
+  // Render block selection indicator
+  if (PICKED) {
+    mvPushMatrix();
     mat4.translate(mvMatrix, [PICKED.x, PICKED.y, PICKED.z]);
 
     WIREFRAME.shader.use();
@@ -602,6 +613,7 @@ function drawScene(camera) {
                     0);
 
     gl.enable(gl.DEPTH_TEST);
+    mvPopMatrix();
   }
 
   RENDER_STAT.end();
@@ -1044,8 +1056,11 @@ function geometryBlock(b) {
 
   for (var face = 0; face < 6; ++face) {
     var n = blockFacing(b, face);
-    if (!n.type.opaque) {
-
+    var omit = n.type.opaque;
+    // This test isnt reliable until invalidate() invalidates neighbors 
+    // of translucents better...I think maybe?
+    omit = omit || (b.type.translucent && b.type === n.type);
+    if (!omit) {
       // Compute light on this face
       var light = Math.max(LIGHT_MIN, Math.min(1000, n.light||0));
       light /= LIGHT_MAX;
@@ -1055,10 +1070,11 @@ function geometryBlock(b) {
       var f = _FACES[face];
       for (var i = 3; i >= 0; --i) {
         v.positions.push(b.x + f[i][0], b.y + f[i][1], b.z + f[i][2]);
+        // One RGB lighting triple for each XYZ in the position buffer
         v.lighting.push(light, light, light);
       }
       
-      // Set textures per vertex
+      // Set textures per vertex: one ST pair for each vertex
       v.textures.push(b.type.tile + ONE,  ZERO, 
                       b.type.tile + ZERO, ZERO, 
                       b.type.tile + ZERO, ONE, 
@@ -1166,13 +1182,6 @@ function onLoad() {
 
   gl.clearColor(0.5, 0.8, 0.98, 1.0);  // Clear color is sky blue
   gl.enable(gl.DEPTH_TEST);                       // Enable Z-buffer
-
-  // The following enable translucent blocks. But I need to render solids first and then semi-transparent ones in reverse-distance-order.
-  //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  //gl.enable(gl.BLEND);
-  //gl.disable(gl.DEPTH_TEST);
-
-  //gl.enable(gl.ALPHA_TEST);  // no dice in webgl
 
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
@@ -1468,6 +1477,8 @@ function makeElementArrayBuffer(data) {
 }
 
 ParticleSystem.prototype.render = function () {
+  if (!this.particles.length) return;
+
   this.shader.use();
 
   if (!this.buffers) {
