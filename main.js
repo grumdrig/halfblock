@@ -109,7 +109,7 @@ var BLOCK_TYPES = {
   ice: {
     tile: 7,
     solid: true,
-    translucent: true,
+    translucent: [36,205,205,0.5],
     geometry: geometryBlock,
   },
   flower: {
@@ -130,7 +130,7 @@ var BLOCK_TYPES = {
   jelly: {
     tile: 14,
     liquid: true,
-    translucent: true,
+    translucent: [154,40,155,0.85],
     geometry: geometryBlock,
   },
 };
@@ -562,9 +562,26 @@ function drawScene(camera) {
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
   gl.uniform1i(SHADER.uSampler, 0);
 
+  var headblock = block(PLAYER.x, PLAYER.y+EYE_HEIGHT, PLAYER.z);
+  if (headblock.type.translucent) {
+    var rgba = headblock.type.translucent;
+    /*
+    gl.uniform3f(SHADER.uAmbient, 
+                 rgba[0] / 255 * rgba[3],
+                 rgba[1] / 255 * rgba[3],
+                 rgba[2] / 255 * rgba[3]);
+    */
+    $('stats').style.backgroundColor = 'rgba(' + rgba.join(',') + ')';
+  } else {
+    $('stats').style.backgroundColor = '';
+  }
+  
+  gl.uniform3f(SHADER.uAmbient, 1,1,1);
+
   // Set matrix uniforms
   gl.uniformMatrix4fv(SHADER.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(SHADER.uMVMatrix, false, mvMatrix);
+  
 
   // Render opaque blocks
   gl.disable(gl.CULL_FACE);  // don't cull backfaces (decals are 1-sided)
@@ -1161,6 +1178,7 @@ function onLoad() {
   SHADER.locate('uSampler');
   SHADER.locate('uMVMatrix');
   SHADER.locate('uPMatrix');
+  SHADER.locate('uAmbient');
 
   WIREFRAME = new Wireframe();
 
