@@ -1120,7 +1120,7 @@ function Wireframe() {
 }
 
 
-function Camera(init) {
+function Entity(init) {
   init = init || {};
   this.x = init.x || 0;
   this.y = init.y || 0;
@@ -1131,13 +1131,20 @@ function Camera(init) {
   this.horizontalFieldOfView = init.horizontalFieldOfView || Math.PI/3;
   this.viewDistance = init.viewDistance || 50;
   this.birthday = +new Date();
+  this.flying = this.falling = false;
+  this.radius = 0.3;
+  this.height = 1.8;
+  this.WALK_MAX = 4.3; // m/s
+  this.FLY_MAX = 10.8; // m/s
+  this.SPIN_RATE = 2;  // radians/s
+  this.ACCELERATION = 20;  // m/s^2
 }
 
-Camera.prototype.clock = function () {
+Entity.prototype.clock = function () {
   return +new Date() - this.birthday;
 }
 
-Camera.prototype.toString = function () {
+Entity.prototype.toString = function () {
   return '[' + this.x.toFixed(2) + ',' + this.y.toFixed(2) + ',' +
     this.z.toFixed(2) + '] &lt;' + this.yaw.toFixed(2) + ',' +
     this.pitch.toFixed(2) + '&gt +' + 
@@ -1151,16 +1158,8 @@ function onLoad() {
 
   // Create player
 
-  PLAYER = new Camera({x:NX/2, y:NY/2, z:NZ/2});
-
-  PLAYER.flying = PLAYER.falling = false;
+  PLAYER = new Entity({x:NX/2, y:NY/2, z:NZ/2});
   PLAYER.mouselook = false;
-  PLAYER.radius = 0.3;
-  PLAYER.height = 1.8;
-  PLAYER.WALK_MAX = 4.3; // m/s
-  PLAYER.FLY_MAX = 10.8; // m/s
-  PLAYER.SPIN_RATE = 2;  // radians/s
-  PLAYER.ACCELERATION = 20;  // m/s^2
   PLAYER.lastHop = 0;
 
   var b = topmost(PLAYER.x, PLAYER.z);
