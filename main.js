@@ -683,103 +683,53 @@ function updateWorld() {
 
 
 function processInput(avatar, elapsed) {
-  var d = elapsed * 4.3;  // m/s: walk speed (per axis)
-  if (avatar.flying) {
-    d = elapsed * 10.8;   // m/s: flying speed
-  }
-  var a = elapsed * 2;    // radians/s: spin rate
+  var ddp = avatar.ACCELERATION * elapsed;
   
+  // Drag
+  if (!(KEYS.W || KEYS.A || KEYS.S || KEYS.D)) {
+    if (avatar.dx > 0) avatar.dx = Math.max(0, avatar.dx - ddp);
+    if (avatar.dx < 0) avatar.dx = Math.min(0, avatar.dx + ddp);
+    if (avatar.dz > 0) avatar.dz = Math.max(0, avatar.dz - ddp);
+    if (avatar.dz < 0) avatar.dz = Math.min(0, avatar.dz + ddp);
+  }
+
   // Movement keys
-  if (KEYS.W || KEYS.A || KEYS.S || KEYS.D) {
-    var ox = avatar.x, oy = avatar.y, oz = avatar.z;
-    var px = d * Math.cos(-avatar.yaw);
-    var pz = d * Math.sin(-avatar.yaw);
-    var dx, dz;
-    if (KEYS.W) { dx = -pz; dz = -px; }
-    if (KEYS.A) { dx = -px; dz = +pz; }
-    if (KEYS.S) { dx = +pz; dz = +px; }
-    if (KEYS.D) { dx = +px; dz = -pz; }
-    avatar.x += dx;
-    avatar.z += dz;
-
-    function blocked(x,y,z) { 
-      for (var i = 0; Math.floor(y + i) < y + avatar.height; ++i)
-        if (block(x, y+i, z).type.solid)
-          return true;
-      return false;
-    }
-
-    // Check NSEW collisions
-    if (dx < 0 && blocked(avatar.x - avatar.radius, avatar.y, avatar.z))
-      avatar.x = Math.max(avatar.x, Math.floor(avatar.x) + avatar.radius);
-    if (dx > 0 && blocked(avatar.x + avatar.radius, avatar.y, avatar.z))
-      avatar.x = Math.min(avatar.x, Math.ceil(avatar.x) - avatar.radius);
-    if (dz < 0 && blocked(avatar.x, avatar.y, avatar.z - avatar.radius))
-      avatar.z = Math.max(avatar.z, Math.floor(avatar.z) + avatar.radius);
-    if (dz > 0 && blocked(avatar.x, avatar.y, avatar.z + avatar.radius))
-      avatar.z = Math.min(avatar.z, Math.ceil(avatar.z) - avatar.radius);
-    
-    // Check corner collisions
-    var av = avatar;
-    var w = (dx < 0 && frac(av.x) < av.radius);
-    var e = (dx > 0 && carf(av.x) > av.radius);
-    var s = (dz < 0 && frac(av.z) < av.radius);
-    var n = (dz > 0 && carf(av.z) > av.radius);
-    if (w && s && blocked(av.x - av.radius, av.y, av.z - av.radius)) {
-      // sw corner collision
-      if (frac(av.x) > frac(av.z))
-        avatar.x = Math.max(avatar.x, Math.floor(avatar.x) + avatar.radius);
-      else
-        avatar.z = Math.max(avatar.z, Math.floor(avatar.z) + avatar.radius);
-    } else if (w && n && blocked(av.x - av.radius, av.y, av.z + av.radius)) {
-      // nw corner collision
-      if (frac(av.x) > carf(av.z))
-        avatar.x = Math.max(avatar.x, Math.floor(avatar.x) + avatar.radius);
-      else
-        avatar.z = Math.min(avatar.z, Math.ceil(avatar.z) - avatar.radius);
-    } else if (e && n && blocked(av.x + av.radius, av.y, av.z + av.radius)) {
-      // ne corner collision
-      if (carf(av.x) > carf(av.z))
-        avatar.x = Math.min(avatar.x, Math.ceil(avatar.x) - avatar.radius);
-      else
-        avatar.z = Math.min(avatar.z, Math.ceil(avatar.z) - avatar.radius);
-    } else if (e && s && blocked(av.x + av.radius, av.y, av.z - av.radius)) {
-      // se corner collision
-      if (carf(av.x) > frac(av.z))
-        avatar.x = Math.min(avatar.x, Math.ceil(avatar.x) - avatar.radius);
-      else
-        avatar.z = Math.max(avatar.z, Math.floor(avatar.z) + avatar.radius);
-    }
-  }
-  // Head bumper
-  if (avatar.dy > 0 && 
-      block(avatar.x, avatar.y + avatar.height, avatar.z).type.solid) {
-    avatar.y = Math.min(avatar.y, 
-                        Math.floor(avatar.y + avatar.height) - avatar.height);
-    avatar.dy = 0;
-  }
-
-  if (avatar.flying && (KEYS[' '] || KEYS.R))
-    avatar.y += d;
-  if (avatar.flying && (KEYS[16] || KEYS.F))
-    avatar.y -= d;
-  if (!avatar.flying && !avatar.falling && keyPressed(' ')) {
-    // Jump!
-    avatar.dy = VJUMP;
-    avatar.falling = true;
-  }
+  var ax = ddp * Math.cos(-avatar.yaw);
+  var az = ddp * Math.sin(-avatar.yaw);
+  if (KEYS.W) { avatar.dx -= az; avatar.dz -= ax; }
+  if (KEYS.A) { avatar.dx -= ax; avatar.dz += az; }
+  if (KEYS.S) { avatar.dx += az; avatar.dz += ax; }
+  if (KEYS.D) { avatar.dx += ax; avatar.dz -= az; }
   
+  if (avatar.flying) {
+    // Fly up and down
+    if (KEYS[' '])
+      avatar.dy += ddp;
+    else if (KEYS[16]) // shift
+      avatar.dy -= ddp;
+    else if (avatar.dy > 0) 
+      avatar.dy = Math.max(0, avatar.dy - elapsed * avatar.ACCELERATION);
+    else
+      avatar.dy = Math.min(0, avatar.dy + elapsed * avatar.ACCELERATION);
+  }
+
   // Rotations
-  if (KEYS.Q) avatar.yaw -= a;
-  if (KEYS.E) avatar.yaw += a;
-  if (KEYS.Z) avatar.pitch = Math.max(avatar.pitch - a, -Math.PI/2);
-  if (KEYS.X) avatar.pitch = Math.min(avatar.pitch + a,  Math.PI/2);
-  if (keyPressed('0')) avatar.yaw = avatar.pitch = 0;
-  
-  // Toggles
-  if (keyPressed('T')) avatar.flying = !avatar.flying;
-  if (keyPressed('\t') || keyPressed(27)) 
-    toggleMouselook();
+  var da = avatar.SPIN_RATE * elapsed;
+  if (KEYS.Q) avatar.yaw -= da;
+  if (KEYS.E) avatar.yaw += da;
+  if (KEYS.Z) avatar.pitch = Math.max(avatar.pitch - da, -Math.PI/2);
+  if (KEYS.X) avatar.pitch = Math.min(avatar.pitch + da,  Math.PI/2);
+
+  // Limit speed
+  var h = sqr(avatar.dx) + sqr(avatar.dz);
+  if (avatar.flying) h += sqr(avatar.dy);
+  h = Math.sqrt(h);
+  var f = h / (avatar.flying ? avatar.FLY_MAX : avatar.WALK_MAX);
+  if (f > 1) {
+    avatar.dx /= f;
+    avatar.dz /= f;
+    if (avatar.flying) avatar.dy /= f;
+  }
 }
 
 
@@ -790,36 +740,88 @@ function toggleMouselook() {
 }
 
 
-function ballistics(entity, elapsed) {
+function ballistics(e, elapsed) {
   // Apply the laws of pseudo-physics
-  if (!entity.flying) {
-    var b = block(entity);
-    if (!entity.falling) {
-      if (b.type.solid) {
-        // Rise from dirt at 3 m/s
-        entity.y += 3 * elapsed;
-        if (!block(entity).type.solid) {
-          entity.y = Math.floor(entity.y);
-        }
-      } else if (!block(entity.x, 
-                        entity.y-1,
-                        entity.z).type.solid) {
-        // Fall off cliff
-        entity.falling = true;
-        entity.dy = 0;
-      }
-    } else { // falling
-      if (b.type.solid) {
-        // Landed
-        entity.dy = 0;
-        entity.falling = false;
-        entity.y = Math.floor(entity.y + 1);
-      } else {
-        // Still falling
-        entity.dy -= GRAVITY * elapsed;
-        entity.y += entity.dy * elapsed;
-      }
+
+  if (e.dx || e.dz) {
+    // Move and check collisions
+    var ox = e.x, oy = e.y, oz = e.z;
+    e.x += e.dx * elapsed;
+    e.z += e.dz * elapsed;
+
+    function blocked(x,y,z) { 
+      for (var i = 0; Math.floor(y + i) < y + e.height; ++i)
+        if (block(x, y+i, z).type.solid)
+          return true;
+      return false;
     }
+
+    // Check NSEW collisions
+    if (e.dx < 0 && blocked(e.x - e.radius, e.y, e.z))
+      e.x = Math.max(e.x, Math.floor(e.x) + e.radius);
+    if (e.dx > 0 && blocked(e.x + e.radius, e.y, e.z))
+      e.x = Math.min(e.x, Math.ceil(e.x) - e.radius);
+    if (e.dz < 0 && blocked(e.x, e.y, e.z - e.radius))
+      e.z = Math.max(e.z, Math.floor(e.z) + e.radius);
+    if (e.dz > 0 && blocked(e.x, e.y, e.z + e.radius))
+      e.z = Math.min(e.z, Math.ceil(e.z) - e.radius);
+    
+    // Check corner collisions
+    var cw = (e.dx < 0 && frac(e.x) < e.radius);
+    var ce = (e.dx > 0 && carf(e.x) > e.radius);
+    var cs = (e.dz < 0 && frac(e.z) < e.radius);
+    var cn = (e.dz > 0 && carf(e.z) > e.radius);
+    if (cw && cs && blocked(e.x - e.radius, e.y, e.z - e.radius)) {
+      // sw corner collision
+      if (frac(e.x) > frac(e.z))
+        e.x = Math.max(e.x, Math.floor(e.x) + e.radius);
+      else
+        e.z = Math.max(e.z, Math.floor(e.z) + e.radius);
+    } else if (cw && cn && blocked(e.x - e.radius, e.y, e.z + e.radius)) {
+      // nw corner collision
+      if (frac(e.x) > carf(e.z))
+        e.x = Math.max(e.x, Math.floor(e.x) + e.radius);
+      else
+        e.z = Math.min(e.z, Math.ceil(e.z) - e.radius);
+    } else if (ce && cn && blocked(e.x + e.radius, e.y, e.z + e.radius)) {
+      // ne corner collision
+      if (carf(e.x) > carf(e.z))
+        e.x = Math.min(e.x, Math.ceil(e.x) - e.radius);
+      else
+        e.z = Math.min(e.z, Math.ceil(e.z) - e.radius);
+    } else if (ce && cs && blocked(e.x + e.radius, e.y, e.z - e.radius)) {
+      // se corner collision
+      if (carf(e.x) > frac(e.z))
+        e.x = Math.min(e.x, Math.ceil(e.x) - e.radius);
+      else
+        e.z = Math.max(e.z, Math.floor(e.z) + e.radius);
+    }
+  }
+
+  // Still falling
+  if (e.falling)
+    e.dy -= GRAVITY * elapsed;
+  e.y += e.dy * elapsed;
+
+  if (block(e).type.solid && (e.flying || e.falling)) {
+    // Landed
+    e.flying = e.falling = false;
+    e.dy = 0;
+    e.y = Math.floor(e.y + 1);
+  }
+
+  if (!e.falling && !e.flying && !block(e.x, e.y-1, e.z).type.solid) {
+    // Fall off cliff
+    e.falling = true;
+    e.y = Math.floor(e.y) - 0.001;  // be in empty block below
+    e.dy = 0;
+  }
+  
+  if ((e.flying || e.falling) &&
+      (e.dy > 0 && block(e.x, e.y + e.height, e.z).type.solid)) {
+    // Bump head
+    e.y = Math.min(e.y, Math.floor(e.y + e.height) - e.height);
+    e.dy = 0;
   }
 }
 
@@ -1123,6 +1125,7 @@ function Camera(init) {
   this.x = init.x || 0;
   this.y = init.y || 0;
   this.z = init.z || 0;
+  this.dx = this.dy = this.dz = 0;
   this.yaw = init.yaw || 0;
   this.pitch = init.pitch || 0;
   this.horizontalFieldOfView = init.horizontalFieldOfView || Math.PI/3;
@@ -1137,7 +1140,8 @@ Camera.prototype.clock = function () {
 Camera.prototype.toString = function () {
   return '[' + this.x.toFixed(2) + ',' + this.y.toFixed(2) + ',' +
     this.z.toFixed(2) + '] &lt;' + this.yaw.toFixed(2) + ',' +
-    this.pitch.toFixed(2) + '&gt';
+    this.pitch.toFixed(2) + '&gt +' + 
+    '[' + this.dx.toFixed(2) + ',' + this.dy.toFixed(2) + ',' + this.dz.toFixed(2) + '] ' + (this.flying ? 'F' : this.falling ? 'f' : 'w');
 }
 
 function onLoad() {
@@ -1149,11 +1153,15 @@ function onLoad() {
 
   PLAYER = new Camera({x:NX/2, y:NY/2, z:NZ/2});
 
-  PLAYER.dy = 0;
-  PLAYER.flying = false;
+  PLAYER.flying = PLAYER.falling = false;
   PLAYER.mouselook = false;
   PLAYER.radius = 0.3;
   PLAYER.height = 1.8;
+  PLAYER.WALK_MAX = 4.3; // m/s
+  PLAYER.FLY_MAX = 10.8; // m/s
+  PLAYER.SPIN_RATE = 2;  // radians/s
+  PLAYER.ACCELERATION = 20;  // m/s^2
+  PLAYER.lastHop = 0;
 
   var b = topmost(PLAYER.x, PLAYER.z);
   if (b)
@@ -1256,6 +1264,25 @@ function onkeydown(event, count) {
   KEYS[k] = KEYS[c] = count;
 
   if (count === 1) {
+    if (c === ' ') {
+      if (PLAYER.clock() < PLAYER.lastHop + 500) {
+        // Toggle flying
+        PLAYER.flying = !PLAYER.flying;
+        if (PLAYER.flying) PLAYER.falling = false;
+      } else if (!PLAYER.flying && !PLAYER.falling) {
+        // Jump!
+        PLAYER.dy = VJUMP;
+        PLAYER.falling = true;
+      }
+      PLAYER.lastHop = PLAYER.clock();
+    }
+
+    if (c === '0') 
+      PLAYER.yaw = PLAYER.pitch = 0;
+  
+    if (c === '\t' || k === 27) // tab or escape
+      toggleMouselook();
+
     if (c === 'L' && canvas.requestFullscreen && canvas.requestPointerLock)
       canvas.requestFullscreen();
     
@@ -1545,3 +1572,6 @@ function pickTool(blocktype) {
                   0, 0,                    toolcan.width, toolcan.height);
   }
 }
+
+
+function sqr(x) { return x * x }
