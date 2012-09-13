@@ -128,6 +128,12 @@ var BLOCK_TYPES = {
     opaque: true,
     geometry: geometryBlock,
   },
+  jelly: {
+    tile: 14,
+    liquid: true,
+    translucent: true,
+    geometry: geometryBlock,
+  },
 };
 var NBLOCKTYPES = 0;
 for (var i in BLOCK_TYPES) {
