@@ -323,6 +323,7 @@ Chunk.prototype.generateBuffers = function () {
 
 
 Chunk.prototype.bindBuffers = function () {
+  if (!this.vertexPositionBuffer) debugger;
   gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexPositionBuffer);
   gl.vertexAttribPointer(SHADER.aVertexPosition,
                          this.vertexPositionBuffer.itemSize,
@@ -889,7 +890,7 @@ function tick() {
 
 function handleLoadedTexture(texture) {
   gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, 
                 gl.UNSIGNED_BYTE, texture.image);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -984,7 +985,7 @@ Block.prototype.toString = function () {
 
 
 var ZERO = 0.01, ONE = 1-ZERO;
-var BOTTOM = 15 + ZERO, TOP = 16-ZERO;
+var BOTTOM = 1-ZERO, TOP = ZERO;
 
 function geometryDecalX(b) {
   var v = b.vertices = {};
