@@ -927,7 +927,7 @@ function Block(coord, chunk) {
   this.outofbounds = coord.outofbounds;
   this.chunk = chunk;
 
-  this.light = coord >= NY ? LIGHT_SUN : 0;
+  this.light = coord.y >= NY ? LIGHT_SUN : 0;
   this.dirty = true;
 
   this.type = BLOCK_TYPES.air;
@@ -991,7 +991,6 @@ Block.prototype.toString = function () {
 
 
 var ZERO = 0.01, ONE = 1-ZERO;
-var BOTTOM = 1-ZERO, TOP = ZERO;
 
 function geometryDecalX(b) {
   var v = b.vertices = {};
@@ -1016,16 +1015,24 @@ function geometryDecalX(b) {
                4, 5, 6,  4, 6, 7];
   v.textures = [];
   for (var i = 0; i < 2; ++i) {
-    v.textures.push(b.type.tile + ZERO, BOTTOM, 
-                    b.type.tile + ONE,  BOTTOM, 
-                    b.type.tile + ONE,  TOP, 
-                    b.type.tile + ZERO, TOP);
+    v.textures.push(b.type.tile + ZERO, ONE, 
+                    b.type.tile + ONE,  ONE, 
+                    b.type.tile + ONE,  ZERO, 
+                    b.type.tile + ZERO, ZERO);
   }
   v.lighting = [];
   for (var i = 0; i < v.positions.length; ++i)
     v.lighting.push(light);
 }
 
+
+var _FACES = [
+  [[0,0,0], [1,0,0], [1,1,0], [0,1,0]],  // front
+  [[1,0,1], [0,0,1], [0,1,1], [1,1,1]],  // back
+  [[0,0,1], [1,0,1], [1,0,0], [0,0,0]],  // bottom
+  [[0,1,0], [1,1,0], [1,1,1], [0,1,1]],  // top
+  [[0,0,1], [0,0,0], [0,1,0], [0,1,1]],  // right
+  [[1,0,0], [1,0,1], [1,1,1], [1,1,0]]]; // left
 
 function geometryBlock(b) {
   var v = b.vertices = {
@@ -1034,38 +1041,34 @@ function geometryBlock(b) {
     textures: [],
     indices: [],
   };
-  
-  var triplet = [b.x, b.y, b.z];
-  function nabe(n, coord, sign, face) {
+
+  for (var face = 0; face < 6; ++face) {
+    var n = blockFacing(b, face);
     if (!n.type.opaque) {
+
+      // Compute light on this face
+      var light = Math.max(LIGHT_MIN, Math.min(1000, n.light||0));
+      light /= LIGHT_MAX;
+
+      // Add vertices
       var pindex = v.positions.length / 3;
-      var corners = (face === 1 || face === 2 || face === 5) ?
-        [0,0, 1,0, 1,1, 0,1] :
-        [0,0, 0,1, 1,1, 1,0];
-      var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, n.light||0))
-        / LIGHT_MAX;
-      if (b.y >= NY-1 && face === FACE_TOP) 
-        light = 1;  // Account for topmost block against non-block
-      for (var ic = 0; ic < 12; ++ic) {
-        var d = triplet[ic % 3];
-        if (ic % 3 === coord)
-          v.positions.push(d + sign);
-        else
-          v.positions.push(d + corners.shift());
-        v.lighting.push(light);
+      var f = _FACES[face];
+      for (var i = 3; i >= 0; --i) {
+        v.positions.push(b.x + f[i][0], b.y + f[i][1], b.z + f[i][2]);
+        v.lighting.push(light, light, light);
       }
       
+      // Set textures per vertex
+      v.textures.push(b.type.tile + ONE,  ZERO, 
+                      b.type.tile + ZERO, ZERO, 
+                      b.type.tile + ZERO, ONE, 
+                      b.type.tile + ONE,  ONE);
+
+      // Describe triangles
       v.indices.push(pindex, pindex + 1, pindex + 2,
                      pindex, pindex + 2, pindex + 3);
-      
-      v.textures.push(b.type.tile + ZERO, BOTTOM, 
-                      b.type.tile + ONE,  BOTTOM, 
-                      b.type.tile + ONE,  TOP, 
-                      b.type.tile + ZERO, TOP);
-      
     }
   }
-  neighbors(b, nabe);
 }
 
 
