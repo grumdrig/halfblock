@@ -15,7 +15,7 @@ var pMatrix = mat4.create();   // projection matrix
 // Game objects
 
 var WORLD = {};
-var PLAYER;
+var AVATAR;
 
 var PICKED = null;
 var PICKED_FACE = 0;
@@ -355,12 +355,12 @@ function renderChunkBuffers(buffers) {
 
 
 Chunk.prototype.updatePeriod = function () {
-  return Math.max(UPDATE_PERIOD, 2 * this.hdistance / PLAYER.viewDistance);
+  return Math.max(UPDATE_PERIOD, 2 * this.hdistance / AVATAR.viewDistance);
 }
 
 Chunk.prototype.update = function () {
   this.ndirty = 0;
-  this.lastUpdate = PLAYER.clock();
+  this.lastUpdate = AVATAR.clock();
   
   // This shitty method will propagate block updates faster in some
   // directions than others
@@ -562,7 +562,7 @@ function drawScene(camera) {
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
   gl.uniform1i(SHADER.uSampler, 0);
 
-  var headblock = block(PLAYER.x, PLAYER.y+EYE_HEIGHT, PLAYER.z);
+  var headblock = block(AVATAR.x, AVATAR.y+EYE_HEIGHT, AVATAR.z);
   if (headblock.type.translucent) {
     var rgba = headblock.type.translucent;
     $('stats').style.backgroundColor = 'rgba(' + rgba.join(',') + ')';
@@ -656,7 +656,7 @@ function updateWorld() {
   var wasface = PICKED_FACE;
   PICKED = pickp();
   
-  var c = coords(PLAYER);
+  var c = coords(AVATAR);
   makeChunk(c.chunkx, c.chunkz);
   makeChunk(c.chunkx - NX, c.chunkz);
   makeChunk(c.chunkx + NX, c.chunkz);
@@ -669,10 +669,10 @@ function updateWorld() {
   
   for (var i in WORLD) {
     var c = WORLD[i];
-    c.hdistance = Math.max(0, hDistance(PLAYER, c.centerPoint())-CHUNK_RADIUS);
-    c.visible = (c.hdistance < PLAYER.viewDistance);
+    c.hdistance = Math.max(0, hDistance(AVATAR, c.centerPoint())-CHUNK_RADIUS);
+    c.visible = (c.hdistance < AVATAR.viewDistance);
     if (c.ndirty > 0 &&
-        PLAYER.clock() > c.lastUpdate + c.updatePeriod()) {
+        AVATAR.clock() > c.lastUpdate + c.updatePeriod()) {
       c.update();
       console.log('Update: ', c.chunkx, c.chunkz, ':', c.ndirty);
       c.generateBuffers();
@@ -734,9 +734,9 @@ function processInput(avatar, elapsed) {
 
 
 function toggleMouselook() {
-  PLAYER.mouselook = !PLAYER.mouselook;
-  document.body.style.cursor = PLAYER.mouselook ? 'none' : '';
-  if (!PLAYER.mouselook) lastX = null;
+  AVATAR.mouselook = !AVATAR.mouselook;
+  document.body.style.cursor = AVATAR.mouselook ? 'none' : '';
+  if (!AVATAR.mouselook) lastX = null;
 }
 
 
@@ -827,11 +827,11 @@ function ballistics(e, elapsed) {
 
 
 function pickp() { 
-  return pick(PLAYER.x, 
-              PLAYER.y + EYE_HEIGHT, 
-              PLAYER.z, 
-              PLAYER.pitch, 
-              PLAYER.yaw);
+  return pick(AVATAR.x, 
+              AVATAR.y + EYE_HEIGHT, 
+              AVATAR.z, 
+              AVATAR.pitch, 
+              AVATAR.yaw);
 }
 function pick(x, y, z, pitch, yaw) {
   // Compute length of ray which projects to length 1 on each axis
@@ -881,7 +881,7 @@ function pick(x, y, z, pitch, yaw) {
 
 function tick() {
   // Monkey with the clock
-  var timeNow = PLAYER.clock();
+  var timeNow = AVATAR.clock();
   if (!lastFrame) lastFrame = timeNow;
   var elapsed = (timeNow - lastFrame) / 1000;
   FPS_STAT.add(elapsed);
@@ -890,10 +890,10 @@ function tick() {
 
   requestAnimFrame(tick);
 
-  drawScene(PLAYER);
+  drawScene(AVATAR);
 
-  processInput(PLAYER, elapsed);
-  ballistics(PLAYER, elapsed);
+  processInput(AVATAR, elapsed);
+  ballistics(AVATAR, elapsed);
 
   PARTICLES.tick(elapsed);
 
@@ -906,8 +906,8 @@ function tick() {
     RENDER_STAT + '<br>' + 
     FPS_STAT + '<br>' + 
     UPDATE_STAT + '<br>' +
-    'Player: ' + PLAYER + '<br>' +
-    'Light: ' + block(PLAYER).light;
+    'Player: ' + AVATAR + '<br>' +
+    'Light: ' + block(AVATAR).light;
   if (PICKED) {
     feedback += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
     var pf = blockFacing(PICKED, PICKED_FACE);
@@ -1158,15 +1158,15 @@ function onLoad() {
 
   // Create player
 
-  PLAYER = new Entity({x:NX/2, y:NY/2, z:NZ/2});
-  PLAYER.mouselook = false;
-  PLAYER.lastHop = 0;
+  AVATAR = new Entity({x:NX/2, y:NY/2, z:NZ/2});
+  AVATAR.mouselook = false;
+  AVATAR.lastHop = 0;
 
-  var b = topmost(PLAYER.x, PLAYER.z);
+  var b = topmost(AVATAR.x, AVATAR.z);
   if (b)
-    PLAYER.y = b.y + 1;
+    AVATAR.y = b.y + 1;
   else 
-    PLAYER.flying = true;
+    AVATAR.flying = true;
 
   initGL(canvas);
 
@@ -1206,7 +1206,7 @@ function onLoad() {
   window.addEventListener('mousedown', onmousedown, true);
   document.oncontextmenu = function () { return false };
   window.addEventListener('mouseout', function (event) {
-    if (PLAYER.mouselook) {
+    if (AVATAR.mouselook) {
       event = event || window.event;
       var from = event.relatedTarget || event.toElement;
       if (!from)
@@ -1214,7 +1214,7 @@ function onLoad() {
     }
   });
   $('reticule').addEventListener('mousemove', function (event) {
-    if (!PLAYER.mouselook) {
+    if (!AVATAR.mouselook) {
       toggleMouselook();
       document.body.focus();  // get focus out of debug tools area
     }
@@ -1264,20 +1264,20 @@ function onkeydown(event, count) {
 
   if (count === 1) {
     if (c === ' ') {
-      if (PLAYER.clock() < PLAYER.lastHop + 500) {
+      if (AVATAR.clock() < AVATAR.lastHop + 500) {
         // Toggle flying
-        PLAYER.flying = !PLAYER.flying;
-        if (PLAYER.flying) PLAYER.falling = false;
-      } else if (!PLAYER.flying && !PLAYER.falling) {
+        AVATAR.flying = !AVATAR.flying;
+        if (AVATAR.flying) AVATAR.falling = false;
+      } else if (!AVATAR.flying && !AVATAR.falling) {
         // Jump!
-        PLAYER.dy = VJUMP;
-        PLAYER.falling = true;
+        AVATAR.dy = VJUMP;
+        AVATAR.falling = true;
       }
-      PLAYER.lastHop = PLAYER.clock();
+      AVATAR.lastHop = AVATAR.clock();
     }
 
     if (c === '0') 
-      PLAYER.yaw = PLAYER.pitch = 0;
+      AVATAR.yaw = AVATAR.pitch = 0;
   
     if (c === '\t' || k === 27) // tab or escape
       toggleMouselook();
@@ -1293,20 +1293,20 @@ function onkeydown(event, count) {
     }
 
     if (k === 190 || k === 221) {  // right paren, brace or bracket
-      var tooli = PLAYER.tool ? (PLAYER.tool.index + 1) % NBLOCKTYPES : 1;
+      var tooli = AVATAR.tool ? (AVATAR.tool.index + 1) % NBLOCKTYPES : 1;
       pickTool(tooli);
     }
     
     if (k === 188 || k === 219) {  // left paren, brack or bracket
-      var tooli = PLAYER.tool ? 
-        (NBLOCKTYPES + PLAYER.tool.index - 1) % NBLOCKTYPES : NBLOCKTYPES - 1;
+      var tooli = AVATAR.tool ? 
+        (NBLOCKTYPES + AVATAR.tool.index - 1) % NBLOCKTYPES : NBLOCKTYPES - 1;
       pickTool(tooli);
     }
   }
 }
 
 function onmousemove(event) {
-  if (PLAYER.mouselook) {
+  if (AVATAR.mouselook) {
     var movementX, movementY;
     if (typeof lastX === 'undefined' || lastX === null) {
       movementX = movementY = 0;
@@ -1321,9 +1321,9 @@ function onmousemove(event) {
         (event.pageY - lastY);
     }
     var spinRate = 0.01;
-    PLAYER.yaw += movementX * spinRate;
-    PLAYER.pitch += movementY * spinRate;
-    PLAYER.pitch = Math.max(Math.min(Math.PI/2, PLAYER.pitch), -Math.PI/2);
+    AVATAR.yaw += movementX * spinRate;
+    AVATAR.pitch += movementY * spinRate;
+    AVATAR.pitch = Math.max(Math.min(Math.PI/2, AVATAR.pitch), -Math.PI/2);
     lastX = event.pageX;
     lastY = event.pageY;
   }
@@ -1333,7 +1333,7 @@ function onmousemove(event) {
 function onmousedown(event) {
   event = event || window.event;
   if (event.preventDefault) event.preventDefault();
-  if (PICKED && PLAYER.mouselook) {
+  if (PICKED && AVATAR.mouselook) {
     if (event.button === 0) {
       PICKED.type = BLOCK_TYPES.air;
       PICKED.invalidate(true);
@@ -1343,7 +1343,7 @@ function onmousedown(event) {
     } else {
       var b = blockFacing(PICKED, PICKED_FACE);
       if (!b.outofbounds) {
-        b.type = PLAYER.tool || PICKED.type;
+        b.type = AVATAR.tool || PICKED.type;
         b.invalidate(true);
       }
     }
@@ -1425,7 +1425,7 @@ ParticleSystem.prototype.spawn = function (near) {
     y0: near.y,
     z0: near.z,
     id: PARTICLES.nextID++,
-    birthday: PLAYER.clock()/1000 - Math.random(),
+    birthday: AVATAR.clock()/1000 - Math.random(),
     life: 0.5 + Math.random() / 2,
   }
   this.add(p);
@@ -1533,7 +1533,7 @@ ParticleSystem.prototype.render = function () {
     this.buffers.aBirthday = makeBuffer(aBirthday, 1);
   }
 
-  gl.uniform1f(this.shader.uClock, parseFloat(PLAYER.clock()/1000));
+  gl.uniform1f(this.shader.uClock, parseFloat(AVATAR.clock()/1000));
   gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
 
@@ -1561,7 +1561,7 @@ function pickTool(blocktype) {
     blocktype = BLOCK_TYPES[blocktype];
   if (blocktype === BLOCK_TYPES.air)
     blocktype = null;
-  PLAYER.tool = blocktype;
+  AVATAR.tool = blocktype;
   var toolcan = $('tool');
   var ctx = toolcan.getContext('2d');
   ctx.clearRect(0, 0, toolcan.width, toolcan.height);
