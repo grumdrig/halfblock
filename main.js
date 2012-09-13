@@ -964,6 +964,7 @@ Block.prototype.generateTerrain = function () {
     if (n < -0.2) this.type = BLOCK_TYPES.rock;
     else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
     else if (n < 0) this.type = BLOCK_TYPES.grass;
+    else if (this.y < NY / 4) this.type = BLOCK_TYPES.jelly;
     else this.type = BLOCK_TYPES.air;
 
     if (Math.pow(noise(this.x/10, this.y/10, this.z/10 + 1000), 3) < -0.12)
