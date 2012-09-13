@@ -1513,7 +1513,6 @@ function makeElementArrayBuffer(data) {
 }
 
 ParticleSystem.prototype.render = function () {
-  if (!this.particles.length) return;
 
   this.shader.use();
 
