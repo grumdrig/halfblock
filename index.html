@@ -102,6 +102,25 @@
   }
 </script>
 
+<script id="twodee-vs" type="x-shader/x-vertex">
+  attribute vec2 a_position;
+  uniform vec2 u_resolution;
+  uniform float u_pointsize;
+  void main() {
+    gl_PointSize = u_pointsize;
+    vec2 reposition = 2.0 * a_position / u_resolution - 1.0;
+    resposition.y = -reposition.y;
+    gl_Position = vec4(reposition, 0, 1);
+  }
+</script>
+<script id="twodee-fs" type="x-shader/x-fragment">
+  precision mediump float;
+  uniform vec4 u_color;
+  void main() {
+    gl_FragColor = u_color;
+  }
+</script>
+
 <style>
 body {
   height: 100%;
@@ -138,10 +157,10 @@ body {
 
 #reticule {
   position: absolute;
-  left: 318px;
-  top: 232px;
-  width: 16px;
-  height: 16px;
+  left: 314px;
+  top: 228px;
+  width: 24px;
+  height: 24px;
 }
 
 #inventory {
@@ -172,7 +191,7 @@ body {
     <div id="hud">
       <div id="stats"></div>
       <div id="reticule">
-        <img src="reticule.png">
+        <img src="reticule.png" height="24" width="24">
       </div>
       <div id="inventory">
         <canvas id="tool" width="48" height="48"></canvas>
