@@ -43,6 +43,7 @@ var lastFrame = 0;
 var lastUpdate = 0;
 
 var GRAVITY = 23;  // m/s/s
+var PARTICLE_GRAVITY = 6.4; // m/s/s
 var VJUMP = 7.7;   // m/s
 
 var LIGHT_MAX = 8;
@@ -562,7 +563,7 @@ function drawScene(camera) {
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
   gl.uniform1i(SHADER.uSampler, 0);
 
-  var headblock = block(AVATAR.x, AVATAR.y+EYE_HEIGHT, AVATAR.z);
+  var headblock = block(AVATAR.x, AVATAR.y + EYE_HEIGHT, AVATAR.z);
   if (headblock.type.translucent) {
     var rgba = headblock.type.translucent;
     $('stats').style.backgroundColor = 'rgba(' + rgba.join(',') + ')';
@@ -1288,7 +1289,8 @@ function onkeydown(event, count) {
     if (c === 'K' && PICKED) {
       for (var i = 0; i < 10; ++i) {
         var f = blockFacing(PICKED, PICKED_FACE);
-        PARTICLES.spawn({x: f.x+0.5, y: f.y+0.5, z: f.z+0.5});
+        var p = PARTICLES.spawn({x0: f.x+0.5, y0: f.y+0.5, z0: f.z+0.5});
+        PARTICLES.bounceParticle(p);
       }
     }
 
@@ -1338,8 +1340,13 @@ function onmousedown(event) {
       PICKED.type = BLOCK_TYPES.air;
       PICKED.invalidate(true);
       neighbors(PICKED, function (n) { n.invalidate(true) });
-      for (var i = 0; i < 50; ++i)
-        PARTICLES.spawn({x: PICKED.x+0.5, y: PICKED.y+0.5, z: PICKED.z+0.5});
+      for (var i = 0; i < 50; ++i) {
+        var p = PARTICLES.spawn({
+          x0: PICKED.x + 0.5, 
+          y0: PICKED.y + 0.5, 
+          z0: PICKED.z + 0.5});
+        //PARTICLES.bounceParticle(p);
+      }
     } else {
       var b = blockFacing(PICKED, PICKED_FACE);
       if (!b.outofbounds) {
@@ -1416,20 +1423,24 @@ function pointerLockError() {
 
 function tweak() { return (Math.random() - 0.5) }
 
-ParticleSystem.prototype.spawn = function (near) {
+ParticleSystem.prototype.spawn = function (init) {
+  var rewind = Math.random();
   var p = {
     dx: 2 * tweak(),
     dy: 0.5 + 3 * Math.random(),
     dz: 2 * tweak(),
-    x0: near.x,
-    y0: near.y,
-    z0: near.z,
+    x0: 0,
+    y0: 0,
+    z0: 0,
     id: PARTICLES.nextID++,
-    birthday: AVATAR.clock()/1000 - Math.random(),
-    life: 0.5 + Math.random() / 2,
-  }
+    birthday: AVATAR.clock()/1000 - rewind,
+    life: rewind + 0.5 + Math.random() / 2,
+  };
+  for (var i in p)
+    if (typeof init[i] !== 'undefined')
+      p[i] = init[i];
   this.add(p);
-  this.bounceParticle(p);
+  return p;
 }
 
 function ParticleSystem() {
@@ -1440,6 +1451,7 @@ function ParticleSystem() {
   this.shader.locate('aVelocity');
   this.shader.locate('aBirthday');
   this.shader.locate('uClock');
+  this.shader.locate('uGravity');
   this.shader.locate('uMVMatrix');
   this.shader.locate('uPMatrix');
 }
@@ -1467,29 +1479,26 @@ ParticleSystem.prototype.bounceParticle = function (p) {
   // Collide with whatever face will get hit first
   var tx = ((p.dx > 0) ? carf(p.x0) : frac(p.x0)) / p.dx;
   var tz = ((p.dz > 0) ? carf(p.z0) : frac(p.z0)) / p.dz;
-  var ty = p.dy + Math.sqrt(p.dy * p.dy + 2 * GRAVITY * frac(p.y0)) / 
-    2 * GRAVITY;
+  var ty = p.dy + Math.sqrt(p.dy * p.dy + 2 * PARTICLE_GRAVITY * frac(p.y0)) / 
+    2 * PARTICLE_GRAVITY;
   var t = Math.min(tx, ty, tz);
   if (t < p.life) {
-    var np = {
+    var np = this.spawn({
       x0: p.x0 + t * p.dx,
-      y0: p.y0 + t * p.dy + 0.5 * GRAVITY * t * t,
+      y0: p.y0 + t * p.dy - 0.5 * PARTICLE_GRAVITY * t * t,
       z0: p.z0 + t * p.dz,
-      dx: p.dx,
-      dy: p.dy,
-      dz: p.dz,
+      dy: p.dy - PARTICLE_GRAVITY * t,
       life: p.life - t,
-      birthday: p.birthday + t
-    }
+      birthday: p.birthday + t});
     p.life -= t;
     var DAMPING = 0.5;
     if (t === tx)
-      np.dx = -np.dx * DAMPING;
+      np.dx *= -DAMPING;
     else if (t === tz)
-      np.dz = -np.dz * DAMPING;
+      np.dz *= -DAMPING;
     else
-      np.dy = -np.dy * DAMPING;
-    this.add(np);
+      np.dy *= -DAMPING;
+    return np;
   }
 }
 
@@ -1533,6 +1542,7 @@ ParticleSystem.prototype.render = function () {
   }
 
   gl.uniform1f(this.shader.uClock, parseFloat(AVATAR.clock()/1000));
+  gl.uniform1f(this.shader.uGravity, PARTICLE_GRAVITY);
   gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
 
@@ -1573,3 +1583,4 @@ function pickTool(blocktype) {
 
 
 function sqr(x) { return x * x }
+
