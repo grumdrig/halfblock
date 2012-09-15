@@ -779,6 +779,7 @@ function processInput(avatar, elapsed) {
 function toggleMouselook() {
   AVATAR.mouselook = !AVATAR.mouselook;
   document.body.style.cursor = AVATAR.mouselook ? 'none' : '';
+  $('warning').style.display = AVATAR.mouselook ? 'none' : '';
   if (!AVATAR.mouselook) lastX = null;
 }
 
