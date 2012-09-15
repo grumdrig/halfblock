@@ -576,7 +576,12 @@ function drawScene(camera) {
   SHADER.use();
 
   // Start from scratch
+  if (AVATAR.y + EYE_HEIGHT >= 0)
+    gl.clearColor(0.5, 0.8, 0.98, 0);  // Clear color is sky blue
+  else
+    gl.clearColor(0,0,0,0);  // Look into the void
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+  gl.enable(gl.DEPTH_TEST);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Set up the projection
@@ -1277,9 +1282,6 @@ function onLoad() {
     handleLoadedTexture(TERRAIN_TEXTURE)
   }
   TERRAIN_TEXTURE.image.src = 'terrain.png';
-
-  gl.clearColor(0.5, 0.8, 0.98, 1.0);  // Clear color is sky blue
-  gl.enable(gl.DEPTH_TEST);                       // Enable Z-buffer
 
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
