@@ -116,11 +116,15 @@ var BLOCK_TYPES = {
   flower: {
     tile: 8,
     geometry: geometryDecalX,
+    margin: 0.2,
+    update: updateResting,
   },
   lamp: {
     tile: 9,
     geometry: geometryDecalX,
     luminosity: 8,
+    margin: 0.2,
+    update: updateResting,
   },
   candy: {
     tile: 10,
@@ -133,6 +137,17 @@ var BLOCK_TYPES = {
     liquid: true,
     translucent: [154,40,155,0.85],
     geometry: geometryBlock,
+    viscosity: 0.85,
+  },
+  rope: {
+    tile: [0,2],
+    liquid: true,
+    geometry: geometryDecalX,
+    update: function updateHanging() {
+      var nt = blockFacing(this, FACE_TOP).type;
+      if (!nt.solid && nt !== this.type)
+        this.changeType();
+    },
   },
 };
 var NBLOCKTYPES = 0;
@@ -142,6 +157,13 @@ for (var i in BLOCK_TYPES) {
 }
 for (var i in BLOCK_TYPES)
   BLOCK_TYPES[BLOCK_TYPES[i].index] = BLOCK_TYPES[i];
+
+function updateResting() {
+  var nt = blockFacing(this, FACE_BOTTOM).type;
+  if (!nt.solid)
+    this.changeType();
+}
+
 
 function initGL(canvas) {
   var problem = '';
@@ -686,6 +708,7 @@ function updateWorld() {
 
 function processInput(avatar, elapsed) {
   var ddp = avatar.ACCELERATION * elapsed;
+  avatar.swimming = avatar.falling && block(avatar).type.liquid;
   
   // Drag
   if (!(KEYS.W || KEYS.A || KEYS.S || KEYS.D)) {
@@ -703,7 +726,7 @@ function processInput(avatar, elapsed) {
   if (KEYS.S) { avatar.dx += az; avatar.dz += ax; }
   if (KEYS.D) { avatar.dx += ax; avatar.dz -= az; }
   
-  if (avatar.flying) {
+  if (avatar.flying || avatar.swimming) {
     // Fly up and down
     if (KEYS[' '])
       avatar.dy += ddp;
@@ -724,13 +747,16 @@ function processInput(avatar, elapsed) {
 
   // Limit speed
   var h = sqr(avatar.dx) + sqr(avatar.dz);
-  if (avatar.flying) h += sqr(avatar.dy);
+  if (avatar.flying || avatar.swimming) h += sqr(avatar.dy);
   h = Math.sqrt(h);
-  var f = h / (avatar.flying ? avatar.FLY_MAX : avatar.WALK_MAX);
+  
+  var vmax = (avatar.flying ? avatar.FLY_MAX : avatar.WALK_MAX) *
+    (1 - (block(avatar).type.viscosity||0));
+  var f = h / vmax;
   if (f > 1) {
     avatar.dx /= f;
     avatar.dz /= f;
-    if (avatar.flying) avatar.dy /= f;
+    if (avatar.flying || avatar.swimming) avatar.dy /= f;
   }
 }
 
@@ -800,9 +826,10 @@ function ballistics(e, elapsed) {
     }
   }
 
-  // Still falling
-  if (e.falling)
+  // Fall
+  if (e.falling && !(e.swimming && (KEYS[' '] || KEYS[16])))
     e.dy -= GRAVITY * elapsed;
+
   e.y += e.dy * elapsed;
 
   if (block(e).type.solid && (e.flying || e.falling)) {
@@ -915,6 +942,9 @@ function tick() {
     var pf = blockFacing(PICKED, PICKED_FACE);
     if (pf) feedback += ' &rarr; ' + pf;
   }
+  var keys = '';
+  for (var k in KEYS) if (KEYS[k]) keys += ' ' + escape(k);
+  if (keys.length > 0) feedback += '<br>Keys: ' + keys;
   $('stats').innerHTML = feedback;
 }
 
@@ -980,16 +1010,20 @@ Block.prototype.generateTerrain = function () {
   }
 }
 
-Block.prototype.invalidate = function () {
+Block.prototype.invalidate = function (andNeighbors) {
   if (!this.dirty) {
     this.dirty = true;
     this.vertices = null;
     if (this.chunk)
       ++this.chunk.ndirty;
   }
+  if (andNeighbors)
+    neighbors(this, function (n) { n.invalidate() });
 }
 
 Block.prototype.update = function () {
+  if (this.type.update)
+    this.type.update.apply(this);
   this.dirty = false;
   var light;
   if (this.type.opaque) {
@@ -1006,6 +1040,20 @@ Block.prototype.update = function () {
     this.light = light;
     this.vertices = null;  // force re-geom
     neighbors(this, function (n) { n.invalidate() });
+  }
+}
+
+Block.prototype.changeType = function (newType) {
+  this.type = newType || BLOCK_TYPES.air;
+  this.invalidate(true);
+  if (this.type === BLOCK_TYPES.air) {
+    for (var i = 0; i < 50; ++i) {
+      var p = PARTICLES.spawn({
+        x0: PICKED.x + 0.5, 
+        y0: PICKED.y + 0.5, 
+        z0: PICKED.z + 0.5});
+      //PARTICLES.bounceParticle(p);
+    }
   }
 }
 
@@ -1026,7 +1074,7 @@ function geometryDecalX(b) {
   if (b.y >= NY-1)
     light = 1;  // Account for topmost block against non-block
   
-  var L = 0.2;
+  var L = b.type.margin || 0;
   var R = 1 - L;
   var H = R - L;
   v.positions = [b.x + L,   b.y,     b.z + 0.5,
@@ -1041,10 +1089,15 @@ function geometryDecalX(b) {
                4, 5, 6,  4, 6, 7];
   v.textures = [];
   for (var i = 0; i < 2; ++i) {
-    v.textures.push(b.type.tile + ZERO, ONE, 
-                    b.type.tile + ONE,  ONE, 
-                    b.type.tile + ONE,  ZERO, 
-                    b.type.tile + ZERO, ZERO);
+    var tilex = b.type.tile, tiley = 0;
+    if (Array.isArray(tilex)) {
+      tiley = tilex[1];
+      tilex = tilex[0];
+    }
+    v.textures.push(tilex + ZERO, tiley + ONE, 
+                    tilex + ONE,  tiley + ONE, 
+                    tilex + ONE,  tiley + ZERO, 
+                    tilex + ZERO, tiley + ZERO);
   }
   v.lighting = [];
   for (var i = 0; i < v.positions.length; ++i)
@@ -1089,10 +1142,15 @@ function geometryBlock(b) {
       }
       
       // Set textures per vertex: one ST pair for each vertex
-      v.textures.push(b.type.tile + ONE,  ZERO, 
-                      b.type.tile + ZERO, ZERO, 
-                      b.type.tile + ZERO, ONE, 
-                      b.type.tile + ONE,  ONE);
+      var tilex = b.type.tile, tiley = 0;
+      if (Array.isArray(tilex)) {
+        tiley = tilex[1];
+        tilex = tilex[0];
+      }
+      v.textures.push(tilex + ONE,  tiley + ZERO, 
+                      tilex + ZERO, tiley + ZERO, 
+                      tilex + ZERO, tiley + ONE, 
+                      tilex + ONE,  tiley + ONE);
 
       // Describe triangles
       v.indices.push(pindex, pindex + 1, pindex + 2,
@@ -1147,10 +1205,14 @@ Entity.prototype.clock = function () {
 }
 
 Entity.prototype.toString = function () {
-  return '[' + this.x.toFixed(2) + ',' + this.y.toFixed(2) + ',' +
-    this.z.toFixed(2) + '] &lt;' + this.yaw.toFixed(2) + ',' +
-    this.pitch.toFixed(2) + '&gt +' + 
-    '[' + this.dx.toFixed(2) + ',' + this.dy.toFixed(2) + ',' + this.dz.toFixed(2) + '] ' + (this.flying ? 'F' : this.falling ? 'f' : 'w');
+  var result = '[' + this.x.toFixed(2) + ',' + this.y.toFixed(2) + ',' +
+                 this.z.toFixed(2) + '] ';
+  result += '&lt;' + this.yaw.toFixed(2) + ',' + this.pitch.toFixed(2) + '&gt';
+  result += ' +[' + this.dx.toFixed(2) + ',' + this.dy.toFixed(2) + ',' + 
+                this.dz.toFixed(2) + '] ';
+  result += (this.flying ? 'F' : this.falling ? 'f' : 'w');
+  if (this.swimming) result += 's';
+  return result;
 }
 
 function onLoad() {
@@ -1160,7 +1222,7 @@ function onLoad() {
 
   // Create player
 
-  AVATAR = new Entity({x:NX/2, y:NY/2, z:NZ/2});
+  AVATAR = new Entity({x:NX/2 - 0.5, y:NY/2, z:NZ/2 + 0.5});
   AVATAR.mouselook = false;
   AVATAR.lastHop = 0;
 
@@ -1338,22 +1400,11 @@ function onmousedown(event) {
   if (event.preventDefault) event.preventDefault();
   if (PICKED && AVATAR.mouselook) {
     if (event.button === 0) {
-      PICKED.type = BLOCK_TYPES.air;
-      PICKED.invalidate(true);
-      neighbors(PICKED, function (n) { n.invalidate(true) });
-      for (var i = 0; i < 50; ++i) {
-        var p = PARTICLES.spawn({
-          x0: PICKED.x + 0.5, 
-          y0: PICKED.y + 0.5, 
-          z0: PICKED.z + 0.5});
-        //PARTICLES.bounceParticle(p);
-      }
+      PICKED.changeType();
     } else {
       var b = blockFacing(PICKED, PICKED_FACE);
-      if (!b.outofbounds) {
-        b.type = AVATAR.tool || PICKED.type;
-        b.invalidate(true);
-      }
+      if (!b.outofbounds)
+        b.changeType(AVATAR.tool || PICKED.type);
     }
   }
   return false;
@@ -1576,8 +1627,13 @@ function pickTool(blocktype) {
   var ctx = toolcan.getContext('2d');
   ctx.clearRect(0, 0, toolcan.width, toolcan.height);
   if (blocktype) {
+    var tilex = blocktype.tile, tiley = 0;
+    if (Array.isArray(tilex)) {
+      tiley = tilex[1];
+      tilex = tilex[0];
+    }
     ctx.drawImage($('terrain'), 
-                  16 * blocktype.tile, 0,  16, 16,
+                  16 * tilex, 16 * tiley,  16, 16,
                   0, 0,                    toolcan.width, toolcan.height);
   }
 }
