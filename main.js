@@ -2,7 +2,14 @@
 // http://learningwebgl.com/blog/?page_id=1217
 // http://codeflow.org/entries/2010/dec/09/minecraft-like-rendering-experiments-in-opengl-4/
 // http://stackoverflow.com/questions/9046643/webgl-create-texture
+// http://www.opengl.org/wiki/Tutorial2:_VAOs,_VBOs,_Vertex_and_Fragment_Shaders_(C_/_SDL)
 
+// TODO: race cars
+// TODO: flags
+// TODO: tonkatsu
+// TODO: rice
+// TODO: edamame
+// TODO: miso soup
 
 // OpenGL rendering things!
 
@@ -140,7 +147,9 @@ var BLOCK_TYPES = {
     viscosity: 0.85,
   },
   rope: {
-    tile: [0,2],
+    tile: function () { 
+      return [(blockFacing(this, FACE_BOTTOM).type === this.type) ? 0 : 1, 2] 
+    },
     liquid: true,
     geometry: geometryDecalX,
     update: function updateHanging() {
@@ -1057,6 +1066,15 @@ Block.prototype.changeType = function (newType) {
   }
 }
 
+Block.prototype.tile = function () {
+  var tile = this.type.tile;
+  if (typeof tile === 'function')
+    tile = tile.apply(this);
+  if (typeof tile === 'number') 
+    return {s: tile,    t: 0};
+  else // assume array
+    return {s: tile[0], t:tile[1]};
+}
 
 Block.prototype.toString = function () {
   return this.type.name + ' [' + this.x + ',' + this.y + ',' + this.z + '] ' +
@@ -1089,15 +1107,11 @@ function geometryDecalX(b) {
                4, 5, 6,  4, 6, 7];
   v.textures = [];
   for (var i = 0; i < 2; ++i) {
-    var tilex = b.type.tile, tiley = 0;
-    if (Array.isArray(tilex)) {
-      tiley = tilex[1];
-      tilex = tilex[0];
-    }
-    v.textures.push(tilex + ZERO, tiley + ONE, 
-                    tilex + ONE,  tiley + ONE, 
-                    tilex + ONE,  tiley + ZERO, 
-                    tilex + ZERO, tiley + ZERO);
+    var tile = b.tile();
+    v.textures.push(tile.s + ZERO, tile.t + ONE, 
+                    tile.s + ONE,  tile.t + ONE, 
+                    tile.s + ONE,  tile.t + ZERO, 
+                    tile.s + ZERO, tile.t + ZERO);
   }
   v.lighting = [];
   for (var i = 0; i < v.positions.length; ++i)
@@ -1142,15 +1156,11 @@ function geometryBlock(b) {
       }
       
       // Set textures per vertex: one ST pair for each vertex
-      var tilex = b.type.tile, tiley = 0;
-      if (Array.isArray(tilex)) {
-        tiley = tilex[1];
-        tilex = tilex[0];
-      }
-      v.textures.push(tilex + ONE,  tiley + ZERO, 
-                      tilex + ZERO, tiley + ZERO, 
-                      tilex + ZERO, tiley + ONE, 
-                      tilex + ONE,  tiley + ONE);
+      var tile = b.tile();
+      v.textures.push(tile.s + ONE,  tile.t + ZERO, 
+                      tile.s + ZERO, tile.t + ZERO, 
+                      tile.s + ZERO, tile.t + ONE, 
+                      tile.s + ONE,  tile.t + ONE);
 
       // Describe triangles
       v.indices.push(pindex, pindex + 1, pindex + 2,
@@ -1628,14 +1638,12 @@ function pickTool(blocktype) {
   var ctx = toolcan.getContext('2d');
   ctx.clearRect(0, 0, toolcan.width, toolcan.height);
   if (blocktype) {
-    var tilex = blocktype.tile, tiley = 0;
-    if (Array.isArray(tilex)) {
-      tiley = tilex[1];
-      tilex = tilex[0];
-    }
+    var sample = new Block({x:0,y:-1000,z:0});
+    sample.type = blocktype;
+    var tile = sample.tile();
     ctx.drawImage($('terrain'), 
-                  16 * tilex, 16 * tiley,  16, 16,
-                  0, 0,                    toolcan.width, toolcan.height);
+                  16 * tile.s, 16 * tile.t,  16, 16,
+                  0, 0,                      toolcan.width, toolcan.height);
   }
 }
 
