@@ -1357,12 +1357,12 @@ function onkeydown(event, count) {
       }
     }
 
-    if (k === 190 || k === 221) {  // right paren, brace or bracket
+    if (k === 190 || k === 221 || c === 'I') { // I, right paren/brace/bracket
       var tooli = AVATAR.tool ? (AVATAR.tool.index + 1) % NBLOCKTYPES : 1;
       pickTool(tooli);
     }
     
-    if (k === 188 || k === 219) {  // left paren, brack or bracket
+    if (k === 188 || k === 219) {  // left paren/brace//bracket
       var tooli = AVATAR.tool ? 
         (NBLOCKTYPES + AVATAR.tool.index - 1) % NBLOCKTYPES : NBLOCKTYPES - 1;
       pickTool(tooli);
