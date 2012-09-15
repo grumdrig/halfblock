@@ -1623,6 +1623,7 @@ function pickTool(blocktype) {
   if (blocktype === BLOCK_TYPES.air)
     blocktype = null;
   AVATAR.tool = blocktype;
+  $('toolname').innerText = blocktype ? blocktype.name : '';
   var toolcan = $('tool');
   var ctx = toolcan.getContext('2d');
   ctx.clearRect(0, 0, toolcan.width, toolcan.height);
