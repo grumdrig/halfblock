@@ -3,6 +3,7 @@
 // http://codeflow.org/entries/2010/dec/09/minecraft-like-rendering-experiments-in-opengl-4/
 // http://stackoverflow.com/questions/9046643/webgl-create-texture
 // http://www.opengl.org/wiki/Tutorial2:_VAOs,_VBOs,_Vertex_and_Fragment_Shaders_(C_/_SDL)
+// http://stackoverflow.com/questions/7420092/efficient-vbo-allocation-in-webgl
 
 // TODO: race cars
 // TODO: flags
@@ -157,6 +158,12 @@ var BLOCK_TYPES = {
       if (!nt.solid && nt !== this.type)
         this.changeType();
     },
+  },
+  mystery: {
+    tile: [2, 2],
+    opaque: true,
+    solid: true,
+    geometry: geometryBlock,
   },
 };
 var NBLOCKTYPES = 0;
@@ -1347,7 +1354,7 @@ function onkeydown(event, count) {
 
   if (count === 1) {
     if (c === ' ') {
-      if (AVATAR.clock() < AVATAR.lastHop + 500) {
+      if (AVATAR.clock() < AVATAR.lastHop + 200) {
         // Toggle flying
         AVATAR.flying = !AVATAR.flying;
         if (AVATAR.flying) AVATAR.falling = false;
