@@ -148,12 +148,12 @@ var BLOCK_TYPES = {
   },
   rope: {
     tile: function () { 
-      return [(blockFacing(this, FACE_BOTTOM).type === this.type) ? 0 : 1, 2] 
+      return [(this.neighbor(FACE_BOTTOM).type === this.type) ? 0 : 1, 2] 
     },
     liquid: true,
     geometry: geometryDecalX,
     update: function updateHanging() {
-      var nt = blockFacing(this, FACE_TOP).type;
+      var nt = this.neighbor(FACE_TOP).type;
       if (!nt.solid && nt !== this.type)
         this.changeType();
     },
@@ -168,7 +168,7 @@ for (var i in BLOCK_TYPES)
   BLOCK_TYPES[BLOCK_TYPES[i].index] = BLOCK_TYPES[i];
 
 function updateResting() {
-  var nt = blockFacing(this, FACE_BOTTOM).type;
+  var nt = this.neighbor(FACE_BOTTOM).type;
   if (!nt.solid)
     this.changeType();
 }
@@ -302,7 +302,7 @@ function Chunk(x, z) {
       Math.round(Math.abs(noise(this.chunkx, this.chunkz, n + 23.4)) * NZ);
     var t = topmost(x, z);
     if (t && t.y < NY-1)
-      blockFacing(t, FACE_TOP).type = BLOCK_TYPES.flower;
+      t.neighbor(FACE_TOP).type = BLOCK_TYPES.flower;
   }
 
   // Initial quick lighting update, some of which we can know accurately
@@ -532,31 +532,37 @@ function block(x, y, z) {
 var _DZ = NX * NY;
 var _DY = NX;
 var _DX = 1;
-function blockFacing(b, face) {
+Block.prototype.neighbor = function (face) {
   switch (face) {
   case FACE_FRONT: 
-    return b.z-b.chunk.chunkz > 0 ? b.chunk.blocks[b.i - _DZ] : block(b.x, b.y,b. z-1);
+    return this.z-this.chunk.chunkz > 0 ? 
+      this.chunk.blocks[this.i - _DZ] : block(this.x, this.y,this. z-1);
   case FACE_BACK:  
-    return b.z-b.chunk.chunkz < NZ-1 ? b.chunk.blocks[b.i + _DZ] : block(b.x, b.y, b.z+1);
+    return this.z-this.chunk.chunkz < NZ-1 ? 
+      this.chunk.blocks[this.i + _DZ] : block(this.x, this.y, this.z+1);
   case FACE_BOTTOM:
-    return b.y > 0 ? b.chunk.blocks[b.i - _DY] : block(b.x, b.y-1, b.z);
+    return this.y > 0 ? 
+      this.chunk.blocks[this.i - _DY] : block(this.x, this.y-1, this.z);
   case FACE_TOP:   
-    return b.y < NY-1 ? b.chunk.blocks[b.i + _DY] : block(b.x, b.y+1, b.z);
+    return this.y < NY-1 ? 
+      this.chunk.blocks[this.i + _DY] : block(this.x, this.y+1, this.z);
   case FACE_RIGHT: 
-    return b.x-b.chunk.chunkx > 0 ? b.chunk.blocks[b.i - _DX] : block(b.x-1, b.y, b.z);
+    return this.x-this.chunk.chunkx > 0 ? 
+      this.chunk.blocks[this.i - _DX] : block(this.x-1, this.y, this.z);
   case FACE_LEFT:  
-    return b.x-b.chunk.chunkx < NX-1 ? b.chunk.blocks[b.i + _DX] : block(b.x+1, b.y, b.z);
+    return this.x-this.chunk.chunkx < NX-1 ? 
+      this.chunk.blocks[this.i + _DX] : block(this.x+1, this.y, this.z);
   }
 }
 
 // Calls back callback(neighbor, face)
-function neighbors(b, callback) {
-  callback(blockFacing(b, FACE_FRONT),  FACE_FRONT);
-  callback(blockFacing(b, FACE_BACK),   FACE_BACK);
-  callback(blockFacing(b, FACE_BOTTOM), FACE_BOTTOM);
-  callback(blockFacing(b, FACE_TOP),    FACE_TOP);
-  callback(blockFacing(b, FACE_RIGHT),  FACE_RIGHT);
-  callback(blockFacing(b, FACE_LEFT),   FACE_LEFT);
+Block.prototype.eachNeighbor = function (callback) {
+  callback(this.neighbor(FACE_FRONT),  FACE_FRONT);
+  callback(this.neighbor(FACE_BACK),   FACE_BACK);
+  callback(this.neighbor(FACE_BOTTOM), FACE_BOTTOM);
+  callback(this.neighbor(FACE_TOP),    FACE_TOP);
+  callback(this.neighbor(FACE_RIGHT),  FACE_RIGHT);
+  callback(this.neighbor(FACE_LEFT),   FACE_LEFT);
 }
 
 
@@ -948,7 +954,7 @@ function tick() {
     'Light: ' + block(AVATAR).light;
   if (PICKED) {
     feedback += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
-    var pf = blockFacing(PICKED, PICKED_FACE);
+    var pf = PICKED.neighbor(PICKED_FACE);
     if (pf) feedback += ' &rarr; ' + pf;
   }
   var keys = '';
@@ -1027,7 +1033,7 @@ Block.prototype.invalidate = function (andNeighbors) {
       ++this.chunk.ndirty;
   }
   if (andNeighbors)
-    neighbors(this, function (n) { n.invalidate() });
+    this.eachNeighbor(function (n) { n.invalidate() });
 }
 
 Block.prototype.update = function () {
@@ -1041,14 +1047,14 @@ Block.prototype.update = function () {
     light = this.type.luminosity || LIGHT_MIN;
     if (this.uncovered && light < LIGHT_SUN)
       light = LIGHT_SUN;
-    neighbors(this, function (n) {
+    this.eachNeighbor(function (n) {
       light = Math.max(light, n.light - 1);
     });
   }
   if (this.light != light) {
     this.light = light;
     this.vertices = null;  // force re-geom
-    neighbors(this, function (n) { n.invalidate() });
+    this.eachNeighbor(function (n) { n.invalidate() });
   }
 }
 
@@ -1136,7 +1142,7 @@ function geometryBlock(b) {
   };
 
   for (var face = 0; face < 6; ++face) {
-    var n = blockFacing(b, face);
+    var n = b.neighbor(face);
     var omit = n.type.opaque;
     // This test isnt reliable until invalidate() invalidates neighbors 
     // of translucents better...I think maybe?
@@ -1361,7 +1367,7 @@ function onkeydown(event, count) {
     
     if (c === 'K' && PICKED) {
       for (var i = 0; i < 10; ++i) {
-        var f = blockFacing(PICKED, PICKED_FACE);
+        var f = PICKED.neighbor(PICKED_FACE);
         var p = PARTICLES.spawn({x0: f.x+0.5, y0: f.y+0.5, z0: f.z+0.5});
         PARTICLES.bounceParticle(p);
       }
@@ -1412,7 +1418,7 @@ function onmousedown(event) {
     if (event.button === 0) {
       PICKED.changeType();
     } else {
-      var b = blockFacing(PICKED, PICKED_FACE);
+      var b = PICKED.neighbor(PICKED_FACE);
       if (!b.outofbounds)
         b.changeType(AVATAR.tool || PICKED.type);
     }
