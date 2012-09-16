@@ -23,6 +23,7 @@ var pMatrix = mat4.create();   // projection matrix
 // Game objects
 
 var WORLD = {};
+var ENTITIES = {};
 var AVATAR;
 
 var PICKED = null;
@@ -370,7 +371,7 @@ Chunk.prototype.generateBuffers = function () {
     return {
       aVertexPosition: makeBuffer(set.aVertexPosition, 3),
       aTextureCoord:   makeBuffer(set.aTextureCoord, 2),
-      aLighting:       makeBuffer(set.aLighting, 3),
+      aLighting:       makeBuffer(set.aLighting, 3, true),
       indices:         makeElementArrayBuffer(set.indices)
     };
   }
@@ -617,6 +618,7 @@ function drawScene(camera) {
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
   gl.uniform1i(SHADER.uSampler, 0);
+  gl.uniform1f(SHADER.uFogDistance, 2 * AVATAR.viewDistance / 5);
 
   var headblock = block(AVATAR.x, AVATAR.y + EYE_HEIGHT, AVATAR.z);
   if (headblock.type.translucent) {
@@ -714,15 +716,10 @@ function updateWorld() {
   PICKED = pickp();
   
   var c = coords(AVATAR);
-  makeChunk(c.chunkx, c.chunkz);
-  makeChunk(c.chunkx - NX, c.chunkz);
-  makeChunk(c.chunkx + NX, c.chunkz);
-  makeChunk(c.chunkx, c.chunkz - NZ);
-  makeChunk(c.chunkx, c.chunkz + NZ);
-  makeChunk(c.chunkx - NX, c.chunkz - NZ);
-  makeChunk(c.chunkx + NX, c.chunkz - NZ);
-  makeChunk(c.chunkx - NX, c.chunkz + NZ);
-  makeChunk(c.chunkx + NX, c.chunkz + NZ);
+  var d = NX;//AVATAR.viewDistance;
+  for (var dx = -d; dx < d; dx += NX)
+    for (var dz = -d; dz < d; dz += NZ)
+      makeChunk(AVATAR.x + dx, AVATAR.z + dz);
   
   for (var i in WORLD) {
     var c = WORLD[i];
@@ -956,7 +953,11 @@ function tick() {
   drawScene(AVATAR);
 
   processInput(AVATAR, elapsed);
-  ballistics(AVATAR, elapsed);
+
+  for (var i in ENTITIES) {
+    var e = ENTITIES[i];
+    ballistics(e, elapsed);
+  }
 
   PARTICLES.tick(elapsed);
 
@@ -1081,6 +1082,7 @@ Block.prototype.changeType = function (newType) {
   this.type = newType || BLOCK_TYPES.air;
   this.invalidate(true);
   if (this.type === BLOCK_TYPES.air) {
+    new Entity(this);
     for (var i = 0; i < 50; ++i) {
       var p = PARTICLES.spawn({
         x0: PICKED.x + 0.5, 
@@ -1233,6 +1235,14 @@ function Entity(init) {
   this.FLY_MAX = 10.8; // m/s
   this.SPIN_RATE = 2;  // radians/s
   this.ACCELERATION = 20;  // m/s^2
+  this.id = Entity.nextID++;
+  ENTITIES[this.id] = this;
+}
+Entity.nextID = 1;
+
+
+Entity.prototype.die = function () {
+  delete ENTITIES[this.id];
 }
 
 Entity.prototype.clock = function () {
@@ -1260,6 +1270,7 @@ function onLoad() {
   AVATAR = new Entity({x:NX/2 - 0.5, y:NY/2, z:NZ/2 + 0.5});
   AVATAR.mouselook = false;
   AVATAR.lastHop = 0;
+  AVATAR.viewDistance = 100;
 
   var b = topmost(AVATAR.x, AVATAR.z);
   if (b)
@@ -1277,6 +1288,7 @@ function onLoad() {
   SHADER.locate('uSampler');
   SHADER.locate('uMVMatrix');
   SHADER.locate('uPMatrix');
+  SHADER.locate('uFogDistance');
 
   WIREFRAME = new Wireframe();
 
@@ -1589,10 +1601,11 @@ ParticleSystem.prototype.bounceParticle = function (p) {
   }
 }
 
-function makeBuffer(data, itemsize) {
+function makeBuffer(data, itemsize, dynamic) {
   var buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), 
+                dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
   buffer.itemSize = itemsize;
   buffer.numItems = data.length / itemsize;
   return buffer;
