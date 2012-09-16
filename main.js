@@ -165,6 +165,12 @@ var BLOCK_TYPES = {
     solid: true,
     geometry: geometryBlock,
   },
+  hal9000: {
+    tile: [3, 2],
+    opaque: true,
+    solid: true,
+    geometry: geometryBlock,
+  },
 };
 var NBLOCKTYPES = 0;
 for (var i in BLOCK_TYPES) {
@@ -1357,7 +1363,7 @@ function onkeydown(event, count) {
 
   if (count === 1) {
     if (c === ' ') {
-      if (AVATAR.clock() < AVATAR.lastHop + 200) {
+      if (AVATAR.clock() < AVATAR.lastHop + 250) {
         // Toggle flying
         AVATAR.flying = !AVATAR.flying;
         if (AVATAR.flying) AVATAR.falling = false;
