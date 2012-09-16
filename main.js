@@ -1332,6 +1332,9 @@ function onLoad() {
     canvas.requestPointerLock ||
     canvas.mozRequestPointerLock || 
     canvas.webkitRequestPointerLock;
+
+  if (canvas.requestPointerLock)
+    $('warning').innerHTML = 'Hey! Pointer lock should work!';
   
   tick();
 }
