@@ -320,7 +320,7 @@ function Chunk(x, z) {
   }
 
   // Initial quick lighting update, some of which we can know accurately
-  this.ndirty = 0;
+  this.nDirty = 0;
   for (var x = 0; x < NX; ++x) {
     for (var z = 0; z < NZ; ++z) {
       var unsheltered = true;
@@ -329,20 +329,22 @@ function Chunk(x, z) {
         var b = this.blocks[c.i];
         b.light = Math.max(b.type.luminosity || 0,
                            b.opaque ? 0 : unsheltered ? LIGHT_SUN : LIGHT_MIN);
-        b.dirty = !unsheltered;
-        if (b.dirty) ++this.ndirty;
+        b.dirtyLight = !unsheltered;
+        if (b.dirtyLight) ++this.nDirty;
         unsheltered = unsheltered && !b.opaque;
       }
     }
   }
   // Do a few updates to avoid having to recreate the geometry a bunch of 
   // times when we're updating in bulk
-  //for (var i = 0; i < 10 && this.ndirty > 50; ++i)
-  //  this.update();
+  //for (var i = 0; i < 10 && this.nDirty > 50; ++i)
+  //  this.updateLight();
 }
 
 
-Chunk.prototype.generateBuffers = function () {
+Chunk.prototype.generateBuffers = function (justUpdateLight) {
+  justUpdateLight = justUpdateLight &&
+    (this.opaqueBuffers || this.translucentBuffers);
   var opaques = {}, translucents = {};
   for (var i = 0; i < this.blocks.length; ++i) {
     var b = this.blocks[i];
@@ -356,27 +358,41 @@ Chunk.prototype.generateBuffers = function () {
         dest.aLighting = [];
         dest.indices = [];
       }
+      dest.aLighting.push.apply(dest.aLighting, b.vertices.lighting);
+      if (justUpdateLight)
+        continue;
       var pindex = dest.aVertexPosition.length / 3;
       dest.aVertexPosition.push.apply(dest.aVertexPosition, 
                                       b.vertices.positions);
-      dest.aLighting.push.apply(dest.aLighting, b.vertices.lighting);
       dest.aTextureCoord.push.apply(dest.aTextureCoord, b.vertices.textures);
       for (var j = 0; j < b.vertices.indices.length; ++j)
         dest.indices.push(pindex + b.vertices.indices[j]);
     }
   }
   
-  function makebufs(set) {
-    if (!set.indices) return null;
-    return {
-      aVertexPosition: makeBuffer(set.aVertexPosition, 3),
-      aTextureCoord:   makeBuffer(set.aTextureCoord, 2),
-      aLighting:       makeBuffer(set.aLighting, 3, true),
-      indices:         makeElementArrayBuffer(set.indices)
-    };
+  if (justUpdateLight) {
+    function updatebuf(set, buffers) {
+      if (set.aLighting && buffers && buffers.aLighting) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.aLighting);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, 
+                         new Float32Array(opaques.aLighting));
+      }
+    }
+    updatebuf(opaques, this.opaqueBuffers);
+    updatebuf(translucents, this.translucentBuffers);
+  } else {
+    function makebufs(set) {
+      if (!set.indices) return null;
+      return {
+        aVertexPosition: makeBuffer(set.aVertexPosition, 3),
+        aTextureCoord:   makeBuffer(set.aTextureCoord, 2),
+        aLighting:       makeBuffer(set.aLighting, 3, true),
+        indices:         makeElementArrayBuffer(set.indices)
+      };
+    }
+    this.opaqueBuffers = makebufs(opaques);
+    this.translucentBuffers = makebufs(translucents);
   }
-  this.opaqueBuffers = makebufs(opaques);
-  this.translucentBuffers = makebufs(translucents);
 }
 
 
@@ -405,21 +421,31 @@ Chunk.prototype.updatePeriod = function () {
 }
 
 Chunk.prototype.update = function () {
-  this.ndirty = 0;
-  this.lastUpdate = AVATAR.clock();
-  
-  // This shitty method will propagate block updates faster in some
-  // directions than others
-  var tops = {};
-  for (var i = this.blocks.length-1; i >= 0; --i) {  
-    // iteration runs from high y's to low
-    var c = this.blocks[i];
-    var xz = c.x + NX * c.z;
-    c.uncovered = !tops[xz];
-    if (c.uncovered && c.type.opaque)
-      tops[xz] = c;
-    if (c.dirty)
-      c.update();
+  if (this.nDirty > 0 && AVATAR.clock() > this.lastUpdate+this.updatePeriod()){
+    this.nDirty = 0;
+    var uplights = 0, upgeoms = 0;
+    
+    // This shitty method will propagate block updates faster in some
+    // directions than others
+    var tops = {};
+    for (var i = this.blocks.length-1; i >= 0; --i) {  
+      // iteration runs from high y's to low
+      var b = this.blocks[i];
+      var xz = b.x + NX * b.z;
+      b.uncovered = !tops[xz];
+      if (b.uncovered && b.type.opaque)
+        tops[xz] = b;
+      if (b.dirtyLight || b.dirtyGeometry) {
+        if (b.dirtyLight) uplights++;
+        if (b.dirtyGeometry) upgeoms++;
+        b.update();
+      }
+    }
+
+    this.lastUpdate = AVATAR.clock();
+    this.generateBuffers(upgeoms === 0);
+    console.log('Update: ', this.chunkx, this.chunkz, ':', 
+                uplights, upgeoms, '->', this.nDirty);
   }
 }
 
@@ -511,23 +537,24 @@ function makeChunk(chunkx, chunkz) {
     // New chunk needed
     result = new Chunk(chunkx, chunkz);
 
-    // Invalidate edges of neighboring chunks
+    // Invalidate edges of neighboring chunks. Have to invalidate the 
+    // whole geometry or the light and other arrays will be out of sync
     if (chunk(chunkx - NX, chunkz))
       for (var y = 0; y < NY; ++y)
         for (var z = 0; z < NZ; ++z)
-          block(chunkx - 1, y, chunkz + z).invalidate();
+          block(chunkx - 1, y, chunkz + z).invalidateGeometry();
     if (chunk(chunkx + NX, chunkz))
       for (var y = 0; y < NY; ++y)
         for (var z = 0; z < NZ; ++z)
-          block(chunkx + NX, y, chunkz + z).invalidate();
+          block(chunkx + NX, y, chunkz + z).invalidateGeometry();
     if (chunk(chunkx, chunkz - NZ))
       for (var y = 0; y < NY; ++y)
         for (var x = 0; x < NX; ++x)
-          block(chunkx + x, y, chunkz - 1).invalidate();
+          block(chunkx + x, y, chunkz - 1).invalidateGeometry();
     if (chunk(chunkx, chunkz + NZ))
       for (var y = 0; y < NY; ++y)
         for (var x = 0; x < NX; ++x)
-          block(chunkx + x, y, chunkz + NZ).invalidate();
+          block(chunkx + x, y, chunkz + NZ).invalidateGeometry();
   }
   return result;
 }
@@ -716,7 +743,7 @@ function updateWorld() {
   PICKED = pickp();
   
   var c = coords(AVATAR);
-  var d = NX;//AVATAR.viewDistance;
+  var d = CHUNK_RADIUS;//AVATAR.viewDistance;
   for (var dx = -d; dx < d; dx += NX)
     for (var dz = -d; dz < d; dz += NZ)
       makeChunk(AVATAR.x + dx, AVATAR.z + dz);
@@ -725,12 +752,7 @@ function updateWorld() {
     var c = WORLD[i];
     c.hdistance = Math.max(0, hDistance(AVATAR, c.centerPoint())-CHUNK_RADIUS);
     c.visible = (c.hdistance < AVATAR.viewDistance);
-    if (c.ndirty > 0 &&
-        AVATAR.clock() > c.lastUpdate + c.updatePeriod()) {
-      c.update();
-      console.log('Update: ', c.chunkx, c.chunkz, ':', c.ndirty);
-      c.generateBuffers();
-    }
+    c.update();
   }  
   UPDATE_STAT.end();
 }
@@ -1045,21 +1067,34 @@ Block.prototype.generateTerrain = function () {
   }
 }
 
-Block.prototype.invalidate = function (andNeighbors) {
-  if (!this.dirty) {
-    this.dirty = true;
-    this.vertices = null;
+Block.prototype.invalidateLight = function (andNeighbors) {
+  if (!this.dirtyLight) {
+    this.dirtyLight = true;
+    delete this.vertices;
     if (this.chunk)
-      ++this.chunk.ndirty;
+      ++this.chunk.nDirty;
   }
   if (andNeighbors)
-    this.eachNeighbor(function (n) { n.invalidate() });
+    this.eachNeighbor(function (n) { n.invalidateLight() });
+}
+
+Block.prototype.invalidateGeometry = function (andNeighbors) {
+  if (!this.dirtyGeometry) {
+    this.dirtyLight = true;
+    this.dirtyGeometry = true;
+    if (this.chunk)
+      ++this.chunk.nDirty;
+  }
+  if (andNeighbors)
+    this.eachNeighbor(function (n) { n.invalidateGeometry() });
 }
 
 Block.prototype.update = function () {
+  if (this.dirtyGeometry)
+    delete this.vertices;
   if (this.type.update)
     this.type.update.apply(this);
-  this.dirty = false;
+  this.dirtyLight = this.dirtyGeometry = false;
   var light;
   if (this.type.opaque) {
     light = 0;
@@ -1073,16 +1108,15 @@ Block.prototype.update = function () {
   }
   if (this.light != light) {
     this.light = light;
-    this.vertices = null;  // force re-geom
-    this.eachNeighbor(function (n) { n.invalidate() });
+    this.eachNeighbor(function (n) { n.invalidateLight() });
   }
 }
 
 Block.prototype.changeType = function (newType) {
   this.type = newType || BLOCK_TYPES.air;
-  this.invalidate(true);
+  this.invalidateGeometry(true);
   if (this.type === BLOCK_TYPES.air) {
-    new Entity(this);
+    // no visible effect yet new Entity(this);
     for (var i = 0; i < 50; ++i) {
       var p = PARTICLES.spawn({
         x0: PICKED.x + 0.5, 
