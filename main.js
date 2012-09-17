@@ -751,14 +751,6 @@ quat4.rotateY = function (quat, angle, dest) {
 }
 
 
-function keyPressed(k) {
-  if (KEYS[k] === 1) {
-    ++KEYS[k];
-    return true;
-  }
-  return false;
-}
-
 function frac(x) { return x - Math.floor(x); }
 function carf(x) { return Math.ceil(x) - x; }
 
@@ -1524,6 +1516,10 @@ function onkeydown(event, count) {
         (NBLOCKTYPES + AVATAR.tool.index - 1) % NBLOCKTYPES : NBLOCKTYPES - 1;
       pickTool(tooli);
     }
+
+    var t = k - '0'.charCodeAt(0);
+    if (0 <= t && t <= 9)
+      pickTool(t || 10);
   }
 }
 
