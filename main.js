@@ -859,6 +859,10 @@ function ballistics(e, elapsed) {
       for (var i = SY*Math.floor((y+stepup)/SY); i < y + e.height; i += SY)
         if (block(x, i, z).type.solid)
           return true;
+      if (stepup && 
+          block(x, y, z).type.solid && 
+          block(x, y + e.height + stepup, z).type.solid)
+        return true;  // Special case for steppin' up
       return false;
     }
 
