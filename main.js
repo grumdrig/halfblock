@@ -26,6 +26,8 @@ var WORLD = {};
 var ENTITIES = {};
 var AVATAR;
 
+var GRASSY = false;  // true to use decal-style grass
+
 var PICKED = null;
 var PICKED_FACE = 0;
 var PICK_MAX = 8;
@@ -127,7 +129,7 @@ var BLOCK_TYPES = {
   },
   flower: {
     tile: 8,
-    geometry: geometryDecalX,
+    geometry: geometryHash,
     margin: 0.2,
     update: updateResting,
   },
@@ -138,7 +140,7 @@ var BLOCK_TYPES = {
   },
   lamp: {
     tile: 9,
-    geometry: geometryDecalX,
+    geometry: geometryHash,
     luminosity: 8,
     margin: 0.2,
     update: updateResting,
@@ -161,7 +163,7 @@ var BLOCK_TYPES = {
       return [(this.neighbor(FACE_BOTTOM).type === this.type) ? 0 : 1, 2] 
     },
     liquid: true,
-    geometry: geometryDecalX,
+    geometry: geometryHash,
     update: function updateHanging() {
       var nt = this.neighbor(FACE_TOP).type;
       if (!nt.solid && nt !== this.type)
@@ -343,6 +345,19 @@ function Chunk(x, z) {
       }
     }
   }
+
+  // Plant grass
+  if (GRASSY) {
+    for (var i = 0; i < NX; ++i) {
+      for (var j = 0; j < NZ; ++j) {
+        var t = topmost(this.chunkx + i, this.chunkz + j);
+        if (t && t.y < HY-SY && t.type === BLOCK_TYPES.dirt)
+          t.neighbor(FACE_TOP).type = BLOCK_TYPES.grassy;
+      }
+    }
+  }
+  
+
   // Do a few updates to avoid having to recreate the geometry a bunch of 
   // times when we're updating in bulk
   //for (var i = 0; i < 10 && this.nDirty > 50; ++i)
@@ -1070,7 +1085,7 @@ Block.prototype.generateTerrain = function () {
       (2 * this.y/SY - NY) / NY;
     if (n < -0.2) this.type = BLOCK_TYPES.rock;
     else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
-    else if (n < 0) this.type = BLOCK_TYPES.grass;
+    else if (n < 0) this.type = GRASSY ? BLOCK_TYPES.dirt : BLOCK_TYPES.grass;
     else if (this.y < HY / 4) this.type = BLOCK_TYPES.jelly;
     else this.type = BLOCK_TYPES.air;
 
@@ -1160,42 +1175,6 @@ Block.prototype.toString = function () {
 
 
 var ZERO = 0.01, ONE = 1-ZERO;
-
-function geometryDecalX(b) {
-  var v = b.vertices = {};
-
-  var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, b.light||0))
-    / LIGHT_MAX;
-  //if (b.y >= HY-1)
-  //  light = 1;  // Account for topmost block against non-block
-  
-  var L = b.type.margin || 0;
-  var R = 1 - L;
-  var H = Math.min(SY, R - L);
-  v.positions = [b.x + L,   b.y,     b.z + 0.5,
-                 b.x + R,   b.y,     b.z + 0.5,
-                 b.x + R,   b.y + H, b.z + 0.5,
-                 b.x + L,   b.y + H, b.z + 0.5,
-                 b.x + 0.5, b.y,     b.z + L,
-                 b.x + 0.5, b.y,     b.z + R,
-                 b.x + 0.5, b.y + H, b.z + R,
-                 b.x + 0.5, b.y + H, b.z + L];
-  v.indices = [0, 1, 2,  0, 2, 3,
-               4, 5, 6,  4, 6, 7];
-  v.textures = [];
-  for (var i = 0; i < 2; ++i) {
-    var tile = b.tile();
-    var bottom = tile.t + ONE;
-    var top = tile.t + Math.max(ZERO, 1 - SY);
-    v.textures.push(tile.s + ZERO, bottom, 
-                    tile.s + ONE,  bottom, 
-                    tile.s + ONE,  top, 
-                    tile.s + ZERO, top);
-  }
-  v.lighting = [];
-  for (var i = 0; i < v.positions.length; ++i)
-    v.lighting.push(light);
-}
 
 
 function geometryHash(b) {
