@@ -131,6 +131,11 @@ var BLOCK_TYPES = {
     margin: 0.2,
     update: updateResting,
   },
+  grassy: {
+    tile: [4,2],
+    geometry: geometryHash,
+    hashes: 2,
+  },
   lamp: {
     tile: 9,
     geometry: geometryDecalX,
@@ -1161,12 +1166,12 @@ function geometryDecalX(b) {
 
   var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, b.light||0))
     / LIGHT_MAX;
-  if (b.y >= HY-1)
-    light = 1;  // Account for topmost block against non-block
+  //if (b.y >= HY-1)
+  //  light = 1;  // Account for topmost block against non-block
   
   var L = b.type.margin || 0;
   var R = 1 - L;
-  var H = R - L;
+  var H = Math.min(SY, R - L);
   v.positions = [b.x + L,   b.y,     b.z + 0.5,
                  b.x + R,   b.y,     b.z + 0.5,
                  b.x + R,   b.y + H, b.z + 0.5,
@@ -1180,14 +1185,56 @@ function geometryDecalX(b) {
   v.textures = [];
   for (var i = 0; i < 2; ++i) {
     var tile = b.tile();
-    var top = tile.t + ONE;
-    var bottom = tile.t + ZERO;
-    v.textures.push(tile.s + ZERO, top, 
-                    tile.s + ONE,  top, 
+    var bottom = tile.t + ONE;
+    var top = tile.t + Math.max(ZERO, 1 - SY);
+    v.textures.push(tile.s + ZERO, bottom, 
                     tile.s + ONE,  bottom, 
-                    tile.s + ZERO, bottom);
+                    tile.s + ONE,  top, 
+                    tile.s + ZERO, top);
   }
   v.lighting = [];
+  for (var i = 0; i < v.positions.length; ++i)
+    v.lighting.push(light);
+}
+
+
+function geometryHash(b) {
+  var v = b.vertices = {
+    positions: [],
+    lighting: [],
+    textures: [],
+    indices: [],
+  };
+
+  var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, b.light||0))
+    / LIGHT_MAX;
+  
+  var L = b.type.margin || 0;
+  var R = 1 - L;
+  var H = Math.min(SY, R - L);
+  var HASHES = b.type.hashes || 1;
+  for (var i = 0; i < HASHES; ++i) {
+    var s = (0.5 + i) / HASHES;
+    var n = v.positions.length / 3;
+    v.positions.push(b.x + L, b.y,     b.z + s,
+                     b.x + R, b.y,     b.z + s,
+                     b.x + R, b.y + H, b.z + s,
+                     b.x + L, b.y + H, b.z + s,
+                     b.x + s, b.y,     b.z + L,
+                     b.x + s, b.y,     b.z + R,
+                     b.x + s, b.y + H, b.z + R,
+                     b.x + s, b.y + H, b.z + L);
+    v.indices.push(n+0, n+1, n+2,  n+0, n+2, n+3,
+                   n+4, n+5, n+6,  n+4, n+6, n+7);
+    var tile = b.tile();
+    var bottom = tile.t + ONE;
+    var top = tile.t + Math.max(ZERO, 1 - SY);
+    for (var j = 0; j < 2; ++j)
+      v.textures.push(tile.s + ZERO, bottom, 
+                      tile.s + ONE,  bottom, 
+                      tile.s + ONE,  top, 
+                      tile.s + ZERO, top);
+  }
   for (var i = 0; i < v.positions.length; ++i)
     v.lighting.push(light);
 }
