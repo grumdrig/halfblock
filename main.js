@@ -42,6 +42,8 @@ var NY = 1 << LOGNY;
 var NZ = 1 << LOGNZ;
 var CHUNK_RADIUS = Math.sqrt(NX * NX + NZ * NZ);
 var UPDATE_PERIOD = 0.1;  // sec
+var SY = 0.5;      // vertical size of blocks
+var HY = NY * SY;  // vertical height of chunk in m
 
 var RENDER_STAT = new Stat('Render');
 var UPDATE_STAT = new Stat('Update');
@@ -73,6 +75,7 @@ var FACE_TOP = 3;
 var FACE_RIGHT = 4;
 var FACE_LEFT = 5;
 
+var DISTANCE = [1, 1, SY, SY, 1, 1];
 
 var BLOCK_TYPES = {
   air: {
@@ -301,7 +304,7 @@ function Chunk(x, z) {
     for (var y = 0; y < NY; ++y) {
       for (var iz = 0; iz < NZ; ++iz) {
         var z = iz + this.chunkz;
-        var c = coords(x, y, z);
+        var c = coords(x, y*SY, z);
         var b = this.blocks[c.i] = new Block(c, this);
         b.generateTerrain();
       }
@@ -315,7 +318,7 @@ function Chunk(x, z) {
     var z = this.chunkz + 
       Math.round(Math.abs(noise(this.chunkx, this.chunkz, n + 23.4)) * NZ);
     var t = topmost(x, z);
-    if (t && t.y < NY-1)
+    if (t && t.y < NY*SY-1)
       t.neighbor(FACE_TOP).type = BLOCK_TYPES.flower;
   }
 
@@ -325,7 +328,7 @@ function Chunk(x, z) {
     for (var z = 0; z < NZ; ++z) {
       var unsheltered = true;
       for (var y = NY-1; y >= 0; --y) {
-        var c = coords(x, y, z);
+        var c = coords(x, y*SY, z);
         var b = this.blocks[c.i];
         b.light = Math.max(b.type.luminosity || 0,
                            b.opaque ? 0 : unsheltered ? LIGHT_SUN : LIGHT_MIN);
@@ -452,7 +455,7 @@ Chunk.prototype.update = function () {
 
 Chunk.prototype.centerPoint = function () {
   return {x: this.chunkx + NX / 2,
-          y: NY / 2,
+          y: NY*SY / 2,
           z: this.chunkz + NZ / 2};
 }
 
@@ -492,18 +495,18 @@ function coords(x, y, z) {
       };
     }
     result.z = Math.floor(result.z);
-    result.y = Math.floor(result.y);
+    result.y = Math.floor(result.y/SY)*SY;
     result.x = Math.floor(result.x);
   } else if (typeof y === 'undefined') {
     result = {
       x: x % NX,
-      y: (x >> LOGNX) % NY,
+      y: ((x >> LOGNX) % NY) * SY,
       z: (x >> (LOGNX + LOGNY)) % NZ
     }
   } else {
     result = {
       x: Math.floor(x),
-      y: Math.floor(y),
+      y: Math.floor(y/SY)*SY,
       z: Math.floor(z)
     }
   }
@@ -513,9 +516,9 @@ function coords(x, y, z) {
 
   var dx = result.x - result.chunkx;
   var dz = result.z - result.chunkz;
-  result.i = dx + (result.y << LOGNX) + (dz << (LOGNX + LOGNY));
+  result.i = dx + ((result.y/SY) << LOGNX) + (dz << (LOGNX + LOGNY));
 
-  if (result.y < 0 || result.y >= NY)
+  if (result.y < 0 || result.y >= NY*SY)
     result.outofbounds = true;
 
   return result;
@@ -542,19 +545,19 @@ function makeChunk(chunkx, chunkz) {
     if (chunk(chunkx - NX, chunkz))
       for (var y = 0; y < NY; ++y)
         for (var z = 0; z < NZ; ++z)
-          block(chunkx - 1, y, chunkz + z).invalidateGeometry();
+          block(chunkx - 1, y*SY, chunkz + z).invalidateGeometry();
     if (chunk(chunkx + NX, chunkz))
       for (var y = 0; y < NY; ++y)
         for (var z = 0; z < NZ; ++z)
-          block(chunkx + NX, y, chunkz + z).invalidateGeometry();
+          block(chunkx + NX, y*SY, chunkz + z).invalidateGeometry();
     if (chunk(chunkx, chunkz - NZ))
       for (var y = 0; y < NY; ++y)
         for (var x = 0; x < NX; ++x)
-          block(chunkx + x, y, chunkz - 1).invalidateGeometry();
+          block(chunkx + x, y*SY, chunkz - 1).invalidateGeometry();
     if (chunk(chunkx, chunkz + NZ))
       for (var y = 0; y < NY; ++y)
         for (var x = 0; x < NX; ++x)
-          block(chunkx + x, y, chunkz + NZ).invalidateGeometry();
+          block(chunkx + x, y*SY, chunkz + NZ).invalidateGeometry();
   }
   return result;
 }
@@ -583,10 +586,10 @@ Block.prototype.neighbor = function (face) {
       this.chunk.blocks[this.i + _DZ] : block(this.x, this.y, this.z+1);
   case FACE_BOTTOM:
     return this.y > 0 ? 
-      this.chunk.blocks[this.i - _DY] : block(this.x, this.y-1, this.z);
+      this.chunk.blocks[this.i - _DY] : block(this.x, this.y-SY, this.z);
   case FACE_TOP:   
-    return this.y < NY-1 ? 
-      this.chunk.blocks[this.i + _DY] : block(this.x, this.y+1, this.z);
+    return this.y < NY*SY-1 ? 
+      this.chunk.blocks[this.i + _DY] : block(this.x, this.y+SY, this.z);
   case FACE_RIGHT: 
     return this.x-this.chunk.chunkx > 0 ? 
       this.chunk.blocks[this.i - _DX] : block(this.x-1, this.y, this.z);
@@ -927,10 +930,12 @@ function pick(x, y, z, pitch, yaw) {
   function next(w, pw) { 
     return pw * (pw < 0 ? Math.ceil(w-1) - w : Math.floor(w+1) - w);
   }
+  function upy(y) { return SY*Math.ceil(y/SY-1) }
+  function dny(y) { return SY*Math.floor(y/SY+1) }
   
   for (var i = 0; i < 3000; ++i) {
     // check out of bounds
-    if (py < 0 ? y < 0 : y > NY + 1)
+    if (py < 0 ? y < 0 : y >= NY*SY)
       break;
     if (dist > PICK_MAX)
       break;
@@ -939,7 +944,7 @@ function pick(x, y, z, pitch, yaw) {
       return b;
 
     var dx = next(x, px);
-    var dy = next(y, py);
+    var dy = py * (py < 0 ? upy(y) - y : dny(y) - y);
     var dz = next(z, pz);
     var h = 1.001;
     if (dz < dx && dz < dy) {
@@ -1023,7 +1028,7 @@ function handleLoadedTexture(texture) {
 
 function topmost(x, z) {
   for (var y = NY-1; y >= 0; --y) {
-    var b = block(x,y,z);
+    var b = block(x, y*SY, z);
     if (b.type.solid) return b;
   }
   return null;
@@ -1039,7 +1044,7 @@ function Block(coord, chunk) {
   this.outofbounds = coord.outofbounds;
   this.chunk = chunk;
 
-  this.light = coord.y >= NY ? LIGHT_SUN : 0;
+  this.light = coord.y >= NY*SY ? LIGHT_SUN : 0;
   this.dirty = true;
 
   this.type = BLOCK_TYPES.air;
@@ -1051,11 +1056,11 @@ Block.prototype.generateTerrain = function () {
     this.type = BLOCK_TYPES.bedrock;
   } else {
     var n = pinkNoise(this.x, this.y, this.z, 32, 2) + 
-      (2 * this.y - NY) / NY;
+      (2 * this.y/SY - NY) / NY;
     if (n < -0.2) this.type = BLOCK_TYPES.rock;
     else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
     else if (n < 0) this.type = BLOCK_TYPES.grass;
-    else if (this.y < NY / 4) this.type = BLOCK_TYPES.jelly;
+    else if (this.y < NY*SY / 4) this.type = BLOCK_TYPES.jelly;
     else this.type = BLOCK_TYPES.air;
 
     if (Math.pow(noise(this.x/10, this.y/10, this.z/10 + 1000), 3) < -0.12)
@@ -1102,8 +1107,8 @@ Block.prototype.update = function () {
     light = this.type.luminosity || LIGHT_MIN;
     if (this.uncovered && light < LIGHT_SUN)
       light = LIGHT_SUN;
-    this.eachNeighbor(function (n) {
-      light = Math.max(light, n.light - 1);
+    this.eachNeighbor(function (n, face) {
+      light = Math.max(light, n.light - DISTANCE[face]);
     });
   }
   if (this.light != light) {
@@ -1150,7 +1155,7 @@ function geometryDecalX(b) {
 
   var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, b.light||0))
     / LIGHT_MAX;
-  if (b.y >= NY-1)
+  if (b.y >= NY*SY-1)
     light = 1;  // Account for topmost block against non-block
   
   var L = b.type.margin || 0;
@@ -1169,10 +1174,12 @@ function geometryDecalX(b) {
   v.textures = [];
   for (var i = 0; i < 2; ++i) {
     var tile = b.tile();
-    v.textures.push(tile.s + ZERO, tile.t + ONE, 
-                    tile.s + ONE,  tile.t + ONE, 
-                    tile.s + ONE,  tile.t + ZERO, 
-                    tile.s + ZERO, tile.t + ZERO);
+    var top = tile.t + ONE;
+    var bottom = tile.t + ZERO;
+    v.textures.push(tile.s + ZERO, top, 
+                    tile.s + ONE,  top, 
+                    tile.s + ONE,  bottom, 
+                    tile.s + ZERO, bottom);
   }
   v.lighting = [];
   for (var i = 0; i < v.positions.length; ++i)
@@ -1211,17 +1218,25 @@ function geometryBlock(b) {
       var pindex = v.positions.length / 3;
       var f = _FACES[face];
       for (var i = 3; i >= 0; --i) {
-        v.positions.push(b.x + f[i][0], b.y + f[i][1], b.z + f[i][2]);
+        v.positions.push(b.x + f[i][0], b.y + f[i][1]*SY, b.z + f[i][2]);
         // One RGB lighting triple for each XYZ in the position buffer
         v.lighting.push(light, light, light);
       }
       
       // Set textures per vertex: one ST pair for each vertex
       var tile = b.tile();
-      v.textures.push(tile.s + ONE,  tile.t + ZERO, 
-                      tile.s + ZERO, tile.t + ZERO, 
-                      tile.s + ZERO, tile.t + ONE, 
-                      tile.s + ONE,  tile.t + ONE);
+      if (face === FACE_TOP || face === FACE_BOTTOM) {
+        var bottom = tile.t + ZERO;
+        var top = tile.t + ONE;
+      } else {
+        var bottom = tile.t + (frac(b.y) || ZERO);
+        var top = tile.t + frac(b.y) + SY;
+      }
+      if (top === Math.floor(top)) top -= ZERO;
+      v.textures.push(tile.s + ONE,  bottom, 
+                      tile.s + ZERO, bottom, 
+                      tile.s + ZERO, top, 
+                      tile.s + ONE,  top);
 
       // Describe triangles
       v.indices.push(pindex, pindex + 1, pindex + 2,
@@ -1240,6 +1255,7 @@ function Wireframe() {
     0,1, 1,2, 2,3, 3,0,  // bottom
     0,4, 1,5, 2,6, 3,7]; // sides
 
+  for (var i = 1; i < vertices.length; i += 3) vertices[i] *= SY;
   this.aPosBuffer = makeBuffer(vertices, 3);
 
   this.indexBuffer = gl.createBuffer();
@@ -1301,7 +1317,7 @@ function onLoad() {
 
   // Create player
 
-  AVATAR = new Entity({x:NX/2 - 0.5, y:NY/2, z:NZ/2 + 0.5});
+  AVATAR = new Entity({x:NX/2 - 0.5, y:NY*SY/2, z:NZ/2 + 0.5});
   AVATAR.mouselook = false;
   AVATAR.lastHop = 0;
   AVATAR.viewDistance = 100;
