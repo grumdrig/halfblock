@@ -27,6 +27,7 @@ var ENTITIES = {};
 var AVATAR;
 
 var GRASSY = false;  // true to use decal-style grass
+var SUNLIGHT = 1.0;
 
 var PICKED = null;
 var PICKED_FACE = 0;
@@ -141,7 +142,7 @@ var BLOCK_TYPES = {
   lamp: {
     tile: 9,
     geometry: geometryHash,
-    luminosity: 8,
+    luminosity: [8,0,0],
     margin: 0.2,
     update: updateResting,
   },
@@ -338,9 +339,9 @@ function Chunk(x, z) {
       for (var y = NY-1; y >= 0; --y) {
         var c = coords(x, y*SY, z);
         var b = this.blocks[c.i];
-        b.light = Math.max(b.type.luminosity || 0,
-                           b.opaque ? 0 : unsheltered ? LIGHT_SUN : LIGHT_MIN);
-        b.dirtyLight = !unsheltered;
+        b.light = {r:0, g:0, b:0, sun:
+                   b.opaque ? 0 : unsheltered ? LIGHT_SUN : LIGHT_MIN};
+        b.dirtyLight = !!b.type.luminosity || !(unsheltered || b.opaque);
         if (b.dirtyLight) ++this.nDirty;
         unsheltered = unsheltered && !b.opaque;
       }
@@ -399,7 +400,7 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
       if (set.aLighting && buffers && buffers.aLighting) {
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers.aLighting);
         gl.bufferSubData(gl.ARRAY_BUFFER, 0, 
-                         new Float32Array(opaques.aLighting));
+                         new Float32Array(buffers.aLighting));
       }
     }
     updatebuf(opaques, this.opaqueBuffers);
@@ -410,7 +411,7 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
       return {
         aVertexPosition: makeBuffer(set.aVertexPosition, 3),
         aTextureCoord:   makeBuffer(set.aTextureCoord, 2),
-        aLighting:       makeBuffer(set.aLighting, 3, true),
+        aLighting:       makeBuffer(set.aLighting, 4, true),
         indices:         makeElementArrayBuffer(set.indices)
       };
     }
@@ -642,7 +643,9 @@ function drawScene(camera) {
 
   // Start from scratch
   if (AVATAR.y + EYE_HEIGHT >= 0)
-    gl.clearColor(0.5, 0.8, 0.98, 0);  // Clear color is sky blue
+    gl.clearColor(0.5 * SUNLIGHT, 
+                  0.8 * SUNLIGHT, 
+                  0.98 * SUNLIGHT, 0);  // Clear color is sky blue
   else
     gl.clearColor(0,0,0,0);  // Look into the void
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
@@ -670,6 +673,7 @@ function drawScene(camera) {
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
   gl.uniform1i(SHADER.uSampler, 0);
   gl.uniform1f(SHADER.uFogDistance, 2 * AVATAR.viewDistance / 5);
+  gl.uniform1f(SHADER.uSunlight, SUNLIGHT);
 
   var headblock = block(AVATAR.x, AVATAR.y + EYE_HEIGHT, AVATAR.z);
   if (headblock.type.translucent) {
@@ -779,6 +783,9 @@ function updateWorld() {
     c.update();
   }  
   UPDATE_STAT.end();
+
+  if (KEYS.O)
+    SUNLIGHT = (1 + Math.cos(AVATAR.clock()/1000)) / 2;
 }
 
 
@@ -1024,8 +1031,7 @@ function tick() {
     RENDER_STAT + '<br>' + 
     FPS_STAT + '<br>' + 
     UPDATE_STAT + '<br>' +
-    'Player: ' + AVATAR + '<br>' +
-    'Light: ' + block(AVATAR).light;
+    'Player: ' + AVATAR + '<br>';
   if (PICKED) {
     feedback += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
     var pf = PICKED.neighbor(PICKED_FACE);
@@ -1071,8 +1077,7 @@ function Block(coord, chunk) {
   this.outofbounds = coord.outofbounds;
   this.chunk = chunk;
 
-  this.light = coord.y >= HY ? LIGHT_SUN : 0;
-  this.dirty = true;
+  this.light = {r:0, g:0, b:0, sun: coord.y >= HY ? LIGHT_SUN : 0};
 
   this.type = BLOCK_TYPES.air;
 }
@@ -1127,19 +1132,32 @@ Block.prototype.update = function () {
   if (this.type.update)
     this.type.update.apply(this);
   this.dirtyLight = this.dirtyGeometry = false;
-  var light;
+  var r = 0, g = 0, b = 0, sun = 0;
   if (this.type.opaque) {
-    light = 0;
+    // Zero will do nicely
   } else {
-    light = this.type.luminosity || LIGHT_MIN;
-    if (this.uncovered && light < LIGHT_SUN)
-      light = LIGHT_SUN;
+    if (this.type.luminosity) {
+      r = this.type.luminosity[0];
+      g = this.type.luminosity[1];
+      b = this.type.luminosity[2];
+    }
+    if (this.uncovered)
+      sun = LIGHT_SUN;
     this.eachNeighbor(function (n, face) {
-      light = Math.max(light, n.light - DISTANCE[face]);
+      r = Math.max(r, n.light.r - DISTANCE[face]);
+      g = Math.max(g, n.light.g - DISTANCE[face]);
+      b = Math.max(b, n.light.b - DISTANCE[face]);
+      sun = Math.max(sun, n.light.sun - DISTANCE[face]);
     });
   }
-  if (this.light != light) {
-    this.light = light;
+  if (r !== this.light.r || 
+      g !== this.light.g || 
+      b !== this.light.b || 
+      sun !== this.light.sun) {
+    this.light.r = r;
+    this.light.g = g;
+    this.light.b = b;
+    this.light.sun = sun;
     this.eachNeighbor(function (n) { n.invalidateLight() });
   }
 }
@@ -1171,7 +1189,8 @@ Block.prototype.tile = function () {
 
 Block.prototype.toString = function () {
   return this.type.name + ' [' + this.x + ',' + this.y + ',' + this.z + '] ' +
-    '&#9788;' + this.light + (this.outofbounds ? ' OOB' : '');
+    '&#9788;' + this.light.r + ',' + this.light.g + ',' + this.light.b + 
+    '|' + this.light.sun + (this.outofbounds ? ' OOB' : '');
 }
 
 
@@ -1186,9 +1205,6 @@ function geometryHash(b) {
     indices: [],
   };
 
-  var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, b.light||0))
-    / LIGHT_MAX;
-  
   var L = b.type.margin || 0;
   var R = 1 - L;
   var H = Math.min(SY, R - L);
@@ -1215,8 +1231,8 @@ function geometryHash(b) {
                       tile.s + ONE,  top, 
                       tile.s + ZERO, top);
   }
-  for (var i = 0; i < v.positions.length; ++i)
-    v.lighting.push(light);
+  for (var i = 0; i < v.positions.length/3; ++i)
+    v.lighting.push(b.light.r, b.light.g, b.light.b, b.light.sun);
 }
 
 
@@ -1243,17 +1259,13 @@ function geometryBlock(b) {
     // of translucents better...I think maybe?
     omit = omit || (b.type.translucent && b.type === n.type);
     if (!omit) {
-      // Compute light on this face
-      var light = Math.max(LIGHT_MIN, Math.min(1000, n.light||0));
-      light /= LIGHT_MAX;
-
       // Add vertices
       var pindex = v.positions.length / 3;
       var f = _FACES[face];
       for (var i = 3; i >= 0; --i) {
         v.positions.push(b.x + f[i][0], b.y + f[i][1]*SY, b.z + f[i][2]);
         // One RGB lighting triple for each XYZ in the position buffer
-        v.lighting.push(light, light, light);
+        v.lighting.push(n.light.r, n.light.g, n.light.b, n.light.sun);
       }
       
       // Set textures per vertex: one ST pair for each vertex
@@ -1372,6 +1384,7 @@ function onLoad() {
   SHADER.locate('uMVMatrix');
   SHADER.locate('uPMatrix');
   SHADER.locate('uFogDistance');
+  SHADER.locate('uSunlight');
 
   WIREFRAME = new Wireframe();
 

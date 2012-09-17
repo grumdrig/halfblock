@@ -62,11 +62,15 @@
 <script id="shader-vs" type="x-shader/x-vertex">
   attribute vec3 aVertexPosition;
   attribute vec2 aTextureCoord;
-  attribute vec3 aLighting;
+  attribute vec4 aLighting;
   
   uniform mat4 uMVMatrix;
   uniform mat4 uPMatrix;
   uniform float uFogDistance;
+  uniform float uSunlight;
+
+  const float lightScale = 8.0;
+  const vec3 minLight = vec3(0.2, 0.2, 0.2);
   
   varying vec2 vTextureCoord;
   varying vec3 vLighting;
@@ -75,9 +79,14 @@
   void main(void) {
     gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
     vTextureCoord = aTextureCoord / 16.0;
-    vLighting = aLighting;
+    vLighting = max(minLight, 
+                    max(aLighting.xyz,
+                        uSunlight * vec3(aLighting.w, 
+                                         aLighting.w, 
+                                         aLighting.w)) / lightScale);
     float z = abs(gl_Position.z);  // Use length() if not enough fog at corners
-    vFog = clamp(1.0 - exp(-z * z / (uFogDistance * uFogDistance)), 0.0, 1.0);
+    vFog = clamp(uSunlight * (1.0 - exp(-z*z / (uFogDistance * uFogDistance))),
+                 0.0, 1.0);
   }
 </script>
 <script id="shader-fs" type="x-shader/x-fragment">
