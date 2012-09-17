@@ -157,6 +157,7 @@ var BLOCK_TYPES = {
     translucent: [154,40,155,0.85],
     geometry: geometryBlock,
     viscosity: 0.85,
+    //unpickable: true,
   },
   rope: {
     tile: function () { 
@@ -853,7 +854,7 @@ function ballistics(e, elapsed) {
     e.x += e.dx * elapsed;
     e.z += e.dz * elapsed;
 
-    var stepup = (e.falling || e.flying) ? 0 : 0.5;
+    var stepup = (!e.swimming && (e.falling || e.flying)) ? 0 : 0.5;
     function blocked(x,y,z) { 
       for (var i = SY*Math.floor((y+stepup)/SY); i < y + e.height; i += SY)
         if (block(x, i, z).type.solid)
@@ -966,7 +967,7 @@ function pick(x, y, z, pitch, yaw) {
     if (dist > PICK_MAX)
       break;
     var b = block(x,y,z);
-    if (!b.type.empty) 
+    if (!b.type.empty && !b.type.unpickable) 
       return b;
 
     var dx = next(x, px);
