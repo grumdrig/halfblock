@@ -61,9 +61,7 @@ var GRAVITY = 23;  // m/s/s
 var PARTICLE_GRAVITY = 6.4; // m/s/s
 var VJUMP = 7.7;   // m/s
 
-var LIGHT_MAX = 8;
 var LIGHT_SUN = 6;
-var LIGHT_MIN = 2;
 
 var TERRAIN_TEXTURE;
 var EYE_HEIGHT = 1.62;
@@ -143,7 +141,7 @@ var BLOCK_TYPES = {
   lamp: {
     tile: 9,
     geometry: geometryHash,
-    luminosity: [8,0,0],
+    luminosity: [8,2,2],
     margin: 0.2,
     update: updateResting,
   },
@@ -341,7 +339,7 @@ function Chunk(x, z) {
         var c = coords(x, y*SY, z);
         var b = this.blocks[c.i];
         b.light = {r:0, g:0, b:0, sun:
-                   b.opaque ? 0 : unsheltered ? LIGHT_SUN : LIGHT_MIN};
+                   b.opaque ? 0 : unsheltered ? LIGHT_SUN : 0};
         b.dirtyLight = !!b.type.luminosity || !(unsheltered || b.opaque);
         if (b.dirtyLight) ++this.nDirty;
         unsheltered = unsheltered && !b.opaque;
