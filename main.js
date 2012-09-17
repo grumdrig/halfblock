@@ -318,7 +318,7 @@ function Chunk(x, z) {
     var z = this.chunkz + 
       Math.round(Math.abs(noise(this.chunkx, this.chunkz, n + 23.4)) * NZ);
     var t = topmost(x, z);
-    if (t && t.y < NY*SY-1)
+    if (t && t.y < HY-SY)
       t.neighbor(FACE_TOP).type = BLOCK_TYPES.flower;
   }
 
@@ -455,7 +455,7 @@ Chunk.prototype.update = function () {
 
 Chunk.prototype.centerPoint = function () {
   return {x: this.chunkx + NX / 2,
-          y: NY*SY / 2,
+          y: HY / 2,
           z: this.chunkz + NZ / 2};
 }
 
@@ -518,7 +518,7 @@ function coords(x, y, z) {
   var dz = result.z - result.chunkz;
   result.i = dx + ((result.y/SY) << LOGNX) + (dz << (LOGNX + LOGNY));
 
-  if (result.y < 0 || result.y >= NY*SY)
+  if (result.y < 0 || result.y >= HY)
     result.outofbounds = true;
 
   return result;
@@ -588,7 +588,7 @@ Block.prototype.neighbor = function (face) {
     return this.y > 0 ? 
       this.chunk.blocks[this.i - _DY] : block(this.x, this.y-SY, this.z);
   case FACE_TOP:   
-    return this.y < NY*SY-1 ? 
+    return this.y < HY-SY ? 
       this.chunk.blocks[this.i + _DY] : block(this.x, this.y+SY, this.z);
   case FACE_RIGHT: 
     return this.x-this.chunk.chunkx > 0 ? 
@@ -833,9 +833,10 @@ function ballistics(e, elapsed) {
     e.x += e.dx * elapsed;
     e.z += e.dz * elapsed;
 
+    var stepup = (e.falling || e.flying) ? 0 : 0.5;
     function blocked(x,y,z) { 
-      for (var i = 0; Math.floor(y + i) < y + e.height; ++i)
-        if (block(x, y+i, z).type.solid)
+      for (var i = SY*Math.floor((y+stepup)/SY); i < y + e.height; i += SY)
+        if (block(x, i, z).type.solid)
           return true;
       return false;
     }
@@ -888,24 +889,29 @@ function ballistics(e, elapsed) {
 
   e.y += e.dy * elapsed;
 
-  if (block(e).type.solid && (e.flying || e.falling)) {
-    // Landed
-    e.flying = e.falling = false;
-    e.dy = 0;
-    e.y = Math.floor(e.y + 1);
+  if (block(e).type.solid) {
+    if (e.flying || e.falling) {
+      // Landed
+      e.flying = e.falling = false;
+      e.dy = 0;
+      e.y = SY * Math.floor(e.y/SY + 1);
+    } else {
+      // Taking a half-step up, presumably
+      e.y = Math.min(SY * Math.floor(e.y/SY + 1), e.y + elapsed * 5);
+    }
   }
 
-  if (!e.falling && !e.flying && !block(e.x, e.y-1, e.z).type.solid) {
+  if (!e.falling && !e.flying && !block(e.x, e.y-SY, e.z).type.solid) {
     // Fall off cliff
     e.falling = true;
-    e.y = Math.floor(e.y) - 0.001;  // be in empty block below
+    e.y = SY * Math.floor(e.y/SY) - 0.001;  // be in empty block below
     e.dy = 0;
   }
   
   if ((e.flying || e.falling) &&
       (e.dy > 0 && block(e.x, e.y + e.height, e.z).type.solid)) {
     // Bump head
-    e.y = Math.min(e.y, Math.floor(e.y + e.height) - e.height);
+    e.y = Math.min(e.y, SY * Math.floor((e.y + e.height)/SY) - e.height);
     e.dy = 0;
   }
 }
@@ -935,7 +941,7 @@ function pick(x, y, z, pitch, yaw) {
   
   for (var i = 0; i < 3000; ++i) {
     // check out of bounds
-    if (py < 0 ? y < 0 : y >= NY*SY)
+    if (py < 0 ? y < 0 : y >= HY)
       break;
     if (dist > PICK_MAX)
       break;
@@ -972,7 +978,7 @@ function tick() {
   if (!lastFrame) lastFrame = timeNow;
   var elapsed = (timeNow - lastFrame) / 1000;
   FPS_STAT.add(elapsed);
-  if (elapsed > 0.1) elapsed = 0.1;  // Limit lagdeath
+  if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
   lastFrame = timeNow;
 
   requestAnimFrame(tick);
@@ -1044,7 +1050,7 @@ function Block(coord, chunk) {
   this.outofbounds = coord.outofbounds;
   this.chunk = chunk;
 
-  this.light = coord.y >= NY*SY ? LIGHT_SUN : 0;
+  this.light = coord.y >= HY ? LIGHT_SUN : 0;
   this.dirty = true;
 
   this.type = BLOCK_TYPES.air;
@@ -1060,7 +1066,7 @@ Block.prototype.generateTerrain = function () {
     if (n < -0.2) this.type = BLOCK_TYPES.rock;
     else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
     else if (n < 0) this.type = BLOCK_TYPES.grass;
-    else if (this.y < NY*SY / 4) this.type = BLOCK_TYPES.jelly;
+    else if (this.y < HY / 4) this.type = BLOCK_TYPES.jelly;
     else this.type = BLOCK_TYPES.air;
 
     if (Math.pow(noise(this.x/10, this.y/10, this.z/10 + 1000), 3) < -0.12)
@@ -1155,7 +1161,7 @@ function geometryDecalX(b) {
 
   var light = Math.max(LIGHT_MIN, Math.min(LIGHT_MAX, b.light||0))
     / LIGHT_MAX;
-  if (b.y >= NY*SY-1)
+  if (b.y >= HY-1)
     light = 1;  // Account for topmost block against non-block
   
   var L = b.type.margin || 0;
@@ -1317,7 +1323,7 @@ function onLoad() {
 
   // Create player
 
-  AVATAR = new Entity({x:NX/2 - 0.5, y:NY*SY/2, z:NZ/2 + 0.5});
+  AVATAR = new Entity({x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
   AVATAR.mouselook = false;
   AVATAR.lastHop = 0;
   AVATAR.viewDistance = 100;
