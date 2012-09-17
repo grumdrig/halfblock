@@ -27,7 +27,8 @@ var ENTITIES = {};
 var AVATAR;
 
 var GRASSY = false;  // true to use decal-style grass
-var SUNLIGHT = 1.0;
+var TIMEOFDAY = Math.PI;  // 0 is midnight, PI is noon
+var SUNLIGHT = 1;    // full daylight
 
 var PICKED = null;
 var PICKED_FACE = 0;
@@ -783,13 +784,15 @@ function updateWorld() {
     c.update();
   }  
   UPDATE_STAT.end();
-
-  if (KEYS.O)
-    SUNLIGHT = (1 + Math.cos(AVATAR.clock()/1000)) / 2;
 }
 
 
 function processInput(avatar, elapsed) {
+  if (KEYS.O) {
+    TIMEOFDAY = (TIMEOFDAY + elapsed) % (2*Math.PI);
+    SUNLIGHT = 0.5 - Math.cos(TIMEOFDAY) / 2;
+  }
+
   var ddp = avatar.ACCELERATION * elapsed;
   avatar.swimming = avatar.falling && block(avatar).type.liquid;
   
@@ -1031,7 +1034,8 @@ function tick() {
     RENDER_STAT + '<br>' + 
     FPS_STAT + '<br>' + 
     UPDATE_STAT + '<br>' +
-    'Player: ' + AVATAR + '<br>';
+    'Player: ' + AVATAR + '<br>' +
+    'Time: ' + readableTime(TIMEOFDAY) + ' &#9788;' + SUNLIGHT.toFixed(2);
   if (PICKED) {
     feedback += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
     var pf = PICKED.neighbor(PICKED_FACE);
@@ -1041,6 +1045,18 @@ function tick() {
   for (var k in KEYS) if (KEYS[k]) keys += ' ' + escape(k);
   if (keys.length > 0) feedback += '<br>Keys: ' + keys;
   $('stats').innerHTML = feedback;
+}
+
+
+function readableTime(t) {
+  var ampm = t < Math.PI ? 'am' : 'pm';
+  t = t % Math.PI;
+  var h = Math.floor(12 * t / Math.PI);
+  var m = Math.floor(60 * (12 * t / Math.PI - h));
+  if (m < 10) m = '0' + m;
+  if (h === 0) h = 12;
+  if (h < 10) h = '&nbsp;' + h;
+  return h + ':' + m + ' ' + ampm;
 }
 
 
