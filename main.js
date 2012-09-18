@@ -109,12 +109,14 @@ var BLOCK_TYPES = {
     tile: 4,
     solid: true,
     opaque: true,
+    stack: 1,
     geometry: geometryBlock,
   },
   testpattern: {
     tile: 5,
     solid: true,
     opaque: true,
+    stack: 1,
     geometry: geometryBlock,
   },
   bedrock: {
@@ -133,6 +135,7 @@ var BLOCK_TYPES = {
     tile: 8,
     geometry: geometryHash,
     margin: 0.2,
+    height: 1,
     update: updateResting,
   },
   grassy: {
@@ -145,6 +148,7 @@ var BLOCK_TYPES = {
     geometry: geometryHash,
     luminosity: [8,2,2],
     margin: 0.2,
+    height: 1,
     update: updateResting,
   },
   candy: {
@@ -177,13 +181,14 @@ var BLOCK_TYPES = {
     tile: [2, 2],
     opaque: true,
     solid: true,
-    height: 1,
+    stack: 1,
     geometry: geometryBlock,
   },
   hal9000: {
     tile: [3, 2],
     opaque: true,
     solid: true,
+    stack: 1,
     geometry: geometryBlock,
     update: function () {
       if (!this.horizontalFieldOfView) {
@@ -201,7 +206,7 @@ var BLOCK_TYPES = {
   },
   obelisk: {
     tile: [5, 2],
-    height: 2,
+    stack: 2,
     solid: true,
     opaque: true,
     geometry: geometryBlock,
@@ -1267,9 +1272,9 @@ Block.prototype.placeBlock = function (newType, stackPos) {
   if (typeof newType === 'string') BLOCK_TYPES[newType];
   this.type = newType;
   this.invalidateGeometry(true);
-  if (this.type.height) {
+  if (this.type.stack) {
     this.stackPos = stackPos || 0;
-    if (this.stackPos + SY < this.type.height)
+    if (this.stackPos + SY < this.type.stack)
       this.neighbor(FACE_TOP).placeBlock(newType, this.stackPos + SY);
   }
 }
@@ -1304,7 +1309,7 @@ function geometryHash(b) {
 
   var L = b.type.margin || 0;
   var R = 1 - L;
-  var H = Math.min(SY, R - L);
+  var H = b.type.height || Math.min(SY, R - L);
   var HASHES = b.type.hashes || 1;
   for (var i = 0; i < HASHES; ++i) {
     var s = (0.5 + i) / HASHES;
@@ -1319,14 +1324,20 @@ function geometryHash(b) {
                      b.x + s, b.y + H, b.z + L);
     v.indices.push(n+0, n+1, n+2,  n+0, n+2, n+3,
                    n+4, n+5, n+6,  n+4, n+6, n+7);
+
     var tile = b.tile();
-    var bottom = tile.t + ONE;
-    var top = tile.t + Math.max(ZERO, 1 - SY);
+    var bottom = 1;
+    var top = bottom - H;
+
+    // Keep away from edges of texture so as to not bleed the one next door
+    if (bottom % 1 === 0) bottom -= ZERO;
+    if (top % 1 === 0) top += ZERO;
+
     for (var j = 0; j < 2; ++j)
-      v.textures.push(tile.s + ZERO, bottom, 
-                      tile.s + ONE,  bottom, 
-                      tile.s + ONE,  top, 
-                      tile.s + ZERO, top);
+      v.textures.push(tile.s + ZERO, tile.t + bottom, 
+                      tile.s + ONE,  tile.t + bottom, 
+                      tile.s + ONE,  tile.t + top, 
+                      tile.s + ZERO, tile.t + top);
   }
   for (var i = 0; i < v.positions.length/3; ++i)
     v.lighting.push(b.light.r, b.light.g, b.light.b, b.light.sun);
