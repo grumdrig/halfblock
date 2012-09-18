@@ -170,13 +170,14 @@ var BLOCK_TYPES = {
     update: function updateHanging() {
       var nt = this.neighbor(FACE_TOP).type;
       if (!nt.solid && nt !== this.type)
-        this.changeType();
+        this.breakBlock();
     },
   },
   mystery: {
     tile: [2, 2],
     opaque: true,
     solid: true,
+    height: 1,
     geometry: geometryBlock,
   },
   hal9000: {
@@ -210,7 +211,7 @@ for (var i in BLOCK_TYPES)
 function updateResting() {
   var nt = this.neighbor(FACE_BOTTOM).type;
   if (!nt.solid)
-    this.changeType();
+    this.breakBlock();
 }
 
 
@@ -1242,18 +1243,27 @@ Block.prototype.update = function () {
   }
 }
 
-Block.prototype.changeType = function (newType) {
-  this.type = newType || BLOCK_TYPES.air;
+Block.prototype.breakBlock = function () {
+  this.type = BLOCK_TYPES.air;
   this.invalidateGeometry(true);
-  if (this.type === BLOCK_TYPES.air) {
-    // no visible effect yet new Entity(this);
-    for (var i = 0; i < 50; ++i) {
-      var p = PARTICLES.spawn({
-        x0: PICKED.x + 0.5, 
-        y0: PICKED.y + 0.5, 
-        z0: PICKED.z + 0.5});
-      //PARTICLES.bounceParticle(p);
-    }
+  // no visible effect yet: new Entity(this);
+  for (var i = 0; i < 50; ++i) {
+    var p = PARTICLES.spawn({
+      x0: PICKED.x + 0.5, 
+      y0: PICKED.y + 0.5, 
+      z0: PICKED.z + 0.5});
+    //PARTICLES.bounceParticle(p);
+  }
+}
+
+Block.prototype.placeBlock = function (newType, stackPos) {
+  if (typeof newType === 'string') BLOCK_TYPES[newType];
+  this.type = newType;
+  this.invalidateGeometry(true);
+  if (this.type.height) {
+    this.stackPos = stackPos || 0;
+    if (this.stackPos + SY < this.type.height)
+      this.neighbor(FACE_TOP).placeBlock(newType, this.stackPos + SY);
   }
 }
 
@@ -1350,18 +1360,25 @@ function geometryBlock(b) {
       
       // Set textures per vertex: one ST pair for each vertex
       var tile = b.tile();
+      var bottom, top;
       if (face === FACE_TOP || face === FACE_BOTTOM) {
-        var bottom = tile.t + ZERO;
-        var top = tile.t + ONE;
+        bottom = 0;
+        top = 1;
       } else {
-        var bottom = tile.t + (frac(b.y) || ZERO);
-        var top = tile.t + frac(b.y) + SY;
+        var pos = frac((typeof b.stackPos === 'undefined') ? b.y : b.stackPos);
+        pos = SY - pos;
+        bottom = pos;
+        top = bottom + SY;
       }
-      if (top === Math.floor(top)) top -= ZERO;
-      v.textures.push(tile.s + ONE,  bottom, 
-                      tile.s + ZERO, bottom, 
-                      tile.s + ZERO, top, 
-                      tile.s + ONE,  top);
+
+      // Keep away from edges of texture so as to not bleed the one next door
+      if (bottom % 1 === 0) bottom += ZERO;
+      if (top % 1 === 0) top -= ZERO;
+
+      v.textures.push(tile.s + ONE,  tile.t + bottom, 
+                      tile.s + ZERO, tile.t + bottom, 
+                      tile.s + ZERO, tile.t + top, 
+                      tile.s + ONE,  tile.t + top);
 
       // Describe triangles
       v.indices.push(pindex, pindex + 1, pindex + 2,
@@ -1628,11 +1645,11 @@ function onmousedown(event) {
   if (event.preventDefault) event.preventDefault();
   if (PICKED && AVATAR.mouselook) {
     if (event.button === 0) {
-      PICKED.changeType();
+      PICKED.breakBlock();
     } else {
       var b = PICKED.neighbor(PICKED_FACE);
       if (!b.outofbounds)
-        b.changeType(AVATAR.tool || PICKED.type);
+        b.placeBlock(AVATAR.tool || PICKED.type);
     }
   }
   return false;
@@ -2021,10 +2038,10 @@ function makeFramebuffer(w, h) {
 function makeFramebufferForTile(texture, s, t) {
   var fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-  fb.left = s * 16;  // stash dimensions for later
-  fb.top = t * 16;
-  fb.width = 16;
-  fb.height = 16;
+  fb.left = s * 16 + 2;  // stash dimensions for later
+  fb.top = t * 16 + 2;
+  fb.width = 16 - 4;
+  fb.height = 16 - 4;
 
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
                           gl.TEXTURE_2D, texture, 0);
