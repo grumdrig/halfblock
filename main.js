@@ -199,6 +199,13 @@ var BLOCK_TYPES = {
       renderToFramebuffer(this, this.framebuffer);
     }
   },
+  obelisk: {
+    tile: [5, 2],
+    height: 2,
+    solid: true,
+    opaque: true,
+    geometry: geometryBlock,
+  },
 };
 var NBLOCKTYPES = 0;
 for (var i in BLOCK_TYPES) {
@@ -1365,7 +1372,7 @@ function geometryBlock(b) {
         bottom = 0;
         top = 1;
       } else {
-        var pos = frac((typeof b.stackPos === 'undefined') ? b.y : b.stackPos);
+        var pos = (typeof b.stackPos === 'undefined') ? frac(b.y) : b.stackPos;
         pos = SY - pos;
         bottom = pos;
         top = bottom + SY;
