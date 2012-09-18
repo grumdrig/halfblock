@@ -20,16 +20,14 @@ var mvMatrix = mat4.create();  // model-view matrix
 var mvMatrixStack = [];
 var pMatrix = mat4.create();   // projection matrix
 
-// Game objects
+var DB;
+var DB_VERSION = 6;
 
-var WORLD = {};
-var ENTITIES = {};
-var AVATAR;
+var GAME;
+var AVATAR;  // hack-o alias for GAME.avatar because we use it so much
 
 var GRASSY = false;       // true to use decal-style grass
-var TIMEOFDAY = Math.PI;  // 0 is midnight, PI is noon
-var SUNLIGHT = 1;         // full daylight
-var SPREAD_OUT = false;   // create nearby chunks
+var SPREAD_OUT = true;   // create nearby chunks
 
 var PICKED = null;
 var PICKED_FACE = 0;
@@ -297,7 +295,9 @@ function mvPopMatrix() {
 }
 
 
-function Chunk(x, z, data) {
+function Chunk(data) {
+  var x = data.chunkx;
+  var z = data.chunkz;
   x &= ~(NX - 1);
   z &= ~(NZ - 1);
   this.chunkx = x;
@@ -308,9 +308,10 @@ function Chunk(x, z, data) {
   this.lastUpdate = 0;
   this.nDirty = 0;
 
-  WORLD[this.chunkx + ',' + this.chunkz] = this;
+  GAME.chunks[this.chunkx + ',' + this.chunkz] = this;
 
-  if (data) {
+  if (data.blocks) {
+    // Loading from storage
     for (var i = 0; i < NX * NY * NZ; ++i) {
       var c = coords(i);
       c = coords(this.chunkx + c.x, c.y, this.chunkz + c.z);
@@ -582,7 +583,7 @@ function coords(x, y, z) {
 function chunk(chunkx, chunkz) {
   chunkx &= ~(NX - 1);
   chunkz &= ~(NZ - 1);
-  return WORLD[chunkx + ',' + chunkz];
+  return GAME.chunks[chunkx + ',' + chunkz];
 }
 
 
@@ -592,7 +593,7 @@ function makeChunk(chunkx, chunkz) {
   var result = chunk(chunkx, chunkz);
   if (!result) {
     // New chunk needed
-    result = new Chunk(chunkx, chunkz);
+    result = new Chunk({chunkx:chunkx, chunkz:chunkz});
     result.generateTerrain();
 
     // Invalidate edges of neighboring chunks. Have to invalidate the 
@@ -676,9 +677,9 @@ function drawScene(camera) {
 
   // Start from scratch
   if (AVATAR.y + EYE_HEIGHT >= 0)
-    gl.clearColor(0.5 * SUNLIGHT, 
-                  0.8 * SUNLIGHT, 
-                  0.98 * SUNLIGHT, 0);  // Clear color is sky blue
+    gl.clearColor(0.5 * GAME.sunlight, 
+                  0.8 * GAME.sunlight, 
+                  0.98 * GAME.sunlight, 0);  // Clear color is sky blue
   else
     gl.clearColor(0,0,0,0);  // Look into the void
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
@@ -706,7 +707,7 @@ function drawScene(camera) {
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
   gl.uniform1i(SHADER.uSampler, 0);
   gl.uniform1f(SHADER.uFogDistance, 2 * AVATAR.viewDistance / 5);
-  gl.uniform1f(SHADER.uSunlight, SUNLIGHT);
+  gl.uniform1f(SHADER.uSunlight, GAME.sunlight);
 
   var headblock = block(AVATAR.x, AVATAR.y + EYE_HEIGHT, AVATAR.z);
   if (headblock.type.translucent) {
@@ -723,8 +724,8 @@ function drawScene(camera) {
 
   // Render opaque blocks
   gl.disable(gl.CULL_FACE);  // don't cull backfaces (decals are 1-sided)
-  for (var i in WORLD) {
-    var c = WORLD[i];
+  for (var i in GAME.chunks) {
+    var c = GAME.chunks[i];
     if (c.visible && c.opaqueBuffers)
       renderChunkBuffers(c.opaqueBuffers);
   }
@@ -737,8 +738,8 @@ function drawScene(camera) {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.enable(gl.BLEND);
   gl.enable(gl.CULL_FACE);  // cull backfaces!
-  for (var i in WORLD) {
-    var c = WORLD[i];
+  for (var i in GAME.chunks) {
+    var c = GAME.chunks[i];
     if (c.visible && c.translucentBuffers)
       renderChunkBuffers(c.translucentBuffers);
   }
@@ -802,8 +803,8 @@ function updateWorld() {
         makeChunk(AVATAR.x + dx, AVATAR.z + dz);
   }
   
-  for (var i in WORLD) {
-    var c = WORLD[i];
+  for (var i in GAME.chunks) {
+    var c = GAME.chunks[i];
     c.hdistance = Math.max(0, hDistance(AVATAR, c.centerPoint())-CHUNK_RADIUS);
     c.visible = (c.hdistance < AVATAR.viewDistance);
     c.update();
@@ -814,8 +815,8 @@ function updateWorld() {
 
 function processInput(avatar, elapsed) {
   if (KEYS.O) {
-    TIMEOFDAY = (TIMEOFDAY + elapsed) % (2*Math.PI);
-    SUNLIGHT = 0.5 - Math.cos(TIMEOFDAY) / 2;
+    GAME.timeOfDay = (GAME.timeOfDay + elapsed) % (2*Math.PI);
+    GAME.sunlight = 0.5 - Math.cos(GAME.timeOfDay) / 2;
   }
 
   var ddp = avatar.ACCELERATION * elapsed;
@@ -1047,8 +1048,8 @@ function tick() {
 
   processInput(AVATAR, elapsed);
 
-  for (var i in ENTITIES) {
-    var e = ENTITIES[i];
+  for (var i in GAME.entities) {
+    var e = GAME.entities[i];
     ballistics(e, elapsed);
   }
 
@@ -1064,7 +1065,7 @@ function tick() {
     FPS_STAT + '<br>' + 
     UPDATE_STAT + '<br>' +
     'Player: ' + AVATAR + '<br>' +
-    'Time: ' + readableTime(TIMEOFDAY) + ' &#9788;' + SUNLIGHT.toFixed(2);
+    'Time: ' + readableTime(GAME.timeOfDay) + ' &#9788;' + GAME.sunlight.toFixed(2);
   if (PICKED) {
     feedback += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
     var pf = PICKED.neighbor(PICKED_FACE);
@@ -1396,13 +1397,13 @@ function Entity(init) {
   this.SPIN_RATE = 2;  // radians/s
   this.ACCELERATION = 20;  // m/s^2
   this.id = Entity.nextID++;
-  ENTITIES[this.id] = this;
+  GAME.entities[this.id] = this;
 }
 Entity.nextID = 1;
 
 
 Entity.prototype.die = function () {
-  delete ENTITIES[this.id];
+  delete GAME.entities[this.id];
 }
 
 Entity.prototype.clock = function () {
@@ -1423,11 +1424,12 @@ Entity.prototype.toString = function () {
 function onLoad() {
   var canvas = $('canvas');
 
+  // Create game
+  GAME = new Game();
   makeChunk(0, 0);
 
   // Create player
-
-  AVATAR = new Entity({x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
+  AVATAR = GAME.avatar = new Entity({x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
   AVATAR.mouselook = false;
   AVATAR.lastHop = 0;
   AVATAR.viewDistance = 100;
@@ -1854,32 +1856,94 @@ function pickTool(blocktype) {
 function sqr(x) { return x * x }
 
 
-var DB;
-var VERSION = 6;
-function prepstorage(callback) {
-  var req = webkitIndexedDB.open('dadacraft', 'Dadacraft World');
+function Game() {
+  this.id = 1;
+  this.chunks = {};
+  this.entities = {};
+  this.timeOfDay = Math.PI;  // 0 is midnight, PI is noon
+  this.sunlight = 1;         // full daylight
+}
+
+Game.prototype.save = function (callback) {
+  prepStorage(function () {
+    var trans = DB.transaction(['games', 'chunks'], 'readwrite');
+    var games = trans.objectStore('games');
+    var chunks = trans.objectStore('chunks');
+    var ckeys = Object.keys(this.chunks);
+    var data = {
+      timeOfDay: GAME.timeOfDay,
+    };
+    var req = (typeof GAME.id === 'unknown') ? games.add(data) : 
+      games.put(data, GAME.id);
+    function putone() {
+      if (ckeys.length === 0)
+        chunks.put(ckeys.pop());
+      else
+        callback();
+    }        
+    req.onsuccess = putone;
+  });
+}
+
+
+function loadGame(gameid, callback) {
+  prepStorage(function () {
+    var trans = DB.transaction(['games', 'chunks'], 'readonly');
+    var games = trans.objectStore('games');
+    games.get(gameid).onsuccess = function (e) {
+      var data = req.result.value;
+      GAME = new Game();
+      GAME.id = req.result.key;
+      GAME.timeOfDay = data.timeOfDay;
+
+      var chunks = trans.objectStore('chunks');
+      chunks.openCursor().onsuccess = function(event) {
+        var cursor = event.target.result;
+        if (cursor) {
+          new Chunk(cursor.value);
+          cursor.continue();
+        } else {
+          callback();
+        }
+      };
+    };      
+  });
+}
+    
+ 
+ 
+function prepStorage(callback) {
+  if (DB) {
+    setTimeout(callback, 0);
+    return;
+  }
+  window.indexedDB = window.indexedDB || window.webkitIndexedDB || 
+    window.mozIndexedDB || window.msIndexedDB;
+  var req = window.indexedDB.open('dadacraft', 'Dadacraft');
   req.onsuccess = function (e) {
     DB = e.target.result;
     DB.onerror = function (e) {
-      console.log('STORAGE ERROR', e);
+      console.log('STORAGE ERROR: ' + e.target.errorCode, e);
     };
-    if (DB.version === VERSION) {
-      callback();
+    if (DB.version === DB_VERSION) {
+      setTimeout(callback, 0);
     } else {
-      reset(callback);
+      resetStorage(callback);
     }
   }
 }
 
-function reset(callback) {
-  var req = DB.setVersion(VERSION);
+function resetStorage(callback) {
+  var req = DB.setVersion(DB_VERSION);
   req.onsuccess = function(e) {
     // remove the store if it exists
+    if (DB.objectStoreNames.contains('games'))
+      DB.deleteObjectStore('games');
     if (DB.objectStoreNames.contains('chunks'))
       DB.deleteObjectStore('chunks');
-    // create a store, and an index
-    var store = DB.createObjectStore('chunks', { keyPath: 'key' });
-    store.createIndex('chunkindex', 'key', {unique: true});
+
+    DB.createObjectStore('chunks', { keyPath: 'key' });
+    DB.createObjectStore('games', { autoIncrement: true });
     
     // now call the handler outside of the 'versionchange' callstack
     var transaction = e.target.result;
@@ -1887,21 +1951,20 @@ function reset(callback) {
   };
 }
 
-function save(chunk, callback) {
-  var store = DB.transaction(['chunks'], 'readwrite').objectStore('chunks');
-  var req = store.put(chunk.data());
+function saveChunk(chunk, callback) {
+  var chunks = DB.transaction(['chunks'], 'readwrite').objectStore('chunks');
+  var req = chunks.put(chunk.data());
   req.onsuccess = callback;
 }
 
-function load(chunkid) {
-  var store = DB.transaction(['chunks'], 'readonly').objectStore('chunks');
-  var req = store.index('chunkindex').
-    openCursor(new webkitIDBKeyRange.only(chunkid));
+function loadChunk(chunkid) {
+  var chunks = DB.transaction(['chunks'], 'readonly').objectStore('chunks');
+  var req = chunks.get(chunkid);
   req.onsuccess = function(e) {
     var cursor = req.result;
     if (cursor) {
       console.log(cursor.value);
-      var c = new Chunk(cursor.value.chunkx, cursor.value.chunkz, cursor.value);
+      var c = new Chunk(cursor.value);
       console.log(c);
       cursor.continue();
     }
