@@ -512,7 +512,7 @@ Chunk.prototype.updatePeriod = function () {
 }
 
 Chunk.prototype.update = function () {
-  if (this.nDirty > 0 && AVATAR.clock() > this.lastUpdate+this.updatePeriod()){
+  if (this.nDirty > 0 && GAME.clock() > this.lastUpdate+this.updatePeriod()){
     this.nDirty = 0;
     var uplights = 0, upgeoms = 0;
     
@@ -533,7 +533,7 @@ Chunk.prototype.update = function () {
       }
     }
 
-    this.lastUpdate = AVATAR.clock();
+    this.lastUpdate = GAME.clock();
     this.generateBuffers(upgeoms === 0);
     console.log('Update: ', this.chunkx, this.chunkz, ':', 
                 uplights, upgeoms, '->', this.nDirty);
@@ -1065,7 +1065,7 @@ function pick(x, y, z, pitch, yaw) {
 
 function tick() {
   // Monkey with the clock
-  var timeNow = AVATAR.clock();
+  var timeNow = GAME.clock();
   if (!lastFrame) lastFrame = timeNow;
   var elapsed = (timeNow - lastFrame) / 1000;
   FPS_STAT.add(elapsed);
@@ -1265,7 +1265,7 @@ Block.prototype.breakBlock = function () {
   this.type = BLOCK_TYPES.air;
   this.invalidateGeometry(true);
   // no visible effect yet: new Entity(this);
-  for (var i = 0; i < 50; ++i) {
+  for (var i = 0; i < 20; ++i) {
     var p = PARTICLES.spawn({
       x0: PICKED.x + 0.5, 
       y0: PICKED.y + 0.5, 
@@ -1445,7 +1445,7 @@ function Entity(init) {
   this.pitch = init.pitch || 0;
   this.horizontalFieldOfView = init.horizontalFieldOfView || Math.PI/3;
   this.viewDistance = init.viewDistance || 50;
-  this.birthday = +new Date();
+  this.birthday = GAME.clock();
   this.flying = this.falling = false;
   this.radius = 0.3;
   this.height = 1.8;
@@ -1461,10 +1461,6 @@ Entity.nextID = 1;
 
 Entity.prototype.die = function () {
   delete GAME.entities[this.id];
-}
-
-Entity.prototype.clock = function () {
-  return +new Date() - this.birthday;
 }
 
 Entity.prototype.toString = function () {
@@ -1595,7 +1591,7 @@ function onkeydown(event, count) {
 
   if (count === 1) {
     if (c === ' ') {
-      if (AVATAR.clock() < AVATAR.lastHop + 250) {
+      if (GAME.clock() < AVATAR.lastHop + 250) {
         // Toggle flying
         AVATAR.flying = !AVATAR.flying;
         if (AVATAR.flying) AVATAR.falling = false;
@@ -1604,7 +1600,7 @@ function onkeydown(event, count) {
         AVATAR.dy = VJUMP;
         AVATAR.falling = true;
       }
-      AVATAR.lastHop = AVATAR.clock();
+      AVATAR.lastHop = GAME.clock();
     }
 
     if (c === '0') 
@@ -1756,7 +1752,7 @@ ParticleSystem.prototype.spawn = function (init) {
     y0: 0,
     z0: 0,
     id: PARTICLES.nextID++,
-    birthday: AVATAR.clock()/1000 - rewind,
+    birthday: GAME.clock()/1000 - rewind,
     life: rewind + 0.5 + Math.random() / 2,
   };
   for (var i in p)
@@ -1865,7 +1861,7 @@ ParticleSystem.prototype.render = function () {
     this.buffers.aBirthday = makeBuffer(aBirthday, 1);
   }
 
-  gl.uniform1f(this.shader.uClock, parseFloat(AVATAR.clock()/1000));
+  gl.uniform1f(this.shader.uClock, parseFloat(GAME.clock()/1000));
   gl.uniform1f(this.shader.uGravity, PARTICLE_GRAVITY);
   gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
@@ -1919,7 +1915,14 @@ function Game() {
   this.entities = {};
   this.timeOfDay = Math.PI;  // 0 is midnight, PI is noon
   this.sunlight = 1;         // full daylight
+  this.birthday = +new Date();
 }
+
+
+Game.prototype.clock = function () {
+  return +new Date() - this.birthday;
+}
+
 
 Game.prototype.save = function (callback) {
   prepStorage(function () {
