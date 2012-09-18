@@ -4,6 +4,7 @@
 // http://stackoverflow.com/questions/9046643/webgl-create-texture
 // http://www.opengl.org/wiki/Tutorial2:_VAOs,_VBOs,_Vertex_and_Fragment_Shaders_(C_/_SDL)
 // http://stackoverflow.com/questions/7420092/efficient-vbo-allocation-in-webgl
+// http://learningwebgl.com/blog/?p=1786 render to texture
 
 // TODO: race cars
 // TODO: flags
@@ -27,7 +28,7 @@ var GAME;
 var AVATAR;  // hack-o alias for GAME.avatar because we use it so much
 
 var GRASSY = false;       // true to use decal-style grass
-var SPREAD_OUT = true;   // create nearby chunks
+var SPREAD_OUT = false;   // create nearby chunks
 
 var PICKED = null;
 var PICKED_FACE = 0;
@@ -183,6 +184,19 @@ var BLOCK_TYPES = {
     opaque: true,
     solid: true,
     geometry: geometryBlock,
+    update: function () {
+      if (!this.horizontalFieldOfView) {
+        // Init camera parameters
+        this.horizontalFieldOfView = Math.PI / 3;
+        this.viewDistance = 20;
+        this.pitch = 0;
+        this.yaw = 0;
+      }
+      if (!this.framebuffer) {
+        this.framebuffer = makeFramebufferForTile(2, 2);
+      }
+      renderToFramebuffer(this, this.framebuffer);
+    }
   },
 };
 var NBLOCKTYPES = 0;
@@ -668,21 +682,18 @@ Block.prototype.eachNeighbor = function (callback) {
 
 
 function drawScene(camera) {
-  if (!TERRAIN_TEXTURE.loaded)
-    return;  // Wait for texture
 
   RENDER_STAT.start();
 
   SHADER.use();
 
   // Start from scratch
-  if (AVATAR.y + EYE_HEIGHT >= 0)
+  if (camera.y + EYE_HEIGHT >= 0)
     gl.clearColor(0.5 * GAME.sunlight, 
                   0.8 * GAME.sunlight, 
-                  0.98 * GAME.sunlight, 0);  // Clear color is sky blue
+                  0.98 * GAME.sunlight, 1);  // Clear color is sky blue
   else
-    gl.clearColor(0,0,0,0);  // Look into the void
-  gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+    gl.clearColor(0,0,0,1);  // Look into the void
   gl.enable(gl.DEPTH_TEST);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -1044,7 +1055,10 @@ function tick() {
 
   requestAnimFrame(tick);
 
-  drawScene(AVATAR);
+  if (TERRAIN_TEXTURE.loaded) {
+    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+    drawScene(AVATAR);
+  }
 
   processInput(AVATAR, elapsed);
 
@@ -1972,4 +1986,68 @@ function loadChunk(chunkid) {
   req.onerror = function (e) {
     console.log('ERROR LOADING', chunkid, e);
   }
+}
+
+function makeFramebuffer(w, h) {
+  var fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  fb.width = w;  // stash dimensions for later
+  fb.height = h;
+
+  var fbt = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, fbt);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fb.width, db.height, 0, 
+                gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+  var rb = gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 
+                         fb.width, fb.height);
+
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
+                          gl.TEXTURE_2D, fbt, 0);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, 
+                             gl.RENDERBUFFER, rb);
+
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return fb;
+}
+
+function makeFramebufferForTile(s, t) {
+  var fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  fb.left = s * 16;  // stash dimensions for later
+  fb.top = t * 16;
+  fb.width = 16;
+  fb.height = 16;
+  //fb.left = fb.top = 0;  fb.width = fb.height = 256;
+
+  var rb = gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 
+                         256, 256);//fb.width, fb.height);
+
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
+                          gl.TEXTURE_2D, TERRAIN_TEXTURE, 0);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, 
+                             gl.RENDERBUFFER, rb);
+
+  gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return fb;
+}
+
+function renderToFramebuffer(camera, fb) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.viewport(fb.left, fb.top, fb.width, fb.height);
+  gl.scissor(fb.left, fb.top, fb.width, fb.height);
+  gl.enable(gl.SCISSOR_TEST);
+  drawScene(camera);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.disable(gl.SCISSOR_TEST);
 }
