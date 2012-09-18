@@ -1084,10 +1084,12 @@ function tick() {
   requestAnimFrame(tick);
 
   if (TERRAIN_TEXTURE.loaded) {
-    blur(AVATAR, 512, 512);
-    
-    //gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-    //drawScene(AVATAR);
+    if (KEYS.B) {
+      blur(AVATAR, 256, 256);
+    } else {
+      gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+      drawScene(AVATAR);
+    }
   }
 
   processInput(AVATAR, elapsed);
@@ -2044,7 +2046,7 @@ function loadChunk(chunkid) {
   }
 }
 
-function makeFramebuffer(w, h, depthBuffer) {
+function makeFramebuffer(w, h, depthBuffer, mipmap) {
   var fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   fb.left = 0;
@@ -2056,10 +2058,10 @@ function makeFramebuffer(w, h, depthBuffer) {
   gl.bindTexture(gl.TEXTURE_2D, fbt);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, 
-                                                    gl.LINEAR_MIPMAP_NEAREST);
+                   mipmap ? gl.LINEAR_MIPMAP_NEAREST : gl.LINEAR);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fb.width, fb.height, 0, 
                 gl.RGBA, gl.UNSIGNED_BYTE, null);
-  gl.generateMipmap(gl.TEXTURE_2D);
+  if (mipmap)  gl.generateMipmap(gl.TEXTURE_2D);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
                           gl.TEXTURE_2D, fbt, 0);
   fb.texture = fbt;
@@ -2114,19 +2116,23 @@ function renderToFramebuffer(camera, fb) {
 }
 
 var FB1, FB2, BLURH, BLURV, SAQ;
+//var BLIT;
 function blur(camera, w, h) {
   w = w || gl.viewportWidth;
   h = h || gl.viewportHeight;
   if (!FB1) {
-    FB1 = makeFramebuffer(w, h, true);
-    FB2 = makeFramebuffer(w, h);
+    FB1 = makeFramebuffer(w, h, true, false);
+    FB2 = makeFramebuffer(w, h, false, false);
     BLURH = new Shader('blur', 'blur-horizontal');
     BLURH.locate('aPos');
     BLURH.locate('uSrc');
-    BLURV = new Shader('blur', 'blur-horizontal');
+    BLURV = new Shader('blur', 'blur-vertical');
     BLURV.locate('aPos');
     BLURV.locate('uSrc');
     SAQ = makeBuffer([-1,-1, +1,-1, +1,+1, -1,+1], 2);
+    //BLIT = new Shader('blit');
+    //BLIT.locate('aPos');
+    //BLIT.locate('uSrc');
   }
   
   gl.enable(gl.DEPTH_TEST);
@@ -2134,7 +2140,8 @@ function blur(camera, w, h) {
   renderToFramebuffer(camera, FB1);
   
   gl.disable(gl.DEPTH_TEST);
-
+  
+  //drawScreenAlignedQuad(BLIT, FB1);
   drawScreenAlignedQuad(BLURH, FB1, FB2);
   drawScreenAlignedQuad(BLURV, FB2);
 }
