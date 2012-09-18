@@ -6,6 +6,11 @@
 // http://stackoverflow.com/questions/7420092/efficient-vbo-allocation-in-webgl
 // http://learningwebgl.com/blog/?p=1786 render to texture
 
+// Indexed DB
+// http://www.html5rocks.com/en/tutorials/offline/storage/
+// http://www.w3.org/TR/IndexedDB/
+// https://developer.mozilla.org/en-US/docs/IndexedDB/Using_IndexedDB
+
 // TODO: race cars
 // TODO: flags
 // TODO: tonkatsu
@@ -36,6 +41,10 @@ var PICK_MAX = 8;
 var WIREFRAME;
 
 var PARTICLES;
+
+var SHADER;
+
+var FRAMEBUFFER;
 
 // Map chunk dimensions
 var LOGNX = 4;
@@ -287,9 +296,9 @@ function getShader(gl, id) {
 }
 
 
-function Shader(shader) {
-  var fragmentShader = getShader(gl, shader + '-fs');
-  var vertexShader   = getShader(gl, shader + '-vs');
+function Shader(shaders, fragShader) {
+  var vertexShader   = getShader(gl, shaders + '-vs');
+  var fragmentShader = getShader(gl, (fragShader||shaders) + '-fs');
 
   this.program = gl.createProgram();
   gl.attachShader(this.program, vertexShader);
@@ -1075,8 +1084,10 @@ function tick() {
   requestAnimFrame(tick);
 
   if (TERRAIN_TEXTURE.loaded) {
-    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-    drawScene(AVATAR);
+    blur(AVATAR, 512, 512);
+    
+    //gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+    //drawScene(AVATAR);
   }
 
   processInput(AVATAR, elapsed);
@@ -1507,7 +1518,6 @@ function onLoad() {
   SHADER.locate('uSunlight');
 
   WIREFRAME = new Wireframe();
-
   WIREFRAME.shader = new Shader('wireframe');
   WIREFRAME.shader.locate('aPos');
   WIREFRAME.shader.locate('uMVMatrix');
@@ -2034,29 +2044,35 @@ function loadChunk(chunkid) {
   }
 }
 
-function makeFramebuffer(w, h) {
+function makeFramebuffer(w, h, depthBuffer) {
   var fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  fb.left = 0;
+  fb.top = 0;
   fb.width = w;  // stash dimensions for later
   fb.height = h;
 
   var fbt = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, fbt);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-  gl.generateMipmap(gl.TEXTURE_2D);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fb.width, db.height, 0, 
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, 
+                                                    gl.LINEAR_MIPMAP_NEAREST);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fb.width, fb.height, 0, 
                 gl.RGBA, gl.UNSIGNED_BYTE, null);
-
-  var rb = gl.createRenderbuffer();
-  gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
-  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 
-                         fb.width, fb.height);
-
+  gl.generateMipmap(gl.TEXTURE_2D);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
                           gl.TEXTURE_2D, fbt, 0);
-  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, 
-                             gl.RENDERBUFFER, rb);
+  fb.texture = fbt;
+  
+  if (depthBuffer) {
+    var rb = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 
+                           fb.width, fb.height);
+
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, 
+                               gl.RENDERBUFFER, rb);
+  }
 
   gl.bindTexture(gl.TEXTURE_2D, null);
   gl.bindRenderbuffer(gl.RENDERBUFFER, null);
@@ -2095,4 +2111,46 @@ function renderToFramebuffer(camera, fb) {
   drawScene(camera);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.disable(gl.SCISSOR_TEST);
+}
+
+var FB1, FB2, BLURH, BLURV, SAQ;
+function blur(camera, w, h) {
+  w = w || gl.viewportWidth;
+  h = h || gl.viewportHeight;
+  if (!FB1) {
+    FB1 = makeFramebuffer(w, h, true);
+    FB2 = makeFramebuffer(w, h);
+    BLURH = new Shader('blur', 'blur-horizontal');
+    BLURH.locate('aPos');
+    BLURH.locate('uSrc');
+    BLURV = new Shader('blur', 'blur-horizontal');
+    BLURV.locate('aPos');
+    BLURV.locate('uSrc');
+    SAQ = makeBuffer([-1,-1, +1,-1, +1,+1, -1,+1], 2);
+  }
+  
+  gl.enable(gl.DEPTH_TEST);
+
+  renderToFramebuffer(camera, FB1);
+  
+  gl.disable(gl.DEPTH_TEST);
+
+  drawScreenAlignedQuad(BLURH, FB1, FB2);
+  drawScreenAlignedQuad(BLURV, FB2);
+}
+
+function drawScreenAlignedQuad(shader, sourceFB, destFB) {
+  shader.use();
+  
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, sourceFB.texture);
+  gl.uniform1i(shader.uSrc, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, destFB);  // maybe be null
+  gl.viewport(0, 0, 
+              destFB ? destFB.width : gl.viewportWidth, 
+              destFB ? destFB.height : gl.viewportHeight);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, SAQ);
+  gl.vertexAttribPointer(shader.aPos, SAQ.itemSize, gl.FLOAT, false, 0, 0);
+  gl.drawArrays(gl.TRIANGLE_FAN, 0, SAQ.numItems);
 }
