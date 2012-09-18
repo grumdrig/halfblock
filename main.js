@@ -193,7 +193,7 @@ var BLOCK_TYPES = {
         this.yaw = 0;
       }
       if (!this.framebuffer) {
-        this.framebuffer = makeFramebufferForTile(2, 2);
+        this.framebuffer = makeFramebufferForTile(TERRAIN_TEXTURE, 2, 2);
       }
       renderToFramebuffer(this, this.framebuffer);
     }
@@ -2018,22 +2018,21 @@ function makeFramebuffer(w, h) {
   return fb;
 }
 
-function makeFramebufferForTile(s, t) {
+function makeFramebufferForTile(texture, s, t) {
   var fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   fb.left = s * 16;  // stash dimensions for later
   fb.top = t * 16;
   fb.width = 16;
   fb.height = 16;
-  //fb.left = fb.top = 0;  fb.width = fb.height = 256;
+
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
+                          gl.TEXTURE_2D, texture, 0);
 
   var rb = gl.createRenderbuffer();
   gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
   gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 
-                         256, 256);//fb.width, fb.height);
-
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
-                          gl.TEXTURE_2D, TERRAIN_TEXTURE, 0);
+                         texture.image.width, texture.image.height);
   gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, 
                              gl.RENDERBUFFER, rb);
 
