@@ -26,9 +26,10 @@ var WORLD = {};
 var ENTITIES = {};
 var AVATAR;
 
-var GRASSY = false;  // true to use decal-style grass
+var GRASSY = false;       // true to use decal-style grass
 var TIMEOFDAY = Math.PI;  // 0 is midnight, PI is noon
-var SUNLIGHT = 1;    // full daylight
+var SUNLIGHT = 1;         // full daylight
+var SPREAD_OUT = false;   // create nearby chunks
 
 var PICKED = null;
 var PICKED_FACE = 0;
@@ -78,6 +79,8 @@ var FACE_RIGHT = 4;
 var FACE_LEFT = 5;
 
 var DISTANCE = [1, 1, SY, SY, 1, 1];
+
+
 
 var BLOCK_TYPES = {
   air: {
@@ -294,7 +297,7 @@ function mvPopMatrix() {
 }
 
 
-function Chunk(x, z) {
+function Chunk(x, z, data) {
   x &= ~(NX - 1);
   z &= ~(NZ - 1);
   this.chunkx = x;
@@ -303,9 +306,37 @@ function Chunk(x, z) {
   this.blocks = Array(NX * NY * NZ);
 
   this.lastUpdate = 0;
+  this.nDirty = 0;
 
   WORLD[this.chunkx + ',' + this.chunkz] = this;
 
+  if (data) {
+    for (var i = 0; i < NX * NY * NZ; ++i) {
+      var c = coords(i);
+      c = coords(this.chunkx + c.x, c.y, this.chunkz + c.z);
+      c.data = data.blocks[i];
+      this.blocks[i] = new Block(c, this);
+      if (this.blocks[i].dirtyLight || this.blocks[i].dirtyGeometry)
+        this.nDirty++;
+    }
+  }
+}
+
+
+Chunk.prototype.data = function () {
+  var result = {
+    key: this.chunkx + ',' + this.chunkz,
+    chunkx: this.chunkx,
+    chunkz: this.chunkz,
+    blocks: new Array(NX * NY * NZ)
+  };
+  for (var i = 0; i < NX * NY * NZ; ++i)
+    result.blocks[i] = this.blocks[i].data();
+  return result;
+}
+
+
+Chunk.prototype.generateTerrain = function () {
   // Generate blocks
   for (var ix = 0; ix < NX; ++ix) {
     var x = ix + this.chunkx;
@@ -331,18 +362,20 @@ function Chunk(x, z) {
   }
 
   // Initial quick lighting update, some of which we can know accurately
-  this.nDirty = 0;
+  this.nDirty = 1;
   for (var x = 0; x < NX; ++x) {
     for (var z = 0; z < NZ; ++z) {
-      var unsheltered = true;
+      var sheltered = false;
       for (var y = NY-1; y >= 0; --y) {
         var c = coords(x, y*SY, z);
         var b = this.blocks[c.i];
         b.light = {r:0, g:0, b:0, sun:
-                   b.opaque ? 0 : unsheltered ? LIGHT_SUN : 0};
-        b.dirtyLight = !!b.type.luminosity || !(unsheltered || b.opaque);
+                   b.opaque ? 0 : sheltered ? 0 : LIGHT_SUN};
+        b.dirtyLight = false;
+        if (b.type.luminosity) b.dirtyLight = true;
+        if (sheltered && !b.opaque) b.dirtyLight = true;
         if (b.dirtyLight) ++this.nDirty;
-        unsheltered = unsheltered && !b.opaque;
+        sheltered = sheltered || b.opaque;
       }
     }
   }
@@ -560,6 +593,7 @@ function makeChunk(chunkx, chunkz) {
   if (!result) {
     // New chunk needed
     result = new Chunk(chunkx, chunkz);
+    result.generateTerrain();
 
     // Invalidate edges of neighboring chunks. Have to invalidate the 
     // whole geometry or the light and other arrays will be out of sync
@@ -761,11 +795,12 @@ function updateWorld() {
   var wasface = PICKED_FACE;
   PICKED = pickp();
   
-  var c = coords(AVATAR);
-  var d = CHUNK_RADIUS;//AVATAR.viewDistance;
-  for (var dx = -d; dx < d; dx += NX)
-    for (var dz = -d; dz < d; dz += NZ)
-      makeChunk(AVATAR.x + dx, AVATAR.z + dz);
+  if (SPREAD_OUT) {
+    var d = CHUNK_RADIUS;//AVATAR.viewDistance;
+    for (var dx = -d; dx < d; dx += NX)
+      for (var dz = -d; dz < d; dz += NZ)
+        makeChunk(AVATAR.x + dx, AVATAR.z + dz);
+  }
   
   for (var i in WORLD) {
     var c = WORLD[i];
@@ -862,7 +897,7 @@ function ballistics(e, elapsed) {
       if (stepup && 
           block(x, y, z).type.solid && 
           block(x, y + e.height + stepup, z).type.solid)
-        return true;  // Special case for steppin' up
+        return true;  // Special case for steppin' up to not quite enough room
       return false;
     }
 
@@ -1089,7 +1124,27 @@ function Block(coord, chunk) {
 
   this.light = {r:0, g:0, b:0, sun: coord.y >= HY ? LIGHT_SUN : 0};
 
+  this.dirtyLight = false;
+  this.dirtyGeometry = false;
+
   this.type = BLOCK_TYPES.air;
+
+  if (coord.data) {
+    this.light = coord.data.light;
+    this.dirtyLight = coord.data.dirtyLight;
+    this.dirtyGeometry = coord.data.dirtyGeometry;
+    this.type = BLOCK_TYPES[coord.data.type];
+  }
+}
+
+
+Block.prototype.data = function () {
+  return {
+    light: this.light,
+    dirtyLight: this.dirtyLight,
+    dirtyGeometry: this.dirtyGeometry,
+    type: this.type.name,
+  };
 }
 
 
@@ -1798,3 +1853,60 @@ function pickTool(blocktype) {
 
 function sqr(x) { return x * x }
 
+
+var DB;
+var VERSION = 6;
+function prepstorage(callback) {
+  var req = webkitIndexedDB.open('dadacraft', 'Dadacraft World');
+  req.onsuccess = function (e) {
+    DB = e.target.result;
+    DB.onerror = function (e) {
+      console.log('STORAGE ERROR', e);
+    };
+    if (DB.version === VERSION) {
+      callback();
+    } else {
+      reset(callback);
+    }
+  }
+}
+
+function reset(callback) {
+  var req = DB.setVersion(VERSION);
+  req.onsuccess = function(e) {
+    // remove the store if it exists
+    if (DB.objectStoreNames.contains('chunks'))
+      DB.deleteObjectStore('chunks');
+    // create a store, and an index
+    var store = DB.createObjectStore('chunks', { keyPath: 'key' });
+    store.createIndex('chunkindex', 'key', {unique: true});
+    
+    // now call the handler outside of the 'versionchange' callstack
+    var transaction = e.target.result;
+    transaction.oncomplete = callback;
+  };
+}
+
+function save(chunk, callback) {
+  var store = DB.transaction(['chunks'], 'readwrite').objectStore('chunks');
+  var req = store.put(chunk.data());
+  req.onsuccess = callback;
+}
+
+function load(chunkid) {
+  var store = DB.transaction(['chunks'], 'readonly').objectStore('chunks');
+  var req = store.index('chunkindex').
+    openCursor(new webkitIDBKeyRange.only(chunkid));
+  req.onsuccess = function(e) {
+    var cursor = req.result;
+    if (cursor) {
+      console.log(cursor.value);
+      var c = new Chunk(cursor.value.chunkx, cursor.value.chunkz, cursor.value);
+      console.log(c);
+      cursor.continue();
+    }
+  };
+  req.onerror = function (e) {
+    console.log('ERROR LOADING', chunkid, e);
+  }
+}
