@@ -176,6 +176,12 @@ var BLOCK_TYPES = {
       if (!nt.solid && nt !== this.type)
         this.breakBlock();
     },
+    afterPlacement: function growDown() {
+      var n = this.neighbor(FACE_BOTTOM);
+      var nn = n.neighbor(FACE_BOTTOM);
+      if (!nn.outofbounds && n.type.empty && nn.type.empty)
+        n.placeBlock(this.type);
+    },
   },
   mystery: {
     tile: [2, 2],
@@ -1272,6 +1278,8 @@ Block.prototype.placeBlock = function (newType, stackPos) {
   if (typeof newType === 'string') BLOCK_TYPES[newType];
   this.type = newType;
   this.invalidateGeometry(true);
+  if (this.type.afterPlacement) 
+    this.type.afterPlacement.apply(this);
   if (this.type.stack) {
     this.stackPos = stackPos || 0;
     if (this.stackPos + SY < this.type.stack)
