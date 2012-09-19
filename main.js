@@ -267,6 +267,10 @@ var ENTITY_TYPES = {
       this.radius = 0.5 * this.type.scale;
       this.rebound = 0.75;
     },
+    update: function (e) {
+      if (age(e) > 1 && distance(AVATAR, e) < 2)
+        e.die();
+    },
     scale: 0.35,
   },
 };
@@ -608,6 +612,16 @@ function hDistance(p, q) {
                    (p.z - q.z) * (p.z - q.z));
 }
 
+function distance(p, q) {
+  return Math.sqrt((p.x - q.x) * (p.x - q.x) + 
+                   (p.y - q.y) * (p.y - q.y) + 
+                   (p.z - q.z) * (p.z - q.z));
+}
+
+function age(e) {
+  return (GAME.clock() - e.birthday) / 1000;
+}
+
 function signedHDistanceFromLine(a, angle, p) {
   // returns distance from line through point A at given angle to point P
   return (p.z - a.z) * Math.sin(angle) - (p.x - a.x) * Math.cos(angle);
@@ -918,6 +932,12 @@ function updateWorld() {
     c.visible = (c.hdistance < AVATAR.viewDistance);
     c.update();
   }  
+
+  for (var i in GAME.entities) {
+    var ntt = GAME.entities[i];
+    if (ntt.type.update) ntt.type.update.apply(ntt, [ntt]);
+  }
+
   UPDATE_STAT.end();
 }
 
@@ -1193,8 +1213,9 @@ function tick() {
   processInput(AVATAR, elapsed);
 
   for (var i in GAME.entities) {
-    var e = GAME.entities[i];
-    ballistics(e, elapsed);
+    var ntt = GAME.entities[i];
+    if (ntt.type.tick) ntt.type.tick.apply(ntt, [ntt]);
+    ballistics(ntt, elapsed);
   }
 
   PARTICLES.tick(elapsed);
@@ -1804,17 +1825,16 @@ function onkeydown(event, count) {
       }
     }
 
-    if (c === 'H') {
+    if (c === 'H') // Toggle chunk generation
       SPREAD_OUT = !SPREAD_OUT;
-    }
 
-    // 'I', right paren/brace/bracket = select next tool
+    // 'I', right paren/brace/bracket means select next tool
     if (k === 190 || k === 221 || c === 'I') { 
       var tooli = AVATAR.tool ? (AVATAR.tool.index + 1) % NBLOCKTYPES : 1;
       pickTool(tooli);
     }
     
-    // Left paren/brace//bracket to select prev tool
+    // Left paren/brace//bracket means select previous tool
     if (k === 188 || k === 219) {  
       var tooli = AVATAR.tool ? 
         (NBLOCKTYPES + AVATAR.tool.index - 1) % NBLOCKTYPES : NBLOCKTYPES - 1;
