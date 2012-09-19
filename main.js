@@ -196,12 +196,11 @@ var BLOCK_TYPES = {
     unpickable: true,
   },
   rope: {
-    tile: function () { 
-      return [(this.neighbor(FACE_BOTTOM).type === this.type) ? 0 : 1, 2] 
-    },
+    tile: [1, 2],
     liquid: true,
     geometry: geometryHash,
     update: function updateHanging() {
+      this.tile = [(this.neighbor(FACE_BOTTOM).type === this.type) ? 0 : 1, 2];
       var nt = this.neighbor(FACE_TOP).type;
       if (!nt.solid && nt !== this.type)
         this.breakBlock();
@@ -1380,12 +1379,12 @@ Block.prototype.breakBlock = function () {
   this.type = BLOCK_TYPES.air;
   delete this.stackPos;
   this.invalidateGeometry(true);
-  new Entity({type: 'block', 
-              x: this.x + 0.5, 
-              y: this.y + (this.stack || this.height || SY)/2,
-              z: this.z + 0.5,
-             }, 
-             this);
+  var drop = new Entity({ type: 'block', 
+    x: this.x + 0.5, 
+    y: this.y + (this.stack || this.height || SY)/2,
+    z: this.z + 0.5
+    }, this);
+  drop.tile = type.tile;
   for (var i = 0; i < 20; ++i) {
     var p = PARTICLES.spawn({
       x0: PICKED.x + 0.5, 
@@ -1415,14 +1414,12 @@ Block.prototype.placeBlock = function (newType, stackPos) {
   }
 }
 
-Block.prototype.tile = function () {
-  var tile = this.type.tile;
-  if (typeof tile === 'function')
-    tile = tile.apply(this);
-  if (typeof tile === 'number') 
-    return {s: tile,    t: 0};
+function tile(obj) {
+  var t = obj.tile || obj.type.tile;
+  if (typeof t === 'number') 
+    return {s: t,    t: 0};
   else // assume array
-    return {s: tile[0], t:tile[1]};
+    return {s: t[0], t:t[1]};
 }
 
 Block.prototype.toString = function () {
@@ -1464,7 +1461,7 @@ function geometryHash(b) {
     v.indices.push(n+0, n+1, n+2,  n+0, n+2, n+3,
                    n+4, n+5, n+6,  n+4, n+6, n+7);
 
-    var tile = b.tile();
+    var tyle = tile(b);
     var bottom = 1;
     var top = bottom - H;
 
@@ -1473,10 +1470,10 @@ function geometryHash(b) {
     if (top % 1 === 0) top += ZERO;
 
     for (var j = 0; j < 2; ++j)
-      v.textures.push(tile.s + ZERO, tile.t + bottom, 
-                      tile.s + ONE,  tile.t + bottom, 
-                      tile.s + ONE,  tile.t + top, 
-                      tile.s + ZERO, tile.t + top);
+      v.textures.push(tyle.s + ZERO, tyle.t + bottom, 
+                      tyle.s + ONE,  tyle.t + bottom, 
+                      tyle.s + ONE,  tyle.t + top, 
+                      tyle.s + ZERO, tyle.t + top);
   }
   for (var i = 0; i < v.positions.length/3; ++i)
     v.lighting.push(b.light.r, b.light.g, b.light.b, b.light.sun);
@@ -1516,7 +1513,7 @@ function geometryBlock(b) {
       }
       
       // Set textures per vertex: one ST pair for each vertex
-      var tile = b.tile();
+      var tyle = tile(b);
       var bottom, top;
       if (face === FACE_TOP || face === FACE_BOTTOM) {
         bottom = 0;
@@ -1532,10 +1529,10 @@ function geometryBlock(b) {
       if (bottom % 1 === 0) bottom += ZERO;
       if (top % 1 === 0) top -= ZERO;
 
-      v.textures.push(tile.s + ONE,  tile.t + bottom, 
-                      tile.s + ZERO, tile.t + bottom, 
-                      tile.s + ZERO, tile.t + top, 
-                      tile.s + ONE,  tile.t + top);
+      v.textures.push(tyle.s + ONE,  tyle.t + bottom, 
+                      tyle.s + ZERO, tyle.t + bottom, 
+                      tyle.s + ZERO, tyle.t + top, 
+                      tyle.s + ONE,  tyle.t + top);
 
       // Describe triangles
       v.indices.push(pindex, pindex + 1, pindex + 2,
@@ -1570,11 +1567,11 @@ function cube(ntt) {
       v.lighting.push.apply(v.lighting, light);
     }
     
-    var tile = ntt.tile();
-    v.textures.push(tile.s + ONE,  tile.t + ONE, 
-                    tile.s + ZERO, tile.t + ONE, 
-                    tile.s + ZERO, tile.t + ZERO, 
-                    tile.s + ONE,  tile.t + ZERO);
+    var tyle = tile(ntt);
+    v.textures.push(tyle.s + ONE,  tyle.t + ONE, 
+                    tyle.s + ZERO, tyle.t + ONE, 
+                    tyle.s + ZERO, tyle.t + ZERO, 
+                    tyle.s + ONE,  tyle.t + ZERO);
 
     // Describe triangles
     v.indices.push(pindex, pindex + 1, pindex + 2,
@@ -1634,7 +1631,6 @@ function Entity(init1, init2) {
   if (this.type.init) this.type.init.apply(this);
 }
 
-Entity.prototype.tile = Block.prototype.tile;
 
 Entity.prototype.die = function () {
   delete GAME.entities[this.id];
@@ -2092,11 +2088,9 @@ function pickTool(blocktype) {
   var ctx = toolcan.getContext('2d');
   ctx.clearRect(0, 0, toolcan.width, toolcan.height);
   if (blocktype) {
-    var sample = new Block({x:0,y:-1000,z:0});
-    sample.type = blocktype;
-    var tile = sample.tile();
+    var tyle = tile(blocktype);
     ctx.drawImage($('terrain'), 
-                  16 * tile.s, 16 * tile.t,  16, 16,
+                  16 * tyle.s, 16 * tyle.t,  16, 16,
                   0, 0,                      toolcan.width, toolcan.height);
   }
 }
