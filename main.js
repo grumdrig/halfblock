@@ -405,7 +405,7 @@ Chunk.prototype.generateTerrain = function () {
   }
 
   // Initial quick lighting update, some of which we can know accurately
-  this.nDirty = 1;
+  this.nDirty = 0;
   for (var x = 0; x < NX; ++x) {
     for (var z = 0; z < NZ; ++z) {
       var sheltered = false;
@@ -413,12 +413,12 @@ Chunk.prototype.generateTerrain = function () {
         var c = coords(x, y*SY, z);
         var b = this.blocks[c.i];
         b.light = {r:0, g:0, b:0, sun:
-                   b.opaque ? 0 : sheltered ? 0 : LIGHT_SUN};
+                   b.type.opaque ? 0 : sheltered ? 0 : LIGHT_SUN};
         b.dirtyLight = false;
         if (b.type.luminosity) b.dirtyLight = true;
-        if (sheltered && !b.opaque) b.dirtyLight = true;
+        if (sheltered && !b.type.opaque) b.dirtyLight = true;
         if (b.dirtyLight) ++this.nDirty;
-        sheltered = sheltered || b.opaque;
+        sheltered = sheltered || b.type.opaque;
       }
     }
   }
@@ -475,7 +475,7 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
       if (set.aLighting && buffers && buffers.aLighting) {
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers.aLighting);
         gl.bufferSubData(gl.ARRAY_BUFFER, 0, 
-                         new Float32Array(buffers.aLighting));
+                         new Float32Array(set.aLighting));
       }
     }
     updatebuf(opaques, this.opaqueBuffers);
@@ -532,8 +532,8 @@ Chunk.prototype.update = function () {
       // iteration runs from high y's to low
       var b = this.blocks[i];
       var xz = b.x + NX * b.z;
-      b.uncovered = !tops[xz];
-      if (b.uncovered && b.type.opaque)
+      b.sheltered = !!tops[xz];
+      if (!b.sheltered && b.type.opaque)
         tops[xz] = b;
       if (b.dirtyLight || b.dirtyGeometry) {
         if (b.dirtyLight) uplights++;
@@ -1253,7 +1253,7 @@ Block.prototype.update = function () {
       g = this.type.luminosity[1];
       b = this.type.luminosity[2];
     }
-    if (this.uncovered)
+    if (!this.sheltered)
       sun = LIGHT_SUN;
     this.eachNeighbor(function (n, face) {
       r = Math.max(r, n.light.r - DISTANCE[face]);
@@ -1311,9 +1311,12 @@ Block.prototype.tile = function () {
 }
 
 Block.prototype.toString = function () {
-  return this.type.name + ' [' + this.x + ',' + this.y + ',' + this.z + '] ' +
+  var result = this.type.name + 
+    ' [' + this.x + ',' + this.y + ',' + this.z + '] ' +
     '&#9788;' + this.light.r + ',' + this.light.g + ',' + this.light.b + 
     '|' + this.light.sun + (this.outofbounds ? ' OOB' : '');
+  if (this.sheltered) result += ' &#9730;';
+  return result;
 }
 
 
