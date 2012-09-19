@@ -1297,9 +1297,12 @@ Block.prototype.update = function () {
 }
 
 Block.prototype.breakBlock = function () {
+  var type = this.type;
+  var pos = this.stackPos;
   this.type = BLOCK_TYPES.air;
+  delete this.stackPos;
   this.invalidateGeometry(true);
-  // no visible effect yet: new Entity(this);
+  // new Entity(this);  no visible effect yet
   for (var i = 0; i < 20; ++i) {
     var p = PARTICLES.spawn({
       x0: PICKED.x + 0.5, 
@@ -1307,11 +1310,18 @@ Block.prototype.breakBlock = function () {
       z0: PICKED.z + 0.5});
     //PARTICLES.bounceParticle(p);
   }
+  if (type.stack) {
+    if (pos > 0)
+      this.neighbor(FACE_BOTTOM).breakBlock();
+    if (pos + SY < type.stack)
+      this.neighbor(FACE_TOP).breakBlock();
+  }
 }
 
 Block.prototype.placeBlock = function (newType, stackPos) {
   if (typeof newType === 'string') BLOCK_TYPES[newType];
   this.type = newType;
+  delete this.stackPos;
   this.invalidateGeometry(true);
   if (this.type.afterPlacement) 
     this.type.afterPlacement.apply(this);
