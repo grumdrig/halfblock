@@ -259,10 +259,12 @@ var ENTITY_TYPES = {
     geometry: cube,
     tile: 1,
     init: function () {  
-      this.vyaw = 1 
-      this.dx = tweak();
-      this.dz = tweak();
-      this.dy = Math.random();
+      this.dyaw = 1;
+      this.dx = 2 * tweak();
+      this.dz = 2 * tweak();
+      this.dy = 10;
+      this.falling = true;
+      this.height = SY * this.type.scale;
     },
     scale: 0.5,
   },
@@ -925,56 +927,21 @@ function processInput(avatar, elapsed) {
     GAME.sunlight = 0.5 - Math.cos(GAME.timeOfDay) / 2;
   }
 
-  var ddp = avatar.ACCELERATION * elapsed;
-  avatar.swimming = avatar.falling && block(avatar).type.liquid;
-  
-  // Drag
-  if (!(KEYS.W || KEYS.A || KEYS.S || KEYS.D)) {
-    if (avatar.dx > 0) avatar.dx = Math.max(0, avatar.dx - ddp);
-    if (avatar.dx < 0) avatar.dx = Math.min(0, avatar.dx + ddp);
-    if (avatar.dz > 0) avatar.dz = Math.max(0, avatar.dz - ddp);
-    if (avatar.dz < 0) avatar.dz = Math.min(0, avatar.dz + ddp);
-  }
-
   // Movement keys
-  var ax = ddp * Math.cos(-avatar.yaw);
-  var az = ddp * Math.sin(-avatar.yaw);
-  if (KEYS.W) { avatar.dx -= az; avatar.dz -= ax; }
-  if (KEYS.A) { avatar.dx -= ax; avatar.dz += az; }
-  if (KEYS.S) { avatar.dx += az; avatar.dz += ax; }
-  if (KEYS.D) { avatar.dx += ax; avatar.dz -= az; }
+  avatar.ddx = avatar.ddz = 0;
+  if (KEYS.W) avatar.ddz -= avatar.ACCELERATION;
+  if (KEYS.A) avatar.ddx -= avatar.ACCELERATION;
+  if (KEYS.S) avatar.ddz += avatar.ACCELERATION;
+  if (KEYS.D) avatar.ddx += avatar.ACCELERATION;
   
+  avatar.ddy = 0;
   if (avatar.flying || avatar.swimming) {
     // Fly up and down
+    var ddp = avatar.ACCELERATION * elapsed;
     if (KEYS[' '])
-      avatar.dy += ddp;
+      avatar.ddy += avatar.ACCELERATION;
     else if (KEYS[16]) // shift
-      avatar.dy -= ddp;
-    else if (avatar.dy > 0) 
-      avatar.dy = Math.max(0, avatar.dy - elapsed * avatar.ACCELERATION);
-    else
-      avatar.dy = Math.min(0, avatar.dy + elapsed * avatar.ACCELERATION);
-  }
-
-  // Rotations
-  var da = avatar.SPIN_RATE * elapsed;
-  if (KEYS.Q) avatar.yaw -= da;
-  if (KEYS.E) avatar.yaw += da;
-  if (KEYS.Z) avatar.pitch = Math.max(avatar.pitch - da, -Math.PI/2);
-  if (KEYS.X) avatar.pitch = Math.min(avatar.pitch + da,  Math.PI/2);
-
-  // Limit speed
-  var h = sqr(avatar.dx) + sqr(avatar.dz);
-  if (avatar.flying || avatar.swimming) h += sqr(avatar.dy);
-  h = Math.sqrt(h);
-  
-  var vmax = (avatar.flying ? avatar.FLY_MAX : avatar.WALK_MAX) *
-    (1 - (block(avatar).type.viscosity||0));
-  var f = h / vmax;
-  if (f > 1) {
-    avatar.dx /= f;
-    avatar.dz /= f;
-    if (avatar.flying || avatar.swimming) avatar.dy /= f;
+      avatar.ddy -= avatar.ACCELERATION;
   }
 }
 
@@ -990,8 +957,50 @@ function toggleMouselook() {
 function ballistics(e, elapsed) {
   // Apply the laws of pseudo-physics
 
-  if (e.vyaw) e.yaw += elapsed * e.vyaw;
-  if (e.vpitch) e.pitch += elapsed * e.vpitch;
+  e.swimming = e.falling && block(e).type.liquid;
+
+  if (e.ddx || e.ddz) {
+    // Accelerate in the XZ plane
+    var ddp = e.ACCELERATION * elapsed;
+    var cos = Math.cos(e.yaw);
+    var sin = Math.sin(e.yaw);
+    e.dx += elapsed * (e.ddx * cos - e.ddz * sin);
+    e.dz += elapsed * (e.ddx * sin + e.ddz * cos);
+  } else if (!e.falling) {
+    // Drag. Not quite correct - needs to be applied in opp of dir of travel
+    var ddp = e.ACCELERATION * elapsed;
+    if (e.dx > 0) e.dx = Math.max(0, e.dx - ddp);
+    if (e.dx < 0) e.dx = Math.min(0, e.dx + ddp);
+    if (e.dz > 0) e.dz = Math.max(0, e.dz - ddp);
+    if (e.dz < 0) e.dz = Math.min(0, e.dz + ddp);
+  }
+
+  if (e.ddy) {
+    e.dy += elapsed * e.ddy;
+  } else if (e.flying || e.swimming) {
+    // Drag
+    if (e.dy > 0) 
+      e.dy = Math.max(0, e.dy - elapsed * e.ACCELERATION);
+    else
+      e.dy = Math.min(0, e.dy + elapsed * e.ACCELERATION);
+  }
+
+  // Limit speed
+  var h = sqr(e.dx) + sqr(e.dz);
+  if (e.flying || e.swimming) h += sqr(e.dy);
+  h = Math.sqrt(h);
+  
+  var vmax = (e.flying ? e.FLY_MAX : e.WALK_MAX) *
+    (1 - (block(e).type.viscosity||0));
+  var f = h / vmax;
+  if (f > 1) {
+    e.dx /= f;
+    e.dz /= f;
+    if (e.flying || e.swimming) e.dy /= f;
+  }
+
+  if (e.dyaw) e.yaw += elapsed * e.dyaw;
+  if (e.dpitch) e.pitch += elapsed * e.dpitch;
 
   if (e.dx || e.dz) {
     // Move and check collisions
@@ -1351,7 +1360,12 @@ Block.prototype.breakBlock = function () {
   this.type = BLOCK_TYPES.air;
   delete this.stackPos;
   this.invalidateGeometry(true);
-  new Entity({type: 'block', x: this.x + 0.5, z: this.z + 0.5}, this);
+  new Entity({type: 'block', 
+              x: this.x + 0.5, 
+              y: this.y + (this.stack || this.height || SY)/2,
+              z: this.z + 0.5,
+             }, 
+             this);
   for (var i = 0; i < 20; ++i) {
     var p = PARTICLES.spawn({
       x0: PICKED.x + 0.5, 
@@ -1527,7 +1541,7 @@ function cube(ntt) {
     for (var i = 3; i >= 0; --i) {
       var ff = Array(3);
       for (var j = 0; j < f[i].length; ++j) 
-        ff[j] = ntt.type.scale * (f[i][j] - 0.5);
+        ff[j] = ntt.type.scale * (f[i][j] - (j === 1 ? 0 : 0.5));
       var cos = Math.cos(ntt.yaw), sin = Math.sin(ntt.yaw);
       var dx = ff[0] * cos - ff[2] * sin;
       var dy = ff[1] * SY;
@@ -1582,8 +1596,9 @@ function Entity(init1, init2) {
   init('dz', 0);
   init('yaw', 0);
   init('pitch', 0);
-  init('vyaw', 0);
-  init('vpitch', 0);
+  init('dyaw', 0);
+  init('dpitch', 0);
+  init('falling', false);
   init('type');
   if (typeof this.type === 'string') this.type = ENTITY_TYPES[this.type];
   this.birthday = GAME.clock();
