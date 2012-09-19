@@ -166,10 +166,26 @@ var BLOCK_TYPES = {
     opaque: true,
     geometry: geometryBlock,
   },
-  jelly: {
+  'grape jelly': {
     tile: 14,
     liquid: true,
     translucent: [154,40,155,0.85],
+    geometry: geometryBlock,
+    viscosity: 0.85,
+    //unpickable: true,
+  },
+  'strawberry jelly': {
+    tile: 13,
+    liquid: true,
+    translucent: [200,81,83,0.85],
+    geometry: geometryBlock,
+    viscosity: 0.85,
+    //unpickable: true,
+  },
+  'apricot jelly': {
+    tile: 15,
+    liquid: true,
+    translucent: [191,124,66,0.85],
     geometry: geometryBlock,
     viscosity: 0.85,
     //unpickable: true,
@@ -1204,7 +1220,7 @@ Block.prototype.generateTerrain = function () {
     if (n < -0.2) this.type = BLOCK_TYPES.rock;
     else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
     else if (n < 0) this.type = GRASSY ? BLOCK_TYPES.dirt : BLOCK_TYPES.grass;
-    else if (this.y < HY / 4) this.type = BLOCK_TYPES.jelly;
+    else if (this.y < HY / 4) this.type = BLOCK_TYPES['apricot jelly'];
     else this.type = BLOCK_TYPES.air;
 
     if (Math.pow(noise(this.x/10, this.y/10, this.z/10 + 1000), 3) < -0.12)
@@ -1635,17 +1651,24 @@ function onkeydown(event, count) {
       }
     }
 
-    if (k === 190 || k === 221 || c === 'I') { // I, right paren/brace/bracket
+    if (c === 'H') {
+      SPREAD_OUT = !SPREAD_OUT;
+    }
+
+    // 'I', right paren/brace/bracket = select next tool
+    if (k === 190 || k === 221 || c === 'I') { 
       var tooli = AVATAR.tool ? (AVATAR.tool.index + 1) % NBLOCKTYPES : 1;
       pickTool(tooli);
     }
     
-    if (k === 188 || k === 219) {  // left paren/brace//bracket
+    // Left paren/brace//bracket to select prev tool
+    if (k === 188 || k === 219) {  
       var tooli = AVATAR.tool ? 
         (NBLOCKTYPES + AVATAR.tool.index - 1) % NBLOCKTYPES : NBLOCKTYPES - 1;
       pickTool(tooli);
     }
 
+    // Number keys select first 10 tools
     var t = k - '0'.charCodeAt(0);
     if (0 <= t && t <= 9)
       pickTool(t || 10);
