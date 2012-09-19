@@ -227,13 +227,8 @@ var BLOCK_TYPES = {
     stack: 1,
     geometry: geometryBlock,
     update: function () {
-      if (!this.horizontalFieldOfView) {
-        // Init camera parameters
-        this.horizontalFieldOfView = Math.PI / 3;
-        this.viewDistance = 20;
-        this.pitch = 0;
-        this.yaw = 0;
-      }
+      if (!this.horizontalFieldOfView)
+        initCamera(this);
       if (!this.framebuffer) {
         this.framebuffer = makeFramebufferForTile(TERRAIN_TEXTURE, 2, 2);
       }
@@ -255,6 +250,31 @@ for (var i in BLOCK_TYPES) {
 }
 for (var i in BLOCK_TYPES)
   BLOCK_TYPES[BLOCK_TYPES[i].index] = BLOCK_TYPES[i];
+
+
+var ENTITY_TYPES = {
+  player: {
+  },
+  block: {
+    geometry: cube,
+    tile: 1,
+    init: function () {  
+      this.vyaw = 1 
+      this.dx = tweak();
+      this.dz = tweak();
+      this.dy = Math.random();
+    },
+    scale: 0.5,
+  },
+};
+var NENTITYTYPES = 0;
+for (var i in ENTITY_TYPES) {
+  ENTITY_TYPES[i].index = NENTITYTYPES++;
+  ENTITY_TYPES[i].name = i;
+}
+for (var i in ENTITY_TYPES)
+  ENTITY_TYPES[ENTITY_TYPES[i].index] = ENTITY_TYPES[i];
+
 
 function updateResting() {
   var nt = this.neighbor(FACE_BOTTOM).type;
@@ -502,18 +522,20 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
     updatebuf(opaques, this.opaqueBuffers);
     updatebuf(translucents, this.translucentBuffers);
   } else {
-    function makebufs(set) {
-      if (!set.indices) return null;
-      return {
-        aVertexPosition: makeBuffer(set.aVertexPosition, 3),
-        aTextureCoord:   makeBuffer(set.aTextureCoord, 2),
-        aLighting:       makeBuffer(set.aLighting, 4, true),
-        indices:         makeElementArrayBuffer(set.indices)
-      };
-    }
     this.opaqueBuffers = makebufs(opaques);
     this.translucentBuffers = makebufs(translucents);
   }
+}
+
+
+function makebufs(set) {
+  if (!set.indices) return null;
+  return {
+    aVertexPosition: makeBuffer(set.aVertexPosition, 3),
+    aTextureCoord:   makeBuffer(set.aTextureCoord, 2),
+    aLighting:       makeBuffer(set.aLighting, 4, true),
+    indices:         makeElementArrayBuffer(set.indices)
+  };
 }
 
 
@@ -790,6 +812,30 @@ function drawScene(camera) {
       renderChunkBuffers(c.opaqueBuffers);
   }
 
+  // Render entities
+  // For now generate all the info each time
+  var nttSet = {
+    aVertexPosition: [],
+    aTextureCoord: [],
+    aLighting: [],
+    indices: [],
+  };
+  for (var i in GAME.entities) {
+    var ntt = GAME.entities[i];
+    if (ntt.type.geometry) {
+      var geo = ntt.type.geometry(ntt);
+      nttSet.aLighting.push.apply(nttSet.aLighting, geo.lighting);
+      var pindex = nttSet.aVertexPosition.length / 3;
+      nttSet.aVertexPosition.push.apply(nttSet.aVertexPosition, geo.positions);
+      nttSet.aTextureCoord.push.apply(nttSet.aTextureCoord, geo.textures);
+      for (var j = 0; j < geo.indices.length; ++j)
+        nttSet.indices.push(pindex + geo.indices[j]);
+    }
+  }
+  var nttBuffers = makebufs(nttSet);
+  renderChunkBuffers(nttBuffers);
+
+
   // Render particles
   PARTICLES.render();
 
@@ -943,6 +989,9 @@ function toggleMouselook() {
 
 function ballistics(e, elapsed) {
   // Apply the laws of pseudo-physics
+
+  if (e.vyaw) e.yaw += elapsed * e.vyaw;
+  if (e.vpitch) e.pitch += elapsed * e.vpitch;
 
   if (e.dx || e.dz) {
     // Move and check collisions
@@ -1302,7 +1351,7 @@ Block.prototype.breakBlock = function () {
   this.type = BLOCK_TYPES.air;
   delete this.stackPos;
   this.invalidateGeometry(true);
-  // new Entity(this);  no visible effect yet
+  new Entity({type: 'block', x: this.x + 0.5, z: this.z + 0.5}, this);
   for (var i = 0; i < 20; ++i) {
     var p = PARTICLES.spawn({
       x0: PICKED.x + 0.5, 
@@ -1462,6 +1511,46 @@ function geometryBlock(b) {
 }
 
 
+function cube(ntt) {
+  var v = {
+    positions: [],
+    lighting: [],
+    textures: [],
+    indices: [],
+  };
+
+  var light = [0,0,0,LIGHT_SUN];
+  for (var face = 0; face < 6; ++face) {
+    // Add vertices
+    var pindex = v.positions.length / 3;
+    var f = _FACES[face];
+    for (var i = 3; i >= 0; --i) {
+      var ff = Array(3);
+      for (var j = 0; j < f[i].length; ++j) 
+        ff[j] = ntt.type.scale * (f[i][j] - 0.5);
+      var cos = Math.cos(ntt.yaw), sin = Math.sin(ntt.yaw);
+      var dx = ff[0] * cos - ff[2] * sin;
+      var dy = ff[1] * SY;
+      var dz = ff[0] * sin + ff[2] * cos;
+      v.positions.push(ntt.x + dx, ntt.y + dy, ntt.z + dz);
+      v.lighting.push.apply(v.lighting, light);
+    }
+    
+    var tile = ntt.tile();
+    v.textures.push(tile.s + ONE,  tile.t + ONE, 
+                    tile.s + ZERO, tile.t + ONE, 
+                    tile.s + ZERO, tile.t + ZERO, 
+                    tile.s + ONE,  tile.t + ZERO);
+
+    // Describe triangles
+    v.indices.push(pindex, pindex + 1, pindex + 2,
+                   pindex, pindex + 2, pindex + 3);
+  }
+
+  return v;
+}
+
+
 function Wireframe() {
   var vertices = [
     0,0,0, 1,0,0, 1,0,1, 0,0,1,  // bottom
@@ -1473,26 +1562,30 @@ function Wireframe() {
 
   for (var i = 1; i < vertices.length; i += 3) vertices[i] *= SY;
   this.aPosBuffer = makeBuffer(vertices, 3);
-
-  this.indexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), 
-                gl.STATIC_DRAW);
-  this.indexBuffer.itemSize = 1;
-  this.indexBuffer.numItems = indices.length;
+  this.indexBuffer = makeElementArrayBuffer(indices);
 }
 
 
-function Entity(init) {
-  init = init || {};
-  this.x = init.x || 0;
-  this.y = init.y || 0;
-  this.z = init.z || 0;
-  this.dx = this.dy = this.dz = 0;
-  this.yaw = init.yaw || 0;
-  this.pitch = init.pitch || 0;
-  this.horizontalFieldOfView = init.horizontalFieldOfView || Math.PI/3;
-  this.viewDistance = init.viewDistance || 50;
+function Entity(init1, init2) {
+  var that = this;
+  init1 = init1 || {};
+  init2 = init2 || {};
+  function init(prop, defa) {
+    that[prop] = (typeof init1[prop] !== 'undefined') ? init1[prop] :
+                 (typeof init2[prop] !== 'undefined') ? init2[prop] : defa;
+  }
+  init('x', 0);
+  init('y', HY);
+  init('z', 0);
+  init('dx', 0);
+  init('dy', 0);
+  init('dz', 0);
+  init('yaw', 0);
+  init('pitch', 0);
+  init('vyaw', 0);
+  init('vpitch', 0);
+  init('type');
+  if (typeof this.type === 'string') this.type = ENTITY_TYPES[this.type];
   this.birthday = GAME.clock();
   this.flying = this.falling = false;
   this.radius = 0.3;
@@ -1501,11 +1594,12 @@ function Entity(init) {
   this.FLY_MAX = 10.8; // m/s
   this.SPIN_RATE = 2;  // radians/s
   this.ACCELERATION = 20;  // m/s^2
-  this.id = Entity.nextID++;
+  this.id = GAME.nextEntityID++;
   GAME.entities[this.id] = this;
+  if (this.type.init) this.type.init.apply(this);
 }
-Entity.nextID = 1;
 
+Entity.prototype.tile = Block.prototype.tile;
 
 Entity.prototype.die = function () {
   delete GAME.entities[this.id];
@@ -1522,6 +1616,17 @@ Entity.prototype.toString = function () {
   return result;
 }
 
+
+function initCamera(cam) {
+  // Initialize parameters neccessary for cameras
+  function i(p,v) { if (typeof cam[p] === 'undefined') cam[p] = v; }
+  i('horizontalFieldOfView', Math.PI / 3);
+  i('viewDistance', 20);
+  i('pitch', 0);
+  i('yaw', 0);
+}
+
+
 function onLoad() {
   var canvas = $('canvas');
 
@@ -1530,7 +1635,9 @@ function onLoad() {
   makeChunk(0, 0);
 
   // Create player
-  AVATAR = GAME.avatar = new Entity({x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
+  AVATAR = GAME.avatar = new Entity({type:'player', 
+                                     x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
+  initCamera(AVATAR);
   AVATAR.mouselook = false;
   AVATAR.lastHop = 0;
   AVATAR.viewDistance = 100;
@@ -1970,6 +2077,7 @@ function Game() {
   this.timeOfDay = Math.PI;  // 0 is midnight, PI is noon
   this.sunlight = 1;         // full daylight
   this.birthday = +new Date();
+  this.nextEntityID = 1;
 }
 
 
@@ -1986,6 +2094,7 @@ Game.prototype.save = function (callback) {
     var ckeys = Object.keys(this.chunks);
     var data = {
       timeOfDay: GAME.timeOfDay,
+      nextEntityID: GAME.nextEntityID,
     };
     var req = (typeof GAME.id === 'unknown') ? games.add(data) : 
       games.put(data, GAME.id);
