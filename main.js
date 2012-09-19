@@ -258,15 +258,17 @@ var ENTITY_TYPES = {
   block: {
     geometry: cube,
     tile: 1,
-    init: function () {  
+    init: function () {
       this.dyaw = 1;
       this.dx = 2 * tweak();
       this.dz = 2 * tweak();
-      this.dy = 10;
+      this.dy = 6;
       this.falling = true;
       this.height = SY * this.type.scale;
+      this.radius = 0.5 * this.type.scale;
+      this.rebound = 0.75;
     },
-    scale: 0.5,
+    scale: 0.35,
   },
 };
 var NENTITYTYPES = 0;
@@ -1021,14 +1023,20 @@ function ballistics(e, elapsed) {
     }
 
     // Check NSEW collisions
-    if (e.dx < 0 && blocked(e.x - e.radius, e.y, e.z))
+    if (e.dx < 0 && blocked(e.x - e.radius, e.y, e.z)) {
       e.x = Math.max(e.x, Math.floor(e.x) + e.radius);
-    if (e.dx > 0 && blocked(e.x + e.radius, e.y, e.z))
+      e.dx = (e.rebound || 0) * -e.dx;
+    } else if (e.dx > 0 && blocked(e.x + e.radius, e.y, e.z)) {
       e.x = Math.min(e.x, Math.ceil(e.x) - e.radius);
-    if (e.dz < 0 && blocked(e.x, e.y, e.z - e.radius))
+      e.dx = (e.rebound || 0) * -e.dx;
+    }
+    if (e.dz < 0 && blocked(e.x, e.y, e.z - e.radius)) {
       e.z = Math.max(e.z, Math.floor(e.z) + e.radius);
-    if (e.dz > 0 && blocked(e.x, e.y, e.z + e.radius))
+      e.dz = (e.rebound || 0) * -e.dz;
+    } else if (e.dz > 0 && blocked(e.x, e.y, e.z + e.radius)) {
       e.z = Math.min(e.z, Math.ceil(e.z) - e.radius);
+      e.dz = (e.rebound || 0) * -e.dz;
+    }
     
     // Check corner collisions
     var cw = (e.dx < 0 && frac(e.x) < e.radius);
@@ -1070,9 +1078,21 @@ function ballistics(e, elapsed) {
 
   if (block(e).type.solid) {
     if (e.flying || e.falling) {
-      // Landed
-      e.flying = e.falling = false;
-      e.dy = 0;
+      // Hit bottom
+      if (e.rebound && e.falling && e.dy < 0) {
+        // Bounce up
+        e.dy = e.rebound * -e.dy - 3;
+        e.dx /= 2;
+        e.dz /= 2;
+        if (e.dy < 0) {
+          e.falling = false;
+          e.dy = 0;
+        }
+      } else {
+        // Landed
+        e.flying = e.falling = false;
+        e.dy = 0;
+      }
       e.y = SY * Math.floor(e.y/SY + 1);
     } else {
       // Taking a half-step up, presumably
