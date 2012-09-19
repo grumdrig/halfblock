@@ -172,7 +172,6 @@ var BLOCK_TYPES = {
     translucent: [154,40,155,0.85],
     geometry: geometryBlock,
     viscosity: 0.85,
-    //unpickable: true,
   },
   'strawberry jelly': {
     tile: 13,
@@ -180,7 +179,6 @@ var BLOCK_TYPES = {
     translucent: [200,81,83,0.85],
     geometry: geometryBlock,
     viscosity: 0.85,
-    //unpickable: true,
   },
   'apricot jelly': {
     tile: 15,
@@ -188,7 +186,14 @@ var BLOCK_TYPES = {
     translucent: [191,124,66,0.85],
     geometry: geometryBlock,
     viscosity: 0.85,
-    //unpickable: true,
+  },
+  'water': {
+    tile: [6, 2],
+    liquid: true,
+    translucent: [30, 137, 157, 0.5],
+    geometry: geometryBlock,
+    viscosity: 0.5,
+    unpickable: true,
   },
   rope: {
     tile: function () { 
@@ -1221,6 +1226,7 @@ Block.prototype.generateTerrain = function () {
     else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
     else if (n < 0) this.type = GRASSY ? BLOCK_TYPES.dirt : BLOCK_TYPES.grass;
     else if (this.y < HY / 4) this.type = BLOCK_TYPES['apricot jelly'];
+    //else if (this.y < HY / 2) this.type = BLOCK_TYPES.water;
     else this.type = BLOCK_TYPES.air;
 
     if (Math.pow(noise(this.x/10, this.y/10, this.z/10 + 1000), 3) < -0.12)
