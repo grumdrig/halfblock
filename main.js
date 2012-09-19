@@ -1,15 +1,26 @@
 // REFERENCES:
+
+// WebGL
+// http://www.khronos.org/registry/webgl/specs/latest/
 // http://learningwebgl.com/blog/?page_id=1217
+
+// MC
 // http://codeflow.org/entries/2010/dec/09/minecraft-like-rendering-experiments-in-opengl-4/
+
+// Rendering to textures
 // http://stackoverflow.com/questions/9046643/webgl-create-texture
-// http://www.opengl.org/wiki/Tutorial2:_VAOs,_VBOs,_Vertex_and_Fragment_Shaders_(C_/_SDL)
-// http://stackoverflow.com/questions/7420092/efficient-vbo-allocation-in-webgl
-// http://learningwebgl.com/blog/?p=1786 render to texture
+// http://learningwebgl.com/blog/?p=1786
 
 // Indexed DB
 // http://www.html5rocks.com/en/tutorials/offline/storage/
 // http://www.w3.org/TR/IndexedDB/
 // https://developer.mozilla.org/en-US/docs/IndexedDB/Using_IndexedDB
+
+// VAOs
+// http://people.eecs.ku.edu/~miller/Courses/OpenGL/HelloOpenGL/index.html
+// http://www.swiftless.com/tutorials/opengl4/4-opengl-4-vao.html
+// http://www.opengl.org/wiki/Tutorial2:_VAOs,_VBOs,_Vertex_and_Fragment_Shaders_(C_/_SDL)
+// http://stackoverflow.com/questions/7420092/efficient-vbo-allocation-in-webgl
 
 // TODO: race cars
 // TODO: flags
@@ -398,6 +409,9 @@ function Chunk(data) {
   this.lastUpdate = 0;
   this.nDirty = 0;
 
+  this.opaqueBuffers = new BufferSet();
+  this.translucentBuffers = new BufferSet();
+
   GAME.chunks[this.chunkx + ',' + this.chunkz] = this;
 
   if (data.blocks) {
@@ -492,7 +506,7 @@ Chunk.prototype.generateTerrain = function () {
 
 Chunk.prototype.generateBuffers = function (justUpdateLight) {
   justUpdateLight = justUpdateLight &&
-    (this.opaqueBuffers || this.translucentBuffers);
+    !(this.opaqueBuffers.empty() && this.translucentBuffers.empty());
   var opaques = {}, translucents = {};
   for (var i = 0; i < this.blocks.length; ++i) {
     var b = this.blocks[i];
@@ -519,18 +533,11 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
   }
   
   if (justUpdateLight) {
-    function updatebuf(set, buffers) {
-      if (set.aLighting && buffers && buffers.aLighting) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.aLighting);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, 
-                         new Float32Array(set.aLighting));
-      }
-    }
-    updatebuf(opaques, this.opaqueBuffers);
-    updatebuf(translucents, this.translucentBuffers);
+    this.opaqueBuffers.updateLight(opaques);
+    this.translucentBuffers.updateLight(translucents);
   } else {
-    this.opaqueBuffers = makebufs(opaques);
-    this.translucentBuffers = makebufs(translucents);
+    this.opaqueBuffers.update(opaques);
+    this.translucentBuffers.update(translucents);
   }
 }
 
@@ -541,7 +548,7 @@ function makebufs(set) {
     aVertexPosition: makeBuffer(set.aVertexPosition, 3),
     aTextureCoord:   makeBuffer(set.aTextureCoord, 2),
     aLighting:       makeBuffer(set.aLighting, 4, true),
-    indices:         makeElementArrayBuffer(set.indices)
+    indices:         makeBuffer(set.indices, 1, false, true)
   };
 }
 
@@ -551,18 +558,7 @@ function pointToAttribute(shader, buffers, attribute) {
   gl.vertexAttribPointer(shader[attribute],
                          buffers[attribute].itemSize,
                          gl.FLOAT, false, 0, 0);
-}
-
-
-function renderChunkBuffers(buffers) {
-  pointToAttribute(SHADER, buffers, 'aVertexPosition');
-  pointToAttribute(SHADER, buffers, 'aTextureCoord');
-  pointToAttribute(SHADER, buffers, 'aLighting');
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-  gl.drawElements(gl.TRIANGLES, 
-                  buffers.indices.numItems,
-                  gl.UNSIGNED_SHORT, 
-                  0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
 
 
@@ -825,8 +821,8 @@ function drawScene(camera) {
   gl.disable(gl.CULL_FACE);  // don't cull backfaces (decals are 1-sided)
   for (var i in GAME.chunks) {
     var c = GAME.chunks[i];
-    if (c.visible && c.opaqueBuffers)
-      renderChunkBuffers(c.opaqueBuffers);
+    if (c.visible)
+      c.opaqueBuffers.render(SHADER);
   }
 
   // Render entities
@@ -837,11 +833,14 @@ function drawScene(camera) {
     aLighting: [],
     indices: [],
   };
+  var justUpdateLight = false;
   for (var i in GAME.entities) {
     var ntt = GAME.entities[i];
     if (ntt.type.geometry) {
       var geo = ntt.type.geometry(ntt);
       nttSet.aLighting.push.apply(nttSet.aLighting, geo.lighting);
+      if (justUpdateLight)
+        continue;
       var pindex = nttSet.aVertexPosition.length / 3;
       nttSet.aVertexPosition.push.apply(nttSet.aVertexPosition, geo.positions);
       nttSet.aTextureCoord.push.apply(nttSet.aTextureCoord, geo.textures);
@@ -849,8 +848,8 @@ function drawScene(camera) {
         nttSet.indices.push(pindex + geo.indices[j]);
     }
   }
-  var nttBuffers = makebufs(nttSet);
-  renderChunkBuffers(nttBuffers);
+  var nttBuffers = new BufferSet(nttSet);
+  nttBuffers.render(SHADER);
 
 
   // Render particles
@@ -863,8 +862,8 @@ function drawScene(camera) {
   gl.enable(gl.CULL_FACE);  // cull backfaces!
   for (var i in GAME.chunks) {
     var c = GAME.chunks[i];
-    if (c.visible && c.translucentBuffers)
-      renderChunkBuffers(c.translucentBuffers);
+    if (c.visible)
+      c.translucentBuffers.render(SHADER);
   }
   gl.disable(gl.BLEND);
   gl.disable(gl.CULL_FACE);
@@ -885,12 +884,14 @@ function drawScene(camera) {
     gl.vertexAttribPointer(WIREFRAME.shader.aPos,
                            WIREFRAME.aPosBuffer.itemSize,
                            gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, WIREFRAME.indexBuffer);
     gl.drawElements(gl.LINES, 
                     WIREFRAME.indexBuffer.numItems,
                     gl.UNSIGNED_SHORT, 
                     0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 
     gl.enable(gl.DEPTH_TEST);
     mvPopMatrix();
@@ -1446,7 +1447,7 @@ Block.prototype.toString = function () {
   var result = this.type.name + 
     ' [' + this.x + ',' + this.y + ',' + this.z + '] ' +
     '&#9788;' + this.light.join(',');
-  if (this.outofbounds) result += ' &#2620;';
+  if (this.outofbounds) result += ' &#9760;';
   if (this.sheltered) result += ' &#9730;';
   return result;
 }
@@ -1613,7 +1614,7 @@ function Wireframe() {
 
   for (var i = 1; i < vertices.length; i += 3) vertices[i] *= SY;
   this.aPosBuffer = makeBuffer(vertices, 3);
-  this.indexBuffer = makeElementArrayBuffer(indices);
+  this.indexBuffer = makeBuffer(indices, 1, false, true);
 }
 
 
@@ -2032,25 +2033,74 @@ ParticleSystem.prototype.bounceParticle = function (p) {
   }
 }
 
-function makeBuffer(data, itemsize, dynamic) {
+function makeBuffer(data, itemsize, dynamic, elementArray) {
   var buffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), 
-                dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
+  var hint = dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
+  var type = elementArray ? gl.ELEMENT_ARRAY_BUFFER : gl.ARRAY_BUFFER;
+  var Type = elementArray ? Uint16Array : Float32Array;
+  gl.bindBuffer(type, buffer);
+  gl.bufferData(type, new Type(data), hint);
+  gl.bindBuffer(type, null);
   buffer.itemSize = itemsize;
   buffer.numItems = data.length / itemsize;
   return buffer;
 }
 
-function makeElementArrayBuffer(data) {
-  var buffer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(data), 
-                gl.STATIC_DRAW);
-  buffer.itemSize = 1;
-  buffer.numItems = data.length;
+function updateBuffer(buffer, data, itemsize, elementArray) {
+  if (!data || data.length === 0)
+    return null;
+  var type = elementArray ? gl.ELEMENT_ARRAY_BUFFER : gl.ARRAY_BUFFER;
+  var Type = elementArray ? Uint16Array : Float32Array;
+  if (!buffer || 
+      buffer.itemSize !== itemsize ||
+      buffer.itemSize * buffer.numItems < data.length) {
+    buffer = gl.createBuffer();
+    gl.bindBuffer(type, buffer);
+    gl.bufferData(type, new Type(data), gl.DYNAMIC_DRAW);
+    buffer.itemSize = itemsize;
+    buffer.numItems = data.length / itemsize;
+  } else {
+    gl.bindBuffer(type, buffer);
+    gl.bufferSubData(type, 0, new Float32Array(data));
+  }
+  gl.bindBuffer(type, null);
   return buffer;
 }
+
+// Encapsulates the set of buffers needed to render the world
+function BufferSet(arrays) { 
+  this.elementCount = 0;
+  if (arrays) this.update(arrays);
+}
+
+BufferSet.prototype.empty = function () { return !this.elementCount }
+
+BufferSet.prototype.update = function (arrays) {
+  this.aVertexPosition = 
+    updateBuffer(this.aVertexPosition, arrays.aVertexPosition, 3);
+  this.aTextureCoord =   
+    updateBuffer(this.aTextureCoord, arrays.aTextureCoord, 2);
+  this.aLighting =
+    updateBuffer(this.aLighting, arrays.aLighting, 4);
+  this.indices =         
+    updateBuffer(this.indices, arrays.indices, 1, true);
+  this.elementCount = (arrays && arrays.indices) ? arrays.indices.length : 0;
+}
+
+BufferSet.prototype.updateLight = function (arrays) {
+  this.aLighting = updateBuffer(this.aLighting, arrays.aLighting, 4);
+}
+
+BufferSet.prototype.render = function (shader) {
+  if (this.empty()) return;
+  pointToAttribute(shader, this, 'aVertexPosition');
+  pointToAttribute(shader, this, 'aTextureCoord');
+  pointToAttribute(shader, this, 'aLighting');
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indices);
+  gl.drawElements(gl.TRIANGLES, this.elementCount, gl.UNSIGNED_SHORT, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+}
+
 
 ParticleSystem.prototype.render = function () {
 
@@ -2091,6 +2141,8 @@ ParticleSystem.prototype.render = function () {
   gl.vertexAttribPointer(this.shader.aBirthday,
                          this.buffers.aBirthday.itemSize,
                          gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
  
   gl.drawArrays(gl.POINTS, 0, this.buffers.aInitialPos.numItems);
 }
