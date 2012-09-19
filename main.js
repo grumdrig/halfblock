@@ -619,7 +619,7 @@ function distance(p, q) {
 }
 
 function age(e) {
-  return (GAME.clock() - e.birthday) / 1000;
+  return GAME.clock() - e.birthday;
 }
 
 function signedHDistanceFromLine(a, angle, p) {
@@ -1194,7 +1194,7 @@ function tick() {
   // Monkey with the clock
   var timeNow = GAME.clock();
   if (!lastFrame) lastFrame = timeNow;
-  var elapsed = (timeNow - lastFrame) / 1000;
+  var elapsed = timeNow - lastFrame;
   FPS_STAT.add(elapsed);
   if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
   lastFrame = timeNow;
@@ -1796,7 +1796,7 @@ function onkeydown(event, count) {
 
   if (count === 1) {
     if (c === ' ') {
-      if (GAME.clock() < AVATAR.lastHop + 250) {
+      if (GAME.clock() < AVATAR.lastHop + 0.25) {
         // Toggle flying
         AVATAR.flying = !AVATAR.flying;
         if (AVATAR.flying) AVATAR.falling = false;
@@ -1963,7 +1963,7 @@ ParticleSystem.prototype.spawn = function (init) {
     y0: 0,
     z0: 0,
     id: PARTICLES.nextID++,
-    birthday: GAME.clock()/1000 - rewind,
+    birthday: GAME.clock() - rewind,
     life: rewind + 0.5 + Math.random() / 2,
   };
   for (var i in p)
@@ -2072,7 +2072,7 @@ ParticleSystem.prototype.render = function () {
     this.buffers.aBirthday = makeBuffer(aBirthday, 1);
   }
 
-  gl.uniform1f(this.shader.uClock, parseFloat(GAME.clock()/1000));
+  gl.uniform1f(this.shader.uClock, parseFloat(GAME.clock()));
   gl.uniform1f(this.shader.uGravity, PARTICLE_GRAVITY);
   gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
@@ -2124,13 +2124,13 @@ function Game() {
   this.entities = {};
   this.timeOfDay = Math.PI;  // 0 is midnight, PI is noon
   this.sunlight = 1;         // full daylight
-  this.birthday = +new Date();
+  this.birthday = +new Date()/1000;
   this.nextEntityID = 1;
 }
 
 
 Game.prototype.clock = function () {
-  return +new Date() - this.birthday;
+  return +new Date()/1000 - this.birthday;
 }
 
 
