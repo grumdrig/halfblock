@@ -1550,7 +1550,8 @@ function cube(ntt) {
     indices: [],
   };
 
-  var light = [0,0,0,LIGHT_SUN];
+  var light = block(ntt).light;
+  light = [light.r, light.g, light.b, light.sun];
   for (var face = 0; face < 6; ++face) {
     // Add vertices
     var pindex = v.positions.length / 3;
