@@ -22,6 +22,20 @@
 // http://www.opengl.org/wiki/Tutorial2:_VAOs,_VBOs,_Vertex_and_Fragment_Shaders_(C_/_SDL)
 // http://stackoverflow.com/questions/7420092/efficient-vbo-allocation-in-webgl
 
+// Blur
+// http://www.gamerendering.com/2008/10/11/gaussian-blur-filter-shader/
+// http://www.geeks3d.com/20100909/shader-library-gaussian-blur-post-processing-filter-in-glsl/
+// http://encelo.netsons.org/2008/03/23/i-love-depth-of-field/
+
+// Sky
+// http://www.flipcode.com/archives/Sky_Domes.shtml
+
+// Gamma
+// http://http.developer.nvidia.com/GPUGems3/gpugems3_ch24.html
+// http://www.4p8.com/eric.brasseur/gamma.html
+// http://stackoverflow.com/questions/10843321/should-webgl-shader-output-be-adjusted-for-gamma
+
+
 // TODO: race cars
 // TODO: flags
 // TODO: tonkatsu
@@ -282,7 +296,7 @@ var ENTITY_TYPES = {
       if (age(e) > 1 && distance(AVATAR, e) < 2)
         e.die();
     },
-    scale: 0.35,
+    scale: 0.25,
   },
 };
 var NENTITYTYPES = 0;
