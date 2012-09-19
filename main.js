@@ -456,8 +456,8 @@ Chunk.prototype.generateTerrain = function () {
       for (var y = NY-1; y >= 0; --y) {
         var c = coords(x, y*SY, z);
         var b = this.blocks[c.i];
-        b.light = {r:0, g:0, b:0, sun:
-                   b.type.opaque ? 0 : sheltered ? 0 : LIGHT_SUN};
+        b.light[0] = b.light[1] = b.light[2] = 0;
+        b.light[3] = b.type.opaque ? 0 : sheltered ? 0 : LIGHT_SUN;
         b.dirtyLight = false;
         if (b.type.luminosity) b.dirtyLight = true;
         if (sheltered && !b.type.opaque) b.dirtyLight = true;
@@ -1267,7 +1267,7 @@ function Block(coord, chunk) {
   this.outofbounds = coord.outofbounds;
   this.chunk = chunk;
 
-  this.light = {r:0, g:0, b:0, sun: coord.y >= HY ? LIGHT_SUN : 0};
+  this.light = [0, 0, 0, coord.y >= HY ? LIGHT_SUN : 0];
 
   this.dirtyLight = false;
   this.dirtyGeometry = false;
@@ -1343,34 +1343,33 @@ Block.prototype.update = function () {
   if (this.type.update)
     this.type.update.apply(this);
   this.dirtyLight = this.dirtyGeometry = false;
-  var r = 0, g = 0, b = 0, sun = 0;
+  var light = [0,0,0,0];
   if (this.type.opaque) {
     // Zero will do nicely
   } else {
-    if (this.type.luminosity) {
-      r = this.type.luminosity[0];
-      g = this.type.luminosity[1];
-      b = this.type.luminosity[2];
-    }
+    if (this.type.luminosity)
+      for (var l = 0; l < 3; ++l)
+        light[l] = this.type.luminosity[l];
     if (!this.sheltered)
-      sun = LIGHT_SUN;
+      light[3] = LIGHT_SUN;
     this.eachNeighbor(function (n, face) {
-      r = Math.max(r, n.light.r - DISTANCE[face]);
-      g = Math.max(g, n.light.g - DISTANCE[face]);
-      b = Math.max(b, n.light.b - DISTANCE[face]);
-      sun = Math.max(sun, n.light.sun - DISTANCE[face]);
+      for (var l = 0; l < 4; ++l)
+        light[l] = Math.max(light[l], n.light[l] - DISTANCE[face]);
     });
   }
-  if (r !== this.light.r || 
-      g !== this.light.g || 
-      b !== this.light.b || 
-      sun !== this.light.sun) {
-    this.light.r = r;
-    this.light.g = g;
-    this.light.b = b;
-    this.light.sun = sun;
+  if (changeArray(this.light, light))
     this.eachNeighbor(function (n) { n.invalidateLight() });
+}
+
+function changeArray(a1, a2) {
+  var changed = false;
+  for (var i = 0; i < a1.length; ++i) {
+    if (a1[i] !== a2[i]) {
+      changed = true;
+      a1[i] = a2[i];
+    }
   }
+  return changed;
 }
 
 Block.prototype.breakBlock = function () {
@@ -1425,8 +1424,8 @@ function tile(obj) {
 Block.prototype.toString = function () {
   var result = this.type.name + 
     ' [' + this.x + ',' + this.y + ',' + this.z + '] ' +
-    '&#9788;' + this.light.r + ',' + this.light.g + ',' + this.light.b + 
-    '|' + this.light.sun + (this.outofbounds ? ' OOB' : '');
+    '&#9788;' + this.light.join(',');
+  if (this.outofbounds) result += ' &#2620;';
   if (this.sheltered) result += ' &#9730;';
   return result;
 }
@@ -1476,7 +1475,7 @@ function geometryHash(b) {
                       tyle.s + ZERO, tyle.t + top);
   }
   for (var i = 0; i < v.positions.length/3; ++i)
-    v.lighting.push(b.light.r, b.light.g, b.light.b, b.light.sun);
+    v.lighting.push.apply(v.lighting, b.light);
 }
 
 
@@ -1509,7 +1508,7 @@ function geometryBlock(b) {
       for (var i = 3; i >= 0; --i) {
         v.positions.push(b.x + f[i][0], b.y + f[i][1]*SY, b.z + f[i][2]);
         // One RGB lighting triple for each XYZ in the position buffer
-        v.lighting.push(n.light.r, n.light.g, n.light.b, n.light.sun);
+        v.lighting.push.apply(v.lighting, n.light);
       }
       
       // Set textures per vertex: one ST pair for each vertex
@@ -1551,7 +1550,6 @@ function cube(ntt) {
   };
 
   var light = block(ntt).light;
-  light = [light.r, light.g, light.b, light.sun];
   for (var face = 0; face < 6; ++face) {
     // Add vertices
     var pindex = v.positions.length / 3;
