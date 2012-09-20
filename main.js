@@ -4,6 +4,10 @@
 // http://www.khronos.org/registry/webgl/specs/latest/
 // http://learningwebgl.com/blog/?page_id=1217
 
+// GLSL
+// http://www.opengl.org/documentation/glsl/
+// http://www.khronos.org/registry/gles/specs/2.0/GLSL_ES_Specification_1.0.17.pdf
+
 // MC
 // http://codeflow.org/entries/2010/dec/09/minecraft-like-rendering-experiments-in-opengl-4/
 

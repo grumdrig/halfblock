@@ -149,15 +149,15 @@
  
     // Blur in x (horizontal)
     // Take nine samples, with the distance bsize between them
-    sum += texture2D(uSrc, vec2(vTexCoord.x - 4.0*bsize, vTexCoord.y)) *0.05;
-    sum += texture2D(uSrc, vec2(vTexCoord.x - 3.0*bsize, vTexCoord.y)) *0.09;
-    sum += texture2D(uSrc, vec2(vTexCoord.x - 2.0*bsize, vTexCoord.y)) *0.12;
-    sum += texture2D(uSrc, vec2(vTexCoord.x - bsize, vTexCoord.y)) * 0.15;
-    sum += texture2D(uSrc, vec2(vTexCoord.x, vTexCoord.y)) * 0.16;
-    sum += texture2D(uSrc, vec2(vTexCoord.x + bsize, vTexCoord.y)) * 0.15;
-    sum += texture2D(uSrc, vec2(vTexCoord.x + 2.0*bsize, vTexCoord.y)) *0.12;
-    sum += texture2D(uSrc, vec2(vTexCoord.x + 3.0*bsize, vTexCoord.y)) *0.09;
-    sum += texture2D(uSrc, vec2(vTexCoord.x + 4.0*bsize, vTexCoord.y)) *0.05;
+    sum += texture2D(uSrc, vTexCoord - vec2(4.0*bsize, 0.0)) * 0.05;
+    sum += texture2D(uSrc, vTexCoord - vec2(3.0*bsize, 0.0)) * 0.09;
+    sum += texture2D(uSrc, vTexCoord - vec2(2.0*bsize, 0.0)) * 0.12;
+    sum += texture2D(uSrc, vTexCoord - vec2(    bsize, 0.0)) * 0.15;
+    sum += texture2D(uSrc, vTexCoord)                        * 0.16;
+    sum += texture2D(uSrc, vTexCoord + vec2(    bsize, 0.0)) * 0.15;
+    sum += texture2D(uSrc, vTexCoord + vec2(2.0*bsize, 0.0)) * 0.12;
+    sum += texture2D(uSrc, vTexCoord + vec2(3.0*bsize, 0.0)) * 0.09;
+    sum += texture2D(uSrc, vTexCoord + vec2(4.0*bsize, 0.0)) * 0.05;
     
     gl_FragColor = sum;
   }
@@ -172,15 +172,15 @@
  
     // Blur in y (vertical)
     // Take nine samples, with the distance bsize between them
-    sum += texture2D(uSrc, vec2(vTexCoord.x, vTexCoord.y - 4.0*bsize)) * 0.05;
-    sum += texture2D(uSrc, vec2(vTexCoord.x, vTexCoord.y - 3.0*bsize)) * 0.09;
-    sum += texture2D(uSrc, vec2(vTexCoord.x, vTexCoord.y - 2.0*bsize)) * 0.12;
-    sum += texture2D(uSrc, vec2(vTexCoord.x, vTexCoord.y - bsize)) * 0.15;
-    sum += texture2D(uSrc, vec2(vTexCoord.x, vTexCoord.y)) * 0.16;
-    sum += texture2D(uSrc, vec2(vTexCoord.x, vTexCoord.y + bsize)) * 0.15;
-    sum += texture2D(uSrc, vec2(vTexCoord.x, vTexCoord.y + 2.0*bsize)) * 0.12;
-    sum += texture2D(uSrc, vec2(vTexCoord.x, vTexCoord.y + 3.0*bsize)) * 0.09;
-    sum += texture2D(uSrc, vec2(vTexCoord.x, vTexCoord.y + 4.0*bsize)) * 0.05;
+    sum += texture2D(uSrc, vTexCoord - vec2(0.0, 4.0*bsize)) * 0.05;
+    sum += texture2D(uSrc, vTexCoord - vec2(0.0, 3.0*bsize)) * 0.09;
+    sum += texture2D(uSrc, vTexCoord - vec2(0.0, 2.0*bsize)) * 0.12;
+    sum += texture2D(uSrc, vTexCoord - vec2(0.0,     bsize)) * 0.15;
+    sum += texture2D(uSrc, vTexCoord)                        * 0.16;
+    sum += texture2D(uSrc, vTexCoord + vec2(0.0,     bsize)) * 0.15;
+    sum += texture2D(uSrc, vTexCoord + vec2(0.0, 2.0*bsize)) * 0.12;
+    sum += texture2D(uSrc, vTexCoord + vec2(0.0, 3.0*bsize)) * 0.09;
+    sum += texture2D(uSrc, vTexCoord + vec2(0.0, 4.0*bsize)) * 0.05;
     
     gl_FragColor = sum;
   }
@@ -201,7 +201,6 @@
   varying vec2 vTexCoord;
  
   void main(void) {
-    vec4 sum = vec4(0.0);
     gl_FragColor = texture2D(uSrc, vec2(vTexCoord.x, vTexCoord.y));
   }
 </script>
@@ -221,7 +220,7 @@ body {
 }
 
 #canvas, #cancan, #hud, #stats {
-  width: 640px;
+  width: 854px;
   height: 480px;
 }
 
@@ -242,7 +241,7 @@ body {
 
 #reticule {
   position: absolute;
-  left: 308px;
+  left: 415px;
   top: 228px;
   width: 24px;
   height: 24px;
@@ -252,7 +251,7 @@ body {
   position: absolute;
   left: 0;
   top: 260px;
-  width: 640px;
+  width: 854px;
   height: 48px;
   font-size: 20px;
   color: red;
@@ -272,7 +271,7 @@ body {
 #toolname {
   position: absolute;
   height: 16px;
-  width: 200px;
+  width: 300px;
   left: 16px;
   top: 390px;
 }
@@ -291,7 +290,7 @@ body {
 
 <body onload="onLoad()">
   <div id="cancan">
-    <canvas id="canvas" width="640" height="480"></canvas>
+    <canvas id="canvas" width="854" height="480"></canvas>
     <div id="hud">
       <div id="stats"></div>
       <div id="reticule">
