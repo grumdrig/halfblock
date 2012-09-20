@@ -993,10 +993,17 @@ function processInput(avatar, elapsed) {
 
 
 function toggleMouselook() {
-  AVATAR.mouselook = !AVATAR.mouselook;
-  document.body.style.cursor = AVATAR.mouselook ? 'none' : '';
-  $('warning').style.display = AVATAR.mouselook ? 'none' : '';
-  if (!AVATAR.mouselook) lastX = null;
+  if (cancan.requestPointerLock) {
+    if (AVATAR.pointerLocked)
+      document.exitPointerLock();
+    else
+      cancan.requestPointerLock();
+  } else {
+    AVATAR.mouselook = !AVATAR.mouselook;
+    document.body.style.cursor = AVATAR.mouselook ? 'none' : 'default';
+    $('warning').style.display = AVATAR.mouselook ? 'none' : 'block';
+    if (!AVATAR.mouselook) lastX = null;
+  }
 }
 
 
@@ -1189,7 +1196,7 @@ function pick(x, y, z, pitch, yaw) {
     if (dist > PICK_MAX)
       break;
     var b = block(x,y,z);
-    if (!b.type.empty && !b.type.unpickable) 
+    if (b && !b.type.empty && !b.type.unpickable) 
       return b;
 
     var dx = next(x, px);
@@ -1714,6 +1721,20 @@ function onLoad() {
   var cancan = $('cancan');
   var canvas = $('canvas');
 
+  // Polyfills
+  cancan.requestFullscreen = 
+    cancan.requestFullscreen || 
+    cancan.mozRequestFullscreen || 
+    cancan.mozRequestFullScreen ||
+    cancan.webkitRequestFullscreen;
+  cancan.requestPointerLock = 
+    cancan.requestPointerLock ||
+    cancan.mozRequestPointerLock || 
+    cancan.webkitRequestPointerLock;
+  document.exitPointerLock = document.exitPointerLock ||
+    document.mozExitPointerLock ||
+    document.webkitExitPointerLock;
+
   // Create game
   GAME = new Game();
   makeChunk(0, 0);
@@ -1767,20 +1788,6 @@ function onLoad() {
   window.addEventListener('mousemove', onmousemove, true);
   window.addEventListener('mousedown', onmousedown, true);
   document.oncontextmenu = function () { return false };
-  window.addEventListener('mouseout', function (event) {
-    if (AVATAR.mouselook) {
-      event = event || window.event;
-      var from = event.relatedTarget || event.toElement;
-      if (!from)
-        toggleMouselook();
-    }
-  });
-  $('reticule').addEventListener('mousemove', function (event) {
-    if (!AVATAR.mouselook) {
-      toggleMouselook();
-      document.body.focus();  // get focus out of debug tools area
-    }
-  }, true);
 
   document.addEventListener('fullscreenchange', fullscreenChange, false);
   document.addEventListener('mozfullscreenchange', fullscreenChange, false);
@@ -1794,20 +1801,28 @@ function onLoad() {
   document.addEventListener('mozpointerlockerror', pointerLockError, false);
   document.addEventListener('webkitpointerlockerror', pointerLockError, false);
 
-  cancan.requestFullscreen = 
-    cancan.requestFullscreen || 
-    cancan.mozRequestFullscreen || 
-    cancan.mozRequestFullScreen ||
-    cancan.webkitRequestFullscreen;
+  if (cancan.requestPointerLock) {
+    $('warning').innerHTML = 'Click game or hit TAB to activate mouselook';
+    pointerLockChange({});
+  } else {
+    toggleMouselook();
+    toggleMouselook();
+    window.addEventListener('mouseout', function (event) {
+      if (AVATAR.mouselook) {
+        event = event || window.event;
+        var from = event.relatedTarget || event.toElement;
+        if (!from)
+          toggleMouselook();
+      }
+    });
+    $('reticule').addEventListener('mousemove', function (event) {
+      if (!AVATAR.mouselook) {
+        toggleMouselook();
+        document.body.focus();  // get focus out of debug tools area
+      }
+    }, true);
+  }
 
-  cancan.requestPointerLock = 
-    cancan.requestPointerLock ||
-    cancan.mozRequestPointerLock || 
-    cancan.webkitRequestPointerLock;
-
-  if (cancan.requestPointerLock)
-    $('warning').innerHTML += '<br>...or hit L to go fullscreen and lock pointer';
-  
   tick();
 }
 
@@ -1847,9 +1862,9 @@ function onkeydown(event, count) {
     if (c === '\t' || k === 27) // tab or escape
       toggleMouselook();
 
-    if (c === 'L' && cancan.requestFullscreen && cancan.requestPointerLock)
+    if (c === 'L' && cancan.requestFullscreen)
       cancan.requestFullscreen();
-    
+
     if (c === 'K' && PICKED) {
       for (var i = 0; i < 10; ++i) {
         var f = PICKED.neighbor(PICKED_FACE);
@@ -1882,7 +1897,7 @@ function onkeydown(event, count) {
 }
 
 function onmousemove(event) {
-  if (AVATAR.mouselook) {
+  if (AVATAR.mouselook || AVATAR.pointerLocked) {
     var movementX, movementY;
     if (typeof lastX === 'undefined' || lastX === null) {
       movementX = movementY = 0;
@@ -1909,7 +1924,7 @@ function onmousemove(event) {
 function onmousedown(event) {
   event = event || window.event;
   if (event.preventDefault) event.preventDefault();
-  if (PICKED && AVATAR.mouselook) {
+  if (PICKED && (AVATAR.mouselook || AVATAR.pointerLocked)) {
     if (event.button === 0) {
       PICKED.breakBlock();
     } else {
@@ -1917,6 +1932,8 @@ function onmousedown(event) {
       if (!b.outofbounds)
         b.placeBlock(AVATAR.tool || PICKED.type);
     }
+  } else if (cancan.requestPointerLock && !AVATAR.pointerLocked) {
+    toggleMouselook();
   }
   return false;
 }
@@ -1961,27 +1978,23 @@ Stat.prototype.toString = function () {
 }
 
 function fullscreenChange() {
-  if ((document.webkitFullscreenElement || 
-       document.mozFullscreenElement ||
-       document.mozFullScreenElement) === cancan) {
-    // Element is fullscreen, now we can request pointer lock
-    //cancan.requestPointerLock();
-  }
+  AVATAR.fullscreen = (document.webkitFullscreenElement || 
+                       document.mozFullscreenElement ||
+                       document.mozFullScreenElement) === cancan;
 }
-
 
 function pointerLockChange() {
-  if ((document.mozPointerLockElement ||
-       document.webkitPointerLockElement) === canvas) {
-    console.log("Pointer Lock was successful.");
-  } else {
-    console.log("Pointer Lock was lost.");
-  }
+  AVATAR.pointerLocked = (document.mozPointerLockElement ||
+                          document.webkitPointerLockElement) === cancan;
+  lastX = null;
+  $('warning').style.display = AVATAR.pointerLocked ? 'none' : 'block';
+  if (!AVATAR.mouselook) lastX = null;
+
 }
 
 
-function pointerLockError() {
-  console.log("Error while locking pointer.");
+function pointerLockError(e) {
+  console.log("Error while locking pointer. " + e, e);
 }
 
 function tweak() { return (Math.random() - 0.5) }
