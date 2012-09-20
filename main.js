@@ -39,6 +39,12 @@
 // http://www.4p8.com/eric.brasseur/gamma.html
 // http://stackoverflow.com/questions/10843321/should-webgl-shader-output-be-adjusted-for-gamma
 
+// Pointer lock
+// http://www.html5rocks.com/en/tutorials/pointerlock/intro/
+// chrome://flags/
+
+// Fullscreen
+// https://developer.mozilla.org/en-US/docs/DOM/Using_full-screen_mode
 
 // TODO: race cars
 // TODO: flags
@@ -1705,6 +1711,7 @@ function initCamera(cam) {
 
 
 function onLoad() {
+  var cancan = $('cancan');
   var canvas = $('canvas');
 
   // Create game
@@ -1787,19 +1794,19 @@ function onLoad() {
   document.addEventListener('mozpointerlockerror', pointerLockError, false);
   document.addEventListener('webkitpointerlockerror', pointerLockError, false);
 
-  canvas.requestFullscreen = 
-    canvas.requestFullscreen || 
-    canvas.mozRequestFullscreen || 
-    canvas.mozRequestFullScreen ||
-    canvas.webkitRequestFullscreen;
+  cancan.requestFullscreen = 
+    cancan.requestFullscreen || 
+    cancan.mozRequestFullscreen || 
+    cancan.mozRequestFullScreen ||
+    cancan.webkitRequestFullscreen;
 
-  canvas.requestPointerLock = 
-    canvas.requestPointerLock ||
-    canvas.mozRequestPointerLock || 
-    canvas.webkitRequestPointerLock;
+  cancan.requestPointerLock = 
+    cancan.requestPointerLock ||
+    cancan.mozRequestPointerLock || 
+    cancan.webkitRequestPointerLock;
 
-  if (canvas.requestPointerLock)
-    $('warning').innerHTML = 'Hey! Pointer lock should work!';
+  if (cancan.requestPointerLock)
+    $('warning').innerHTML += '<br>...or hit L to go fullscreen and lock pointer';
   
   tick();
 }
@@ -1840,8 +1847,8 @@ function onkeydown(event, count) {
     if (c === '\t' || k === 27) // tab or escape
       toggleMouselook();
 
-    if (c === 'L' && canvas.requestFullscreen && canvas.requestPointerLock)
-      canvas.requestFullscreen();
+    if (c === 'L' && cancan.requestFullscreen && cancan.requestPointerLock)
+      cancan.requestFullscreen();
     
     if (c === 'K' && PICKED) {
       for (var i = 0; i < 10; ++i) {
@@ -1956,9 +1963,9 @@ Stat.prototype.toString = function () {
 function fullscreenChange() {
   if ((document.webkitFullscreenElement || 
        document.mozFullscreenElement ||
-       document.mozFullScreenElement) === canvas) {
+       document.mozFullScreenElement) === cancan) {
     // Element is fullscreen, now we can request pointer lock
-    canvas.requestPointerLock();
+    //cancan.requestPointerLock();
   }
 }
 

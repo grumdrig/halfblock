@@ -219,9 +219,18 @@ body {
   margin: auto auto;
 }
 
+
 #canvas, #cancan, #hud, #stats {
   width: 854px;
   height: 480px;
+}
+
+#cancan:-webkit-full-screen,
+:-webkit-full-screen #canvas,
+:-webkit-full-screen #hud,
+:-webkit-full-screen #stats {
+  width: 100%;
+  height: 100%;
 }
 
 #hud {
@@ -241,10 +250,14 @@ body {
 
 #reticule {
   position: absolute;
-  left: 415px;
-  top: 228px;
+  margin-left: auto;
+  margin-right: auto;
+  left: 50%;
+  top: 50%;
   width: 24px;
   height: 24px;
+  margin-top: -12px;
+  margin-left: -12px;
 }
 
 #warning {
@@ -300,7 +313,7 @@ body {
       <div id="inventory">
         <canvas id="tool" width="48" height="48"></canvas>
       </div>
-      <div id="warning">&uarr;<br>CENTER MOUSE POINTER TO ENABLE MOUSELOOK</div>
+      <div id="warning">&uarr;<br>Center mouse pointer to enable mouselook</div>
     </div>
   </div>
   <img src="terrain.png" id="terrain">
