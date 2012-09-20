@@ -2106,7 +2106,7 @@ function updateBuffer(buffer, data, itemsize, elementArray) {
     buffer.numItems = data.length / itemsize;
   } else {
     gl.bindBuffer(type, buffer);
-    gl.bufferSubData(type, 0, new Float32Array(data));
+    gl.bufferSubData(type, 0, new Type(data));
   }
   gl.bindBuffer(type, null);
   return buffer;
