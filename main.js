@@ -1205,7 +1205,16 @@ function pick(x, y, z, pitch, yaw) {
 }
 
 
+window.requestAnimationFrame =
+  window.requestAnimationFrame ||
+  window.webkitRequestAnimationFrame ||
+  window.mozRequestAnimationFrame ||
+  window.oRequestAnimationFrame ||
+  window.msRequestAnimationFrame;
+
 function tick() {
+  requestAnimationFrame(tick);
+
   // Monkey with the clock
   var timeNow = GAME.clock();
   if (!lastFrame) lastFrame = timeNow;
@@ -1213,8 +1222,6 @@ function tick() {
   FPS_STAT.add(elapsed);
   if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
   lastFrame = timeNow;
-
-  requestAnimFrame(tick);
 
   if (TERRAIN_TEXTURE.loaded) {
     if (KEYS.B) {
