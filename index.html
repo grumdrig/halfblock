@@ -59,8 +59,8 @@
 
 <!-- Block shader -->
 <script id="shader-vs" type="x-shader/x-vertex">
-  attribute vec3 aVertexPosition;
-  attribute vec2 aTextureCoord;
+  attribute vec3 aPos;
+  attribute vec2 aTexCoord;
   attribute vec4 aLighting;
   attribute vec3 aColor;
   
@@ -77,8 +77,8 @@
   varying float vFog;
   
   void main(void) {
-    gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
-    vTextureCoord = aTextureCoord / 16.0;
+    gl_Position = uPMatrix * uMVMatrix * vec4(aPos, 1.0);
+    vTextureCoord = aTexCoord / 16.0;
     vLighting = minLight +
       aColor * max(aLighting.xyz,
                    uSunlight * vec3(aLighting.w, 
