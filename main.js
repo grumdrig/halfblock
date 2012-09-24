@@ -1003,6 +1003,7 @@ function toggleMouselook() {
     $('warning').style.display = AVATAR.mouselook ? 'none' : 'block';
     if (!AVATAR.mouselook) lastX = null;
   }
+  $('logo').style.opacity = '0';
 }
 
 
@@ -2134,17 +2135,12 @@ function BufferSet(arrays) {
 BufferSet.prototype.empty = function () { return !this.elementCount }
 
 BufferSet.prototype.update = function (arrays) {
-  this.aPos = 
-    updateBuffer(this.aPos, arrays.aPos, 3);
-  this.aTexCoord =   
-    updateBuffer(this.aTexCoord, arrays.aTexCoord, 2);
-  this.aLighting =
-    updateBuffer(this.aLighting, arrays.aLighting, 4);
-  this.aColor =
-    updateBuffer(this.aColor, arrays.aColor, 3);
-  this.indices =         
-    updateBuffer(this.indices, arrays.indices, 1, true);
-  this.elementCount = (arrays && arrays.indices) ? arrays.indices.length : 0;
+  this.aPos =      updateBuffer(this.aPos, arrays.aPos, 3);
+  this.aTexCoord = updateBuffer(this.aTexCoord, arrays.aTexCoord, 2);
+  this.aLighting = updateBuffer(this.aLighting, arrays.aLighting, 4);
+  this.aColor =    updateBuffer(this.aColor, arrays.aColor, 3);
+  this.indices =   updateBuffer(this.indices, arrays.indices, 1, true);
+  this.elementCount = (arrays && arrays.indices) ? arrays.indices.length :0;
 }
 
 BufferSet.prototype.updateLight = function (arrays) {
