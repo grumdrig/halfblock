@@ -1450,13 +1450,15 @@ Block.prototype.breakBlock = function () {
   this.type = BLOCK_TYPES.air;
   delete this.stackPos;
   this.invalidateGeometry(true);
-  var drop = new Entity({ 
-    type: 'block',
-    x: this.x + 0.5, 
-    y: this.y + (this.stack || this.height || SY)/2,
-    z: this.z + 0.5
+  if (!pos) {
+    var drop = new Entity({ 
+      type: 'block',
+      x: this.x + 0.5, 
+      y: this.y + (this.stack || this.height || SY)/2,
+      z: this.z + 0.5
     }, this);
-  drop.sourcetype = type;
+    drop.sourcetype = type;
+  }
   for (var i = 0; i < 20; ++i) {
     var p = PARTICLES.spawn({
       x0: PICKED.x + 0.5, 
@@ -1646,6 +1648,7 @@ function cube(ntt) {
 
   var light = block(ntt).light;
   var color = ntt.type.color || (ntt.sourcetype||{}).color || [1,1,1];
+  var h = ntt.type.stack || (ntt.sourcetype||{}).stack || SY;
   for (var face = 0; face < 6; ++face) {
     // Add vertices
     var pindex = v.aPos.length / 3;
@@ -1657,7 +1660,7 @@ function cube(ntt) {
         ff[j] = ntt.type.scale * (f[i][j] - (j === 1 ? 0 : 0.5));      
       var cos = Math.cos(ntt.yaw), sin = Math.sin(ntt.yaw);
       var dx = ff[0] * cos - ff[2] * sin;
-      var dy = ff[1] * SY + bob;
+      var dy = ff[1] * h + bob;
       var dz = ff[0] * sin + ff[2] * cos;
       v.aPos.push(ntt.x + dx, ntt.y + dy, ntt.z + dz);
       v.aLighting.push.apply(v.aLighting, light);
@@ -1665,10 +1668,11 @@ function cube(ntt) {
     }
     
     var tyle = tile(ntt);
+    if (h % 1 === 0) h -= ZERO;
     v.aTexCoord.push(tyle.s + ONE,  tyle.t + ONE, 
                      tyle.s + ZERO, tyle.t + ONE, 
-                     tyle.s + ZERO, tyle.t + (SY||ZERO), 
-                     tyle.s + ONE,  tyle.t + (SY||ZERO));
+                     tyle.s + ZERO, tyle.t + 1 - h,
+                     tyle.s + ONE,  tyle.t + 1 - h);
 
     // Describe triangles
     v.indices.push(pindex, pindex + 1, pindex + 2,
