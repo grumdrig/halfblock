@@ -547,14 +547,15 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
         dest.aColor = [];
         dest.indices = [];
       }
-      dest.aLighting.push.apply(dest.aLighting, b.vertices.lighting);
+      dest.aLighting.push.apply(dest.aLighting, b.vertices.aLighting);
       if (justUpdateLight)
         continue;
       dest.aColor.push.apply(dest.aColor, b.vertices.aColor);
       var pindex = dest.aVertexPosition.length / 3;
       dest.aVertexPosition.push.apply(dest.aVertexPosition, 
-                                      b.vertices.positions);
-      dest.aTextureCoord.push.apply(dest.aTextureCoord, b.vertices.textures);
+                                      b.vertices.aVertexPosition);
+      dest.aTextureCoord.push.apply(dest.aTextureCoord, 
+                                    b.vertices.aTextureCoord);
       for (var j = 0; j < b.vertices.indices.length; ++j)
         dest.indices.push(pindex + b.vertices.indices[j]);
     }
@@ -857,13 +858,15 @@ function drawScene(camera) {
     if (ntt.type.geometry) {
       var color = ntt.type.color || [1,1,1];
       var geo = ntt.type.geometry(ntt);
-      nttSet.aLighting.push.apply(nttSet.aLighting, geo.lighting);
+      nttSet.aLighting.push.apply(nttSet.aLighting, geo.aLighting);
       if (justUpdateLight)
         continue;
       nttSet.aColor.push.apply(nttSet.aColor, geo.aColor);
       var pindex = nttSet.aVertexPosition.length / 3;
-      nttSet.aVertexPosition.push.apply(nttSet.aVertexPosition, geo.positions);
-      nttSet.aTextureCoord.push.apply(nttSet.aTextureCoord, geo.textures);
+      nttSet.aVertexPosition.push.apply(nttSet.aVertexPosition, 
+                                        geo.aVertexPosition);
+      nttSet.aTextureCoord.push.apply(nttSet.aTextureCoord, 
+                                      geo.aTextureCoord);
       for (var j = 0; j < geo.indices.length; ++j)
         nttSet.indices.push(pindex + geo.indices[j]);
     }
@@ -1492,10 +1495,10 @@ var ZERO = 0.01, ONE = 1-ZERO;
 
 function geometryHash(b) {
   var v = b.vertices = {
-    positions: [],
-    lighting: [],
+    aVertexPosition: [],
+    aLighting: [],
     aColor: [],
-    textures: [],
+    aTextureCoord: [],
     indices: [],
   };
 
@@ -1505,15 +1508,15 @@ function geometryHash(b) {
   var HASHES = b.type.hashes || 1;
   for (var i = 0; i < HASHES; ++i) {
     var s = (0.5 + i) / HASHES;
-    var n = v.positions.length / 3;
-    v.positions.push(b.x + L, b.y,     b.z + s,
-                     b.x + R, b.y,     b.z + s,
-                     b.x + R, b.y + H, b.z + s,
-                     b.x + L, b.y + H, b.z + s,
-                     b.x + s, b.y,     b.z + L,
-                     b.x + s, b.y,     b.z + R,
-                     b.x + s, b.y + H, b.z + R,
-                     b.x + s, b.y + H, b.z + L);
+    var n = v.aVertexPosition.length / 3;
+    v.aVertexPosition.push(b.x + L, b.y,     b.z + s,
+                           b.x + R, b.y,     b.z + s,
+                           b.x + R, b.y + H, b.z + s,
+                           b.x + L, b.y + H, b.z + s,
+                           b.x + s, b.y,     b.z + L,
+                           b.x + s, b.y,     b.z + R,
+                           b.x + s, b.y + H, b.z + R,
+                           b.x + s, b.y + H, b.z + L);
     v.indices.push(n+0, n+1, n+2,  n+0, n+2, n+3,
                    n+4, n+5, n+6,  n+4, n+6, n+7);
 
@@ -1526,13 +1529,13 @@ function geometryHash(b) {
     if (top % 1 === 0) top += ZERO;
 
     for (var j = 0; j < 2; ++j)
-      v.textures.push(tyle.s + ZERO, tyle.t + bottom, 
-                      tyle.s + ONE,  tyle.t + bottom, 
-                      tyle.s + ONE,  tyle.t + top, 
-                      tyle.s + ZERO, tyle.t + top);
+      v.aTextureCoord.push(tyle.s + ZERO, tyle.t + bottom, 
+                           tyle.s + ONE,  tyle.t + bottom, 
+                           tyle.s + ONE,  tyle.t + top, 
+                           tyle.s + ZERO, tyle.t + top);
   }
-  for (var i = 0; i < v.positions.length/3; ++i) {
-    v.lighting.push.apply(v.lighting, b.light);
+  for (var i = 0; i < v.aVertexPosition.length/3; ++i) {
+    v.aLighting.push.apply(v.aLighting, b.light);
     v.aColor.push.apply(v.aColor, b.type.color || [1,1,1]);
   }
 }
@@ -1548,10 +1551,10 @@ var _FACES = [
 
 function geometryBlock(b) {
   var v = b.vertices = {
-    positions: [],
-    lighting: [],
+    aVertexPosition: [],
+    aLighting: [],
     aColor: [],
-    textures: [],
+    aTextureCoord: [],
     indices: [],
   };
 
@@ -1564,12 +1567,14 @@ function geometryBlock(b) {
     omit = omit || (b.type.translucent && b.type === n.type);
     if (!omit) {
       // Add vertices
-      var pindex = v.positions.length / 3;
+      var pindex = v.aVertexPosition.length / 3;
       var f = _FACES[face];
       for (var i = 3; i >= 0; --i) {
-        v.positions.push(b.x + f[i][0], b.y + f[i][1]*SY, b.z + f[i][2]);
+        v.aVertexPosition.push(b.x + f[i][0], 
+                               b.y + f[i][1]*SY, 
+                               b.z + f[i][2]);
         // One RGBS lighting vector for each vertex
-        v.lighting.push.apply(v.lighting, n.light);
+        v.aLighting.push.apply(v.aLighting, n.light);
         // One RGB color triple for each vertex
         v.aColor.push.apply(v.aColor, color);
       }
@@ -1592,10 +1597,10 @@ function geometryBlock(b) {
       if (bottom % 1 === 0) bottom += ZERO;
       if (top % 1 === 0) top -= ZERO;
 
-      v.textures.push(tyle.s + ONE,  tyle.t + bottom, 
-                      tyle.s + ZERO, tyle.t + bottom, 
-                      tyle.s + ZERO, tyle.t + top, 
-                      tyle.s + ONE,  tyle.t + top);
+      v.aTextureCoord.push(tyle.s + ONE,  tyle.t + bottom, 
+                           tyle.s + ZERO, tyle.t + bottom, 
+                           tyle.s + ZERO, tyle.t + top, 
+                           tyle.s + ONE,  tyle.t + top);
 
       // Describe triangles
       v.indices.push(pindex, pindex + 1, pindex + 2,
@@ -1607,10 +1612,10 @@ function geometryBlock(b) {
 
 function cube(ntt) {
   var v = {
-    positions: [],
-    lighting: [],
+    aVertexPosition: [],
+    aLighting: [],
     aColor: [],
-    textures: [],
+    aTextureCoord: [],
     indices: [],
   };
 
@@ -1618,7 +1623,7 @@ function cube(ntt) {
   var color = ntt.type.color || [1,1,1];
   for (var face = 0; face < 6; ++face) {
     // Add vertices
-    var pindex = v.positions.length / 3;
+    var pindex = v.aVertexPosition.length / 3;
     var f = _FACES[face];
     for (var i = 3; i >= 0; --i) {
       var ff = Array(3);
@@ -1628,16 +1633,16 @@ function cube(ntt) {
       var dx = ff[0] * cos - ff[2] * sin;
       var dy = ff[1] * SY;
       var dz = ff[0] * sin + ff[2] * cos;
-      v.positions.push(ntt.x + dx, ntt.y + dy, ntt.z + dz);
-      v.lighting.push.apply(v.lighting, light);
+      v.aVertexPosition.push(ntt.x + dx, ntt.y + dy, ntt.z + dz);
+      v.aLighting.push.apply(v.aLighting, light);
       v.aColor.push.apply(v.aColor, color);
     }
     
     var tyle = tile(ntt);
-    v.textures.push(tyle.s + ONE,  tyle.t + ONE, 
-                    tyle.s + ZERO, tyle.t + ONE, 
-                    tyle.s + ZERO, tyle.t + ZERO, 
-                    tyle.s + ONE,  tyle.t + ZERO);
+    v.aTextureCoord.push(tyle.s + ONE,  tyle.t + ONE, 
+                         tyle.s + ZERO, tyle.t + ONE, 
+                         tyle.s + ZERO, tyle.t + ZERO, 
+                         tyle.s + ONE,  tyle.t + ZERO);
 
     // Describe triangles
     v.indices.push(pindex, pindex + 1, pindex + 2,
