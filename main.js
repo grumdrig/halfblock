@@ -304,8 +304,20 @@ var ENTITY_TYPES = {
       this.rebound = 0.75;
     },
     update: function (e) {
-      if (age(e) > 1 && distance(AVATAR, e) < 2)
-        e.die();
+      if (age(e) > 1) {
+        var d = distance(center(AVATAR), e);
+        if (d < AVATAR.radius) {
+          e.die();
+        } else if (d < 3) {
+          e.flying = true;
+          e.dx = AVATAR.x - e.x;
+          e.dy = AVATAR.y + 1 - e.y;
+          e.dz = AVATAR.z - e.z;
+          e.dx *= e.FLY_MAX / d;
+          e.dy *= e.FLY_MAX / d;
+          e.dz *= e.FLY_MAX / d;
+        }
+      }
     },
     scale: 0.25,
   },
@@ -2499,4 +2511,9 @@ function vmult(v, w, result) {
   for (var i = 0; i < v.length; ++i) 
     result[i] = v[i] * w[i];
   return result;
+}
+
+
+function center(e) {
+  return {x:e.x, y:e.y + (e.height||SY)/2, z:e.z};
 }
