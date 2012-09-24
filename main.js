@@ -138,13 +138,15 @@ var BLOCK_TYPES = {
     geometry: geometryBlock,
   },
   dirt: {
-    tile: 2,
+    tile: 1,
+    color: [191/255, 131/255, 0/255],
     solid: true,
     opaque: true,
     geometry: geometryBlock,
   },
   grass: {
-    tile: 3,
+    tile: 1,
+    color: [0.5,1,0],
     solid: true,
     opaque: true,
     geometry: geometryBlock,
@@ -542,11 +544,13 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
         dest.aVertexPosition = [];
         dest.aTextureCoord = [];
         dest.aLighting = [];
+        dest.aColor = [];
         dest.indices = [];
       }
       dest.aLighting.push.apply(dest.aLighting, b.vertices.lighting);
       if (justUpdateLight)
         continue;
+      dest.aColor.push.apply(dest.aColor, b.vertices.aColor);
       var pindex = dest.aVertexPosition.length / 3;
       dest.aVertexPosition.push.apply(dest.aVertexPosition, 
                                       b.vertices.positions);
@@ -563,17 +567,6 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
     this.opaqueBuffers.update(opaques);
     this.translucentBuffers.update(translucents);
   }
-}
-
-
-function makebufs(set) {
-  if (!set.indices) return null;
-  return {
-    aVertexPosition: makeBuffer(set.aVertexPosition, 3),
-    aTextureCoord:   makeBuffer(set.aTextureCoord, 2),
-    aLighting:       makeBuffer(set.aLighting, 4, true),
-    indices:         makeBuffer(set.indices, 1, false, true)
-  };
 }
 
 
@@ -855,16 +848,19 @@ function drawScene(camera) {
     aVertexPosition: [],
     aTextureCoord: [],
     aLighting: [],
+    aColor: [],
     indices: [],
   };
   var justUpdateLight = false;
   for (var i in GAME.entities) {
     var ntt = GAME.entities[i];
     if (ntt.type.geometry) {
+      var color = ntt.type.color || [1,1,1];
       var geo = ntt.type.geometry(ntt);
       nttSet.aLighting.push.apply(nttSet.aLighting, geo.lighting);
       if (justUpdateLight)
         continue;
+      nttSet.aColor.push.apply(nttSet.aColor, geo.aColor);
       var pindex = nttSet.aVertexPosition.length / 3;
       nttSet.aVertexPosition.push.apply(nttSet.aVertexPosition, geo.positions);
       nttSet.aTextureCoord.push.apply(nttSet.aTextureCoord, geo.textures);
@@ -1498,6 +1494,7 @@ function geometryHash(b) {
   var v = b.vertices = {
     positions: [],
     lighting: [],
+    aColor: [],
     textures: [],
     indices: [],
   };
@@ -1534,8 +1531,10 @@ function geometryHash(b) {
                       tyle.s + ONE,  tyle.t + top, 
                       tyle.s + ZERO, tyle.t + top);
   }
-  for (var i = 0; i < v.positions.length/3; ++i)
+  for (var i = 0; i < v.positions.length/3; ++i) {
     v.lighting.push.apply(v.lighting, b.light);
+    v.aColor.push.apply(v.aColor, b.type.color || [1,1,1]);
+  }
 }
 
 
@@ -1551,10 +1550,12 @@ function geometryBlock(b) {
   var v = b.vertices = {
     positions: [],
     lighting: [],
+    aColor: [],
     textures: [],
     indices: [],
   };
 
+  var color = b.type.color || [1,1,1];
   for (var face = 0; face < 6; ++face) {
     var n = b.neighbor(face);
     var omit = n.type.opaque;
@@ -1567,9 +1568,12 @@ function geometryBlock(b) {
       var f = _FACES[face];
       for (var i = 3; i >= 0; --i) {
         v.positions.push(b.x + f[i][0], b.y + f[i][1]*SY, b.z + f[i][2]);
-        // One RGB lighting triple for each XYZ in the position buffer
+        // One RGBS lighting vector for each vertex
         v.lighting.push.apply(v.lighting, n.light);
+        // One RGB color triple for each vertex
+        v.aColor.push.apply(v.aColor, color);
       }
+ 
       
       // Set textures per vertex: one ST pair for each vertex
       var tyle = tile(b);
@@ -1605,11 +1609,13 @@ function cube(ntt) {
   var v = {
     positions: [],
     lighting: [],
+    aColor: [],
     textures: [],
     indices: [],
   };
 
   var light = block(ntt).light;
+  var color = ntt.type.color || [1,1,1];
   for (var face = 0; face < 6; ++face) {
     // Add vertices
     var pindex = v.positions.length / 3;
@@ -1624,6 +1630,7 @@ function cube(ntt) {
       var dz = ff[0] * sin + ff[2] * cos;
       v.positions.push(ntt.x + dx, ntt.y + dy, ntt.z + dz);
       v.lighting.push.apply(v.lighting, light);
+      v.aColor.push.apply(v.aColor, color);
     }
     
     var tyle = tile(ntt);
@@ -1760,6 +1767,7 @@ function onLoad() {
   SHADER.locate('aVertexPosition');
   SHADER.locate('aTextureCoord');
   SHADER.locate('aLighting');
+  SHADER.locate('aColor');
   SHADER.locate('uSampler');
   SHADER.locate('uMVMatrix');
   SHADER.locate('uPMatrix');
@@ -2127,6 +2135,8 @@ BufferSet.prototype.update = function (arrays) {
     updateBuffer(this.aTextureCoord, arrays.aTextureCoord, 2);
   this.aLighting =
     updateBuffer(this.aLighting, arrays.aLighting, 4);
+  this.aColor =
+    updateBuffer(this.aColor, arrays.aColor, 3);
   this.indices =         
     updateBuffer(this.indices, arrays.indices, 1, true);
   this.elementCount = (arrays && arrays.indices) ? arrays.indices.length : 0;
@@ -2141,6 +2151,7 @@ BufferSet.prototype.render = function (shader) {
   pointToAttribute(shader, this, 'aVertexPosition');
   pointToAttribute(shader, this, 'aTextureCoord');
   pointToAttribute(shader, this, 'aLighting');
+  pointToAttribute(shader, this, 'aColor');
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indices);
   gl.drawElements(gl.TRIANGLES, this.elementCount, gl.UNSIGNED_SHORT, 0);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
@@ -2456,4 +2467,12 @@ function drawScreenAlignedQuad(shader, sourceFB, destFB) {
   gl.bindBuffer(gl.ARRAY_BUFFER, SAQ);
   gl.vertexAttribPointer(shader.aPos, SAQ.itemSize, gl.FLOAT, false, 0, 0);
   gl.drawArrays(gl.TRIANGLE_FAN, 0, SAQ.numItems);
+}
+
+
+function vmult(v, w, result) {
+  result = result || Array(v.length);
+  for (var i = 0; i < v.length; ++i) 
+    result[i] = v[i] * w[i];
+  return result;
 }

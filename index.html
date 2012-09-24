@@ -62,6 +62,7 @@
   attribute vec3 aVertexPosition;
   attribute vec2 aTextureCoord;
   attribute vec4 aLighting;
+  attribute vec3 aColor;
   
   uniform mat4 uMVMatrix;
   uniform mat4 uPMatrix;
@@ -79,10 +80,10 @@
     gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
     vTextureCoord = aTextureCoord / 16.0;
     vLighting = minLight +
-      max(aLighting.xyz,
-          uSunlight * vec3(aLighting.w, 
-                           aLighting.w, 
-                           aLighting.w)) / lightScale;
+      aColor * max(aLighting.xyz,
+                   uSunlight * vec3(aLighting.w, 
+                                    aLighting.w, 
+                                    aLighting.w)) / lightScale;
     float z = abs(gl_Position.z);  // Use length() if not enough fog at corners
     vFog = clamp(1.0 - exp(-z*z / (uFogDistance * uFogDistance)),
                  0.0, 1.0);
