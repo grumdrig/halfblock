@@ -1881,6 +1881,17 @@ function onkeydown(event, count) {
       AVATAR.lastHop = GAME.clock();
     }
 
+    // Q same as left mouse button
+    if (c === 'Q' && PICKED)
+      PICKED.breakBlock();
+
+    // E same as right mouse button
+    if (c === 'E' && PICKED) {
+      var b = PICKED.neighbor(PICKED_FACE);
+      if (!b.outofbounds)
+        b.placeBlock(AVATAR.tool || PICKED.type);
+    }
+
     if (c === '0') 
       AVATAR.yaw = AVATAR.pitch = 0;
   
