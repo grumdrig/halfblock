@@ -1637,13 +1637,14 @@ function cube(ntt) {
     // Add vertices
     var pindex = v.aPos.length / 3;
     var f = _FACES[face];
+    var bob = (1 + Math.sin(2 * age(ntt))) / 16;
     for (var i = 3; i >= 0; --i) {
       var ff = Array(3);
       for (var j = 0; j < f[i].length; ++j) 
-        ff[j] = ntt.type.scale * (f[i][j] - (j === 1 ? 0 : 0.5));
+        ff[j] = ntt.type.scale * (f[i][j] - (j === 1 ? 0 : 0.5));      
       var cos = Math.cos(ntt.yaw), sin = Math.sin(ntt.yaw);
       var dx = ff[0] * cos - ff[2] * sin;
-      var dy = ff[1] * SY;
+      var dy = ff[1] * SY + bob;
       var dz = ff[0] * sin + ff[2] * cos;
       v.aPos.push(ntt.x + dx, ntt.y + dy, ntt.z + dz);
       v.aLighting.push.apply(v.aLighting, light);
