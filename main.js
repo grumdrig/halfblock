@@ -139,14 +139,14 @@ var BLOCK_TYPES = {
   },
   dirt: {
     tile: 1,
-    color: [191/255, 131/255, 0/255],
+    color: [233/255, 107/255, 0/255],
     solid: true,
     opaque: true,
     geometry: geometryBlock,
   },
   grass: {
     tile: 1,
-    color: [0.5,1,0],
+    color: [0.25, 0.5, 0],
     solid: true,
     opaque: true,
     geometry: geometryBlock,
@@ -1548,10 +1548,11 @@ function vclamp(v) {
 }
 
 function tweaker(pos) {
+  //return [0,0,0];
   return [
-    0.75 * pinkNoise(pos[0], pos[1], pos[2]+1593.1, 8, 1),
-    0.75 * pinkNoise(pos[0], pos[1], pos[2]+2483.7, 8, 1), 
-    0.75 * pinkNoise(pos[0], pos[1], pos[2]+9384.3, 8, 1) 
+    0.25 * pinkNoise(pos[0], pos[1], pos[2]+1593.1, 4, 1),
+    0.25 * pinkNoise(pos[0], pos[1], pos[2]+2483.7, 4, 1), 
+    0.25 * pinkNoise(pos[0], pos[1], pos[2]+9384.3, 4, 1) 
   ];
 }
 
