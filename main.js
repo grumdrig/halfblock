@@ -1444,6 +1444,7 @@ function changeArray(a1, a2) {
 }
 
 Block.prototype.breakBlock = function () {
+  if (this.type.empty) return;
   var type = this.type;
   var pos = this.stackPos;
   this.type = BLOCK_TYPES.air;
