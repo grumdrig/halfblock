@@ -1550,9 +1550,10 @@ function geometryHash(b) {
                        tyle.s + ZERO, tyle.t + top);
   }
   for (var i = 0; i < v.aPos.length/3; ++i) {
-    v.aLighting.push.apply(v.aLighting, b.light);
+    v.aLighting.push.apply(v.aLighting, b.light || block(b).light);
     v.aColor.push.apply(v.aColor, b.type.color || [1,1,1]);
   }
+  return v;
 }
 
 function vclamp(v) {
@@ -1635,8 +1636,20 @@ function geometryBlock(b) {
   }
 }
 
+function hash(ntt) {
+  geometryHash(ntt);
+  for (var i = 0; i < ntt.vertices.aPos.length; i += 3) {
+    ntt.vertices.aPos[i] -= 0.5;
+    ntt.vertices.aPos[i+2] -= 0.5;
+  }
+  return ntt.vertices;
+}
+
 
 function cube(ntt) {
+  if (ntt.sourcetype.geometry === geometryHash)
+    return hash(ntt);
+
   var v = {
     aPos: [],
     aLighting: [],
