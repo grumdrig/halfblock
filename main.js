@@ -180,21 +180,20 @@ var BLOCK_TYPES = {
   flower: {
     tile: 8,
     geometry: geometryHash,
-    margin: 0.2,
-    height: 1,
+    scale: 0.6,
     update: updateResting,
   },
   grassy: {
     tile: [4,2],
     geometry: geometryHash,
     hashes: 2,
+    height: 0.5,
   },
   lamp: {
     tile: 9,
     geometry: geometryHash,
     luminosity: [8,2,2],
-    margin: 0.2,
-    height: 1,
+    scale: 0.6,
     update: updateResting,
   },
   candy: {
@@ -1518,27 +1517,27 @@ function geometryHash(b) {
     indices: [],
   };
 
-  var L = b.type.margin || 0;
+  var L = (1 - (b.type.scale||1)) / 2;
   var R = 1 - L;
-  var H = b.type.height || Math.min(SY, R - L);
+  var H = b.type.scale || 1;
   var HASHES = b.type.hashes || 1;
   for (var i = 0; i < HASHES; ++i) {
     var s = (0.5 + i) / HASHES;
     var n = v.aPos.length / 3;
     v.aPos.push(b.x + L, b.y,     b.z + s,
-                           b.x + R, b.y,     b.z + s,
-                           b.x + R, b.y + H, b.z + s,
-                           b.x + L, b.y + H, b.z + s,
-                           b.x + s, b.y,     b.z + L,
-                           b.x + s, b.y,     b.z + R,
-                           b.x + s, b.y + H, b.z + R,
-                           b.x + s, b.y + H, b.z + L);
+                b.x + R, b.y,     b.z + s,
+                b.x + R, b.y + H, b.z + s,
+                b.x + L, b.y + H, b.z + s,
+                b.x + s, b.y,     b.z + L,
+                b.x + s, b.y,     b.z + R,
+                b.x + s, b.y + H, b.z + R,
+                b.x + s, b.y + H, b.z + L);
     v.indices.push(n+0, n+1, n+2,  n+0, n+2, n+3,
                    n+4, n+5, n+6,  n+4, n+6, n+7);
 
     var tyle = tile(b);
     var bottom = 1;
-    var top = bottom - H;
+    var top = bottom - 1;
 
     // Keep away from edges of texture so as to not bleed the one next door
     if (bottom % 1 === 0) bottom -= ZERO;
