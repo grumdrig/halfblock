@@ -1438,12 +1438,13 @@ Block.prototype.breakBlock = function () {
   this.type = BLOCK_TYPES.air;
   delete this.stackPos;
   this.invalidateGeometry(true);
-  var drop = new Entity({ type: 'block', 
+  var drop = new Entity({ 
+    type: 'block',
     x: this.x + 0.5, 
     y: this.y + (this.stack || this.height || SY)/2,
     z: this.z + 0.5
     }, this);
-  drop.tile = type.tile;
+  drop.sourcetype = type;
   for (var i = 0; i < 20; ++i) {
     var p = PARTICLES.spawn({
       x0: PICKED.x + 0.5, 
@@ -1474,7 +1475,7 @@ Block.prototype.placeBlock = function (newType, stackPos) {
 }
 
 function tile(obj) {
-  var t = obj.tile || obj.type.tile;
+  var t = obj.tile || obj.type.tile || obj.sourcetype.tile;
   if (typeof t === 'number') 
     return {s: t,    t: 0};
   else // assume array
@@ -1621,7 +1622,7 @@ function cube(ntt) {
   };
 
   var light = block(ntt).light;
-  var color = ntt.type.color || [1,1,1];
+  var color = ntt.type.color || (ntt.sourcetype||{}).color || [1,1,1];
   for (var face = 0; face < 6; ++face) {
     // Add vertices
     var pindex = v.aPos.length / 3;
