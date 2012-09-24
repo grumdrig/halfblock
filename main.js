@@ -1653,9 +1653,9 @@ function cube(ntt) {
     
     var tyle = tile(ntt);
     v.aTexCoord.push(tyle.s + ONE,  tyle.t + ONE, 
-                         tyle.s + ZERO, tyle.t + ONE, 
-                         tyle.s + ZERO, tyle.t + ZERO, 
-                         tyle.s + ONE,  tyle.t + ZERO);
+                     tyle.s + ZERO, tyle.t + ONE, 
+                     tyle.s + ZERO, tyle.t + (SY||ZERO), 
+                     tyle.s + ONE,  tyle.t + (SY||ZERO));
 
     // Describe triangles
     v.indices.push(pindex, pindex + 1, pindex + 2,
