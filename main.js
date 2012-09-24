@@ -293,7 +293,6 @@ var ENTITY_TYPES = {
   },
   block: {
     geometry: cube,
-    tile: 1,
     init: function () {
       this.dyaw = 1;
       this.dx = 2 * tweak();
@@ -1532,9 +1531,9 @@ function geometryHash(b) {
 
     for (var j = 0; j < 2; ++j)
       v.aTexCoord.push(tyle.s + ZERO, tyle.t + bottom, 
-                           tyle.s + ONE,  tyle.t + bottom, 
-                           tyle.s + ONE,  tyle.t + top, 
-                           tyle.s + ZERO, tyle.t + top);
+                       tyle.s + ONE,  tyle.t + bottom, 
+                       tyle.s + ONE,  tyle.t + top, 
+                       tyle.s + ZERO, tyle.t + top);
   }
   for (var i = 0; i < v.aPos.length/3; ++i) {
     v.aLighting.push.apply(v.aLighting, b.light);
@@ -1542,6 +1541,19 @@ function geometryHash(b) {
   }
 }
 
+function vclamp(v) {
+  for (var i = 0; i < v.length; ++i)
+    v[i] = Math.min(1, Math.max(0, v[i]));
+  return v;
+}
+
+function tweaker(pos) {
+  return [
+    0.75 * pinkNoise(pos[0], pos[1], pos[2]+1593.1, 8, 1),
+    0.75 * pinkNoise(pos[0], pos[1], pos[2]+2483.7, 8, 1), 
+    0.75 * pinkNoise(pos[0], pos[1], pos[2]+9384.3, 8, 1) 
+  ];
+}
 
 var _FACES = [
   [[0,0,0], [1,0,0], [1,1,0], [0,1,0]],  // front
@@ -1560,7 +1572,6 @@ function geometryBlock(b) {
     indices: [],
   };
 
-  var color = b.type.color || [1,1,1];
   for (var face = 0; face < 6; ++face) {
     var n = b.neighbor(face);
     var omit = n.type.opaque;
@@ -1572,16 +1583,14 @@ function geometryBlock(b) {
       var pindex = v.aPos.length / 3;
       var f = _FACES[face];
       for (var i = 3; i >= 0; --i) {
-        v.aPos.push(b.x + f[i][0], 
-                               b.y + f[i][1]*SY, 
-                               b.z + f[i][2]);
-        // One RGBS lighting vector for each vertex
+        var coord = [b.x + f[i][0], b.y + f[i][1] * SY, b.z + f[i][2]];
+        v.aPos.push.apply(v.aPos, coord);
         v.aLighting.push.apply(v.aLighting, n.light);
-        // One RGB color triple for each vertex
-        v.aColor.push.apply(v.aColor, color);
+        var color = b.type.color || [1,1,1];        
+        v.aColor.push.apply(v.aColor, 
+                            vclamp(vec3.add(color, tweaker(coord), [0,0,0])));
       }
- 
-      
+       
       // Set textures per vertex: one ST pair for each vertex
       var tyle = tile(b);
       var bottom, top;
@@ -1594,15 +1603,15 @@ function geometryBlock(b) {
         bottom = pos;
         top = bottom + SY;
       }
-
-      // Keep away from edges of texture so as to not bleed the one next door
+      
+      // Keep away from edges of texture so as to not bleed neighboring
       if (bottom % 1 === 0) bottom += ZERO;
       if (top % 1 === 0) top -= ZERO;
 
       v.aTexCoord.push(tyle.s + ONE,  tyle.t + bottom, 
-                           tyle.s + ZERO, tyle.t + bottom, 
-                           tyle.s + ZERO, tyle.t + top, 
-                           tyle.s + ONE,  tyle.t + top);
+                       tyle.s + ZERO, tyle.t + bottom, 
+                       tyle.s + ZERO, tyle.t + top, 
+                       tyle.s + ONE,  tyle.t + top);
 
       // Describe triangles
       v.indices.push(pindex, pindex + 1, pindex + 2,
