@@ -189,6 +189,11 @@ var BLOCK_TYPES = {
     hashes: 2,
     height: 0.5,
   },
+  soybeans: {
+    tile: [7,2],
+    geometry: geometryHash,
+    hashes: 2,
+  },
   lamp: {
     tile: 9,
     geometry: geometryHash,
