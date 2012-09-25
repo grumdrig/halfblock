@@ -142,6 +142,7 @@ var BLOCK_TYPES = {
     color: [233/255, 107/255, 0/255],
     solid: true,
     opaque: true,
+    plantable: true,
     geometry: geometryBlock,
   },
   grass: {
@@ -149,6 +150,7 @@ var BLOCK_TYPES = {
     color: [0.25, 0.5, 0],
     solid: true,
     opaque: true,
+    plantable: true,
     geometry: geometryBlock,
   },
   flag: {
@@ -503,9 +505,7 @@ Chunk.prototype.generateTerrain = function () {
       var z = zi + this.chunkz;
       if (noise(x/10,9938,z/10) < -0.2) {
         var t = topmost(x, z);
-        if (t && t.y < HY-SY &&
-            (t.type === BLOCK_TYPES.grass ||
-             t.type === BLOCK_TYPES.dirt))
+        if (t && t.type.plantable)
           t.neighbor(FACE_TOP).type = BLOCK_TYPES.soybeans;
       }
     }
@@ -519,7 +519,7 @@ Chunk.prototype.generateTerrain = function () {
     var z = this.chunkz + 
       Math.round(Math.abs(noise(this.chunkx, this.chunkz, n + 23.4)) * NZ);
     var t = topmost(x, z);
-    if (t && t.y < HY-SY)
+    if (t && t.type.plantable)
       t.neighbor(FACE_TOP).type = BLOCK_TYPES.flower;
   }
 
@@ -537,7 +537,8 @@ Chunk.prototype.generateTerrain = function () {
         if (b.type.luminosity) b.dirtyLight = true;
         if (sheltered && !b.type.opaque) b.dirtyLight = true;
         if (b.dirtyLight) ++this.nDirty;
-        sheltered = sheltered || b.type.opaque;
+        b.sheltered = sheltered;
+        sheltered = sheltered || b.type.opaque || b.type.translucent;
       }
     }
   }
@@ -583,10 +584,8 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
         continue;
       dest.aColor.push.apply(dest.aColor, b.vertices.aColor);
       var pindex = dest.aPos.length / 3;
-      dest.aPos.push.apply(dest.aPos, 
-                                      b.vertices.aPos);
-      dest.aTexCoord.push.apply(dest.aTexCoord, 
-                                    b.vertices.aTexCoord);
+      dest.aPos.push.apply(dest.aPos, b.vertices.aPos);
+      dest.aTexCoord.push.apply(dest.aTexCoord, b.vertices.aTexCoord);
       for (var j = 0; j < b.vertices.indices.length; ++j)
         dest.indices.push(pindex + b.vertices.indices[j]);
     }
@@ -1343,7 +1342,7 @@ function handleLoadedTexture(texture) {
 function topmost(x, z) {
   for (var y = NY-1; y >= 0; --y) {
     var b = block(x, y*SY, z);
-    if (b.type.solid) return b;
+    if (b.type.solid || b.type.liquid) return b;
   }
   return null;
 }
@@ -1394,7 +1393,7 @@ Block.prototype.generateTerrain = function () {
     else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
     else if (n < 0) this.type = GRASSY ? BLOCK_TYPES.dirt : BLOCK_TYPES.grass;
     else if (this.y < HY / 4) this.type = BLOCK_TYPES['apricot jelly'];
-    //else if (this.y < HY / 2) this.type = BLOCK_TYPES.water;
+    else if (this.y < HY / 2) this.type = BLOCK_TYPES.water;
     else this.type = BLOCK_TYPES.air;
 
     if (Math.pow(noise(this.x/10, this.y/10, this.z/10 + 1000), 3) < -0.12)
@@ -1481,9 +1480,9 @@ Block.prototype.breakBlock = function () {
   }
   for (var i = 0; i < 20; ++i) {
     var p = PARTICLES.spawn({
-      x0: PICKED.x + 0.5, 
-      y0: PICKED.y + 0.5, 
-      z0: PICKED.z + 0.5});
+      x0: this.x + 0.5, 
+      y0: this.y + 0.5, 
+      z0: this.z + 0.5});
     //PARTICLES.bounceParticle(p);
   }
   if (type.stack) {
