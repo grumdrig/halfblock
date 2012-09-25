@@ -496,6 +496,22 @@ Chunk.prototype.generateTerrain = function () {
     }
   }
 
+  // Plant some soybeans
+  for (var xi = 0; xi < NX; ++xi) {
+    var x = xi + this.chunkx;
+    for (var zi = 0; zi < NZ; ++zi) {
+      var z = zi + this.chunkz;
+      if (noise(x/10,9938,z/10) < -0.2) {
+        var t = topmost(x, z);
+        if (t && t.y < HY-SY &&
+            (t.type === BLOCK_TYPES.grass ||
+             t.type === BLOCK_TYPES.dirt))
+          t.neighbor(FACE_TOP).type = BLOCK_TYPES.soybeans;
+      }
+    }
+  }
+
+
   // Plant some flowers
   for (var n = 0; n < 4; ++n) {
     var x = this.chunkx + 
