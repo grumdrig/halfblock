@@ -1385,7 +1385,7 @@ Block.prototype.data = function () {
 
 
 Block.prototype.generateTerrain = function () {
-  if (this.y == 0) {
+  if (this.y < 0.75 + 2*noise(this.x * 23.2, this.y * 938.2, this.z * 28.1)) {
     this.type = BLOCK_TYPES.bedrock;
   } else {
     var n = pinkNoise(this.x, this.y, this.z, 32, 2) + 
