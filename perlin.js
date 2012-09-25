@@ -75,6 +75,32 @@ function pinkNoise(x, y, z, maxScale, minScale, alpha) {
 }
 
 
+// A few 3d textures from
+// http://http.developer.nvidia.com/GPUGems/gpugems_ch05.html
+
+// STRIPES TEXTURE (GOOD FOR MAKING MARBLE)
+function stripes(x, f) {
+  var t = .5 + .5 * Math.sin(f * 2 * Math.PI * x);
+  return t * t - .5;
+}
+
+// TURBULENCE TEXTURE
+function turbulence(x, y, z, f) {
+  var t = -0.5;
+  for ( ; f <= W/12 ; f *= 2) // W = Image width in pixels
+    t += abs(noise(x,y,z,f) / f);
+  return t;
+}
+
+function marbled(x, y, z) {
+  return .01 * stripes(x + 2 * turbulence(x, y, z, 1), 1.6);
+}
+
+function crinkled(x, y, z) {
+  return -.10 * turbulence(x, y, z, 1);
+}
+
+
 if (typeof exports != 'undefined') {
   exports.noise = noise;
   exports.pinkNoise = pinkNoise;
