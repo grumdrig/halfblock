@@ -152,6 +152,10 @@ var BLOCK_TYPES = {
     opaque: true,
     plantable: true,
     geometry: geometryBlock,
+    update: function () {
+      if (this.neighbor(FACE_TOP).type.opaque)
+        this.placeBlock(BLOCK_TYPES.dirt);
+    },
   },
   flag: {
     tile: 4,
@@ -183,7 +187,7 @@ var BLOCK_TYPES = {
     tile: 8,
     geometry: geometryHash,
     scale: 0.6,
-    update: updateResting,
+    update: updatePlant,
   },
   grassy: {
     tile: [4,2],
@@ -195,6 +199,7 @@ var BLOCK_TYPES = {
     tile: [7,2],
     geometry: geometryHash,
     hashes: 2,
+    update: updatePlant,
   },
   lamp: {
     tile: 9,
@@ -340,6 +345,12 @@ for (var i in ENTITY_TYPES)
 function updateResting() {
   var nt = this.neighbor(FACE_BOTTOM).type;
   if (!nt.solid)
+    this.breakBlock();
+}
+
+
+function updatePlant() {
+  if (!this.neighbor(FACE_BOTTOM).plantable)
     this.breakBlock();
 }
 
