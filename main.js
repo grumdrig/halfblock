@@ -358,14 +358,13 @@ function hopEntity(ntt) {
 }
 
 function updateResting() {
-  var nt = this.neighbor(FACE_BOTTOM).type;
-  if (!nt.solid)
+  if (!this.neighbor(FACE_BOTTOM).type.solid)
     this.breakBlock();
 }
 
 
 function updatePlant() {
-  if (!this.neighbor(FACE_BOTTOM).plantable)
+  if (!this.neighbor(FACE_BOTTOM).type.plantable)
     this.breakBlock();
 }
 
