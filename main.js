@@ -1718,9 +1718,10 @@ function geometryBillboard(b) {
   vec3.normalize(u);  // probably already unit though, eh?
   //var trans = mat3.create(r.concat(u, l));
 
-  var S = 0.3;
+  var S = 0.25;
   var quad = [-S,-S, S,-S, S,S, -S,S];
-  var p = [b.x, b.y + S, b.z];
+  var bob = (1 + Math.sin(2 * age(b))) / 16;
+  var p = [b.x, b.y + S + bob, b.z];
   for (var i = 0; i < quad.length; i += 2) {
     var x = quad[i], y = quad[i+1], z = -0.5;
     for (var t = 0; t < 3; ++t)
