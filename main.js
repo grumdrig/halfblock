@@ -381,9 +381,7 @@ function initGL(canvas) {
   } catch (e) {
     problem = e;
   }
-  if (!gl) {
-    alert('Unable to initialize WebGL...\n' + problem);
-  }
+  return gl;
 }
 
 function $(id) { return document.getElementById(id) }
@@ -1905,7 +1903,14 @@ function onLoad() {
   else 
     AVATAR.flying = true;
 
-  initGL(canvas);
+  if (!initGL(canvas)) {
+    $('warning').innerHTML = '<b>Error of errors! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
+    $('warning').style.display = 'block';
+    $('warning').style.width = '80%';
+    $('warning').style.left = '10%';
+    $('reticule').style.display = 'none';
+    $('inventory').style.display = 'none';
+  }
 
   SHADER = new Shader('shader');
   SHADER.use();
