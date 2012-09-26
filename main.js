@@ -46,6 +46,9 @@
 // Fullscreen
 // https://developer.mozilla.org/en-US/docs/DOM/Using_full-screen_mode
 
+// Billboards
+// http://nehe.gamedev.net/article/billboarding_how_to/18011/
+
 // TODO: race cars
 // TODO: flags
 // TODO: tonkatsu
@@ -200,6 +203,7 @@ var BLOCK_TYPES = {
     geometry: geometryHash,
     hashes: 2,
     update: updatePlant,
+    drop: 'soybean',
   },
   lamp: {
     tile: 9,
@@ -306,10 +310,7 @@ var ENTITY_TYPES = {
     geometry: cube,
     init: function () {
       this.dyaw = 1;
-      this.dx = 2 * tweak();
-      this.dz = 2 * tweak();
-      this.dy = 6;
-      this.falling = true;
+      hopEntity(this);
       this.height = SY * this.type.scale;
       this.radius = 0.5 * this.type.scale;
       this.rebound = 0.75;
@@ -332,6 +333,13 @@ var ENTITY_TYPES = {
     },
     scale: 0.25,
   },
+  soybean: {
+    tile: [9,2],
+    init: function () {
+      hopEntity(this);
+    },
+    geometry: geometryBillboard,
+  },
 };
 var NENTITYTYPES = 0;
 for (var i in ENTITY_TYPES) {
@@ -341,6 +349,13 @@ for (var i in ENTITY_TYPES) {
 for (var i in ENTITY_TYPES)
   ENTITY_TYPES[ENTITY_TYPES[i].index] = ENTITY_TYPES[i];
 
+
+function hopEntity(ntt) {
+  ntt.dx = 2 * tweak();
+  ntt.dz = 2 * tweak();
+  ntt.dy = 6;
+  ntt.falling = true;
+}
 
 function updateResting() {
   var nt = this.neighbor(FACE_BOTTOM).type;
@@ -1482,7 +1497,7 @@ Block.prototype.breakBlock = function () {
   this.invalidateGeometry(true);
   if (!pos) {
     var drop = new Entity({ 
-      type: 'block',
+      type: type.drop || 'block',
       x: this.x + 0.5, 
       y: this.y + (this.stack || this.height || SY)/2,
       z: this.z + 0.5
@@ -1675,6 +1690,41 @@ function hash(ntt) {
   }
   return ntt.vertices;
 }
+
+
+function geometryBillboard(b) {
+  var v = b.vertices = {
+    aPos: [],
+    aLighting: [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
+    aColor: [1,1,1, 1,1,1, 1,1,1, 1,1,1],
+    //aTexCoord: [],
+    indices: [0, 1, 2, 0, 2, 3],
+  };
+
+  var u = vec3.create([0, 1, 0]);
+  var l = vec3.create([AVATAR.x - b.x, AVATAR.y - b.y, AVATAR.z -b.z]);
+  vec3.normalize(l);
+  var r = vec3.cross(u, l, vec3.create());
+  vec3.normalize(r);
+  //var trans = mat3.create(r.concat(u, l));
+  var ps = [
+    [-0.5 * r[0], -0.5 * r[1],            -0.5 * r[2]],
+    [ 0.5 * r[0],  0.5 * r[1],             0.5 * r[2]],
+    [ 0.5 * r[0],  0.5 * r[1] + 1 * u[1],  0.5 * r[2]],
+    [-0.5 * r[0], -0.5 * r[1] + 1 * u[1], -0.5 * r[2]]];
+  for (var i = 0; i < 4; ++i)
+    v.aPos.push(b.x + ps[i][0], b.y + ps[i][1], b.z + ps[i][2]);
+    
+  var tyle = tile(b);
+  var bottom = 1 - ZERO;
+  var top = ZERO;
+  v.aTexCoord = [tyle.s + ZERO, tyle.t + ONE, 
+                 tyle.s + ONE,  tyle.t + ONE, 
+                 tyle.s + ONE,  tyle.t + ZERO, 
+                 tyle.s + ZERO, tyle.t + ZERO];
+  return v;
+}
+
 
 
 function cube(ntt) {
