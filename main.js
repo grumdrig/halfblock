@@ -1695,25 +1695,39 @@ function hash(ntt) {
 function geometryBillboard(b) {
   var v = b.vertices = {
     aPos: [],
-    aLighting: [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
+    aLighting: [],
     aColor: [1,1,1, 1,1,1, 1,1,1, 1,1,1],
     //aTexCoord: [],
     indices: [0, 1, 2, 0, 2, 3],
   };
 
-  var u = vec3.create([0, 1, 0]);
-  var l = vec3.create([AVATAR.x - b.x, AVATAR.y - b.y, AVATAR.z -b.z]);
+  var light = block(b).light;
+
+  // "Look" vector pointing at player
+  var l = vec3.create([
+    AVATAR.x - b.x, 
+    AVATAR.y + EYE_HEIGHT - b.y, 
+    AVATAR.z - b.z]);
   vec3.normalize(l);
-  var r = vec3.cross(u, l, vec3.create());
+
+  // "Right" vector projected on y plane perp to l
+  var r = vec3.create([l[2], 0, -l[0]]);
   vec3.normalize(r);
+
+  // "Up" vector
+  var u = vec3.cross(l, r, vec3.create());
+  vec3.normalize(u);  // probably already unit though, eh?
   //var trans = mat3.create(r.concat(u, l));
-  var ps = [
-    [-0.5 * r[0], -0.5 * r[1],            -0.5 * r[2]],
-    [ 0.5 * r[0],  0.5 * r[1],             0.5 * r[2]],
-    [ 0.5 * r[0],  0.5 * r[1] + 1 * u[1],  0.5 * r[2]],
-    [-0.5 * r[0], -0.5 * r[1] + 1 * u[1], -0.5 * r[2]]];
-  for (var i = 0; i < 4; ++i)
-    v.aPos.push(b.x + ps[i][0], b.y + ps[i][1], b.z + ps[i][2]);
+
+  var S = 0.3;
+  var quad = [-S,-S, S,-S, S,S, -S,S];
+  var p = [b.x, b.y + S, b.z];
+  for (var i = 0; i < quad.length; i += 2) {
+    var x = quad[i], y = quad[i+1], z = -0.5;
+    for (var t = 0; t < 3; ++t)
+      v.aPos.push(x * r[t] + y * u[t] + p[t]);
+    v.aLighting.push.apply(v.aLighting, light);
+  }
     
   var tyle = tile(b);
   var bottom = 1 - ZERO;
