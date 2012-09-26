@@ -32,12 +32,17 @@
   attribute vec3 aVelocity;
   attribute float aBirthday;
   //attribute float aDeathday;
+  attribute vec2 aTexCoord;
+
   uniform float uClock;
   uniform float uGravity;
   uniform mat4 uMVMatrix;
   uniform mat4 uPMatrix;
 
+  varying vec2 vTexCoord;
+
   void main(void) {
+    vTexCoord = aTexCoord;
     if (aBirthday > uClock /*|| uClock > aDeathday*/) {
       gl_Position = vec4(-9999.0, -9999.0, -9999.0, 1.0);
     } else {
@@ -52,8 +57,11 @@
 </script>
 <script id="particle-fs" type="x-shader/x-fragment">
   precision mediump float;
+  uniform sampler2D uSampler;
+  varying vec2 vTexCoord;
   void main(void) {
-    gl_FragColor = vec4(0.5, 0.35, 0.25, 1.0);
+    gl_FragColor = texture2D(uSampler, 
+                             (vTexCoord + 2.0 * gl_PointCoord) / 256.0);
   }
 </script>
 

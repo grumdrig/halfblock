@@ -1491,6 +1491,7 @@ Block.prototype.breakBlock = function () {
   if (this.type.empty) return;
   var type = this.type;
   var pos = this.stackPos;
+  var tyle = tile(this);
   this.type = BLOCK_TYPES.air;
   delete this.stackPos;
   this.invalidateGeometry(true);
@@ -1507,7 +1508,9 @@ Block.prototype.breakBlock = function () {
     var p = PARTICLES.spawn({
       x0: this.x + 0.5, 
       y0: this.y + 0.5, 
-      z0: this.z + 0.5});
+      z0: this.z + 0.5,
+      tile: tyle,
+    });
     //PARTICLES.bounceParticle(p);
   }
   if (type.stack) {
@@ -2172,10 +2175,13 @@ ParticleSystem.prototype.spawn = function (init) {
     id: PARTICLES.nextID++,
     birthday: GAME.clock() - rewind,
     life: rewind + 0.5 + Math.random() / 2,
+    tile: {s:10, t:0},
   };
   for (var i in p)
     if (typeof init[i] !== 'undefined')
       p[i] = init[i];
+  p.tile = [p.tile.s * 16 + 1 + Math.floor(Math.random() * 14),
+            p.tile.t * 16 + 1 + Math.floor(Math.random() * 14)],
   this.add(p);
   return p;
 }
@@ -2187,10 +2193,12 @@ function ParticleSystem() {
   this.shader.locate('aInitialPos');
   this.shader.locate('aVelocity');
   this.shader.locate('aBirthday');
+  this.shader.locate('aTexCoord');
   this.shader.locate('uClock');
   this.shader.locate('uGravity');
   this.shader.locate('uMVMatrix');
   this.shader.locate('uPMatrix');
+  this.shader.locate('uSampler');
 }
 
 ParticleSystem.prototype.add = function (p) {
@@ -2314,22 +2322,29 @@ ParticleSystem.prototype.render = function () {
     var aInitialPos = [];
     var aVelocity = [];
     var aBirthday = [];
+    var aTexCoord = [];
     for (var i in this.particles) {
       var p = this.particles[i];
       aInitialPos.push(p.x0, p.y0, p.z0);
       aVelocity.push(p.dx, p.dy, p.dz);
       aBirthday.push(p.birthday);
+      aTexCoord.push.apply(aTexCoord, p.tile);
     }
     this.buffers = {};
     this.buffers.aInitialPos = makeBuffer(aInitialPos, 3);
     this.buffers.aVelocity = makeBuffer(aVelocity, 3);
     this.buffers.aBirthday = makeBuffer(aBirthday, 1);
+    this.buffers.aTexCoord = makeBuffer(aTexCoord, 2);
   }
 
   gl.uniform1f(this.shader.uClock, parseFloat(GAME.clock()));
   gl.uniform1f(this.shader.uGravity, PARTICLE_GRAVITY);
   gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
+  gl.uniform1i(this.shader.uSampler, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.aInitialPos);
   gl.vertexAttribPointer(this.shader.aInitialPos,
@@ -2344,6 +2359,11 @@ ParticleSystem.prototype.render = function () {
   gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.aBirthday);
   gl.vertexAttribPointer(this.shader.aBirthday,
                          this.buffers.aBirthday.itemSize,
+                         gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.aTexCoord);
+  gl.vertexAttribPointer(this.shader.aTexCoord,
+                         this.buffers.aTexCoord.itemSize,
                          gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
