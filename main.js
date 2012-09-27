@@ -2040,6 +2040,13 @@ function onkeydown(event, count) {
     if (c === 'H') // Toggle chunk generation
       SPREAD_OUT = !SPREAD_OUT;
 
+    if (c === 'T') {
+      // Toggle options page
+      window.showOptions = !window.showOptions;
+      $('options').style.display = window.showOptions ? 'block' : 'none';
+      $('hud').style.display = window.showOptions ? 'none' : 'block';
+    }
+
     // 'I', right paren/brace/bracket means select next tool
     if (k === 190 || k === 221 || c === 'I') { 
       var tooli = AVATAR.tool ? (AVATAR.tool.index + 1) % NBLOCKTYPES : 1;
@@ -2086,6 +2093,7 @@ function onmousemove(event) {
 
 
 function onmousedown(event) {
+  if (window.showOptions) return;
   event = event || window.event;
   if (event.preventDefault) event.preventDefault();
   if (PICKED && (AVATAR.mouselook || AVATAR.pointerLocked)) {
@@ -2335,6 +2343,10 @@ ParticleSystem.prototype.render = function () {
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
+  var ext = gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic");
+  if (ext)
+    gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 
+                     $('anisotropic').checked ? 4 : 1);
   gl.uniform1i(this.shader.uSampler, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.aInitialPos);

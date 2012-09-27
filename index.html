@@ -229,7 +229,7 @@ body {
 }
 
 
-#canvas, #cancan, #hud, #stats {
+#canvas, #cancan, #hud, #stats, #options {
   width: 854px;
   height: 480px;
 }
@@ -237,12 +237,17 @@ body {
 #cancan:-webkit-full-screen,
 :-webkit-full-screen #canvas,
 :-webkit-full-screen #hud,
+:-webkit-full-screen #options,
 :-webkit-full-screen #stats {
   width: 100%;
   height: 100%;
 }
 
-#hud {
+#options {
+  display: none;
+}
+
+#hud, #options {
   font-family: Inconsolata, Helvetica;
   font-size: 18px;
   position: absolute;
@@ -339,6 +344,10 @@ body {
         <canvas id="tool" width="48" height="48"></canvas>
       </div>
       <div id="warning">&uarr;<br>Center mouse pointer to enable mouselook</div>
+    </div>
+    <div id="options">
+      <input id="anisotropic" type="checkbox">
+      <label for="anisotropic">Anisotropic filtering</label>
     </div>
   </div>
   <img src="terrain.png" id="terrain">
