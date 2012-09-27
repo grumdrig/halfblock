@@ -433,34 +433,26 @@ function Shader(shaders, fragShader) {
   if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
     alert('Could not initialize shaders');
   }
-}
 
-Shader.prototype.use = function () {
-  gl.useProgram(this.program);
-}
-
-Shader.prototype.locate = function(variable) {
-  var type = { a: 'Attrib', u: 'Uniform' }[variable[0]];
-  this[variable] = gl['get' + type + 'Location'](this.program, variable);
-  if (type === 'Attrib')
-    gl.enableVertexAttribArray(this[variable]);
-}
-
-Shader.prototype.locateAll = function () {
+  // Locate all attributes
   var na = gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
   for (var i = 0; i < na; ++i) {
     var a = gl.getActiveAttrib(this.program, i);
     this[a.name] = gl.getAttribLocation(this.program, a.name);
     gl.enableVertexAttribArray(this[a.name]);
   }
+
+  // Locate all uniforms
   var nu = gl.getProgramParameter(this.program, gl.ACTIVE_UNIFORMS);
   for (var i = 0; i < nu; ++i) {
     var u = gl.getActiveUniform(this.program, i);
     this[u.name] = gl.getUniformLocation(this.program, u.name);
   }
 }
-  
 
+Shader.prototype.use = function () {
+  gl.useProgram(this.program);
+}
 
 
 function mvPushMatrix() {
@@ -1928,14 +1920,10 @@ function onLoad() {
   }
 
   SHADER = new Shader('shader');
-  SHADER.locateAll();
   SHADER.use();
 
   WIREFRAME = new Wireframe();
   WIREFRAME.shader = new Shader('wireframe');
-  WIREFRAME.shader.locate('aPos');
-  WIREFRAME.shader.locate('uMVMatrix');
-  WIREFRAME.shader.locate('uPMatrix');
 
   PARTICLES = new ParticleSystem();
 
@@ -2202,15 +2190,6 @@ function ParticleSystem() {
   this.nextID = 1;
   this.particles = {};
   this.shader = new Shader('particle');
-  this.shader.locate('aInitialPos');
-  this.shader.locate('aVelocity');
-  this.shader.locate('aBirthday');
-  this.shader.locate('aTexCoord');
-  this.shader.locate('uClock');
-  this.shader.locate('uGravity');
-  this.shader.locate('uMVMatrix');
-  this.shader.locate('uPMatrix');
-  this.shader.locate('uSampler');
 }
 
 ParticleSystem.prototype.add = function (p) {
@@ -2611,15 +2590,9 @@ function blur(camera, w, h) {
     FB1 = makeFramebuffer(w, h, true, false);
     FB2 = makeFramebuffer(w, h, false, false);
     BLURH = new Shader('blur', 'blur-horizontal');
-    BLURH.locate('aPos');
-    BLURH.locate('uSrc');
     BLURV = new Shader('blur', 'blur-vertical');
-    BLURV.locate('aPos');
-    BLURV.locate('uSrc');
     SAQ = makeBuffer([-1,-1, +1,-1, +1,+1, -1,+1], 2);
     //BLIT = new Shader('blit');
-    //BLIT.locate('aPos');
-    //BLIT.locate('uSrc');
   }
   
   gl.enable(gl.DEPTH_TEST);
