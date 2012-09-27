@@ -446,6 +446,21 @@ Shader.prototype.locate = function(variable) {
     gl.enableVertexAttribArray(this[variable]);
 }
 
+Shader.prototype.locateAll = function () {
+  var na = gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
+  for (var i = 0; i < na; ++i) {
+    var a = gl.getActiveAttrib(this.program, i);
+    this[a.name] = gl.getAttribLocation(this.program, a.name);
+    gl.enableVertexAttribArray(this[a.name]);
+  }
+  var nu = gl.getProgramParameter(this.program, gl.ACTIVE_UNIFORMS);
+  for (var i = 0; i < nu; ++i) {
+    var u = gl.getActiveUniform(this.program, i);
+    this[u.name] = gl.getUniformLocation(this.program, u.name);
+  }
+}
+  
+
 
 
 function mvPushMatrix() {
@@ -1913,16 +1928,8 @@ function onLoad() {
   }
 
   SHADER = new Shader('shader');
+  SHADER.locateAll();
   SHADER.use();
-  SHADER.locate('aPos');
-  SHADER.locate('aTexCoord');
-  SHADER.locate('aLighting');
-  SHADER.locate('aColor');
-  SHADER.locate('uSampler');
-  SHADER.locate('uMVMatrix');
-  SHADER.locate('uPMatrix');
-  SHADER.locate('uFogDistance');
-  SHADER.locate('uSunlight');
 
   WIREFRAME = new Wireframe();
   WIREFRAME.shader = new Shader('wireframe');
