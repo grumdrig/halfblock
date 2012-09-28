@@ -2754,7 +2754,6 @@ Sound.prototype.init = function (ps) {
   this.gain = Math.sqrt(Math.pow(10, ps.gain/10));
 
   this.sampleRate = ps.sampleRate;
-  this.bitsPerChannel = ps.sampleSize;
 
   //
   // Fields used in sound generation
@@ -2923,30 +2922,8 @@ Sound.prototype.generate = function (buffer) {
     sample = sample / OVERSAMPLING * masterVolume;
     sample *= this.gain;
 
-    if (this.bitsPerChannel === 8) {
-      // Rescale [-1, 1) to [0, 256)
-      sample = Math.floor((sample + 1) * 128);
-      if (sample > 255) {
-        sample = 255;
-        ++this.num_clipped;
-      } else if (sample < 0) {
-        sample = 0;
-        ++this.num_clipped;
-      }
-      buffer[it] = sample;
-    } else {
-      // Rescale [-1, 1) to [-32768, 32768)
-      sample = Math.floor(sample * (1<<15));
-      if (sample >= (1<<15)) {
-        sample = (1 << 15)-1;
-        ++this.num_clipped;
-      } else if (sample < -(1<<15)) {
-        sample = -(1 << 15);
-        ++this.num_clipped;
-      }
-      buffer[it] = sample & 0xFF;
-      buffer[it] = (sample >> 8) & 0xFF;
-    }
+    if (-1 > sample || sample > 1) ++this.num_clipped;
+    buffer[it] = sample;
   }
 
   // Fill with emptiness if sound gen done
@@ -2991,7 +2968,6 @@ var defaultKnobs = {
   gain: -10, // dB
 
   sampleRate: 44100, // Hz
-  sampleSize: 8,     // bits per channel
 };
 
 
