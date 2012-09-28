@@ -49,6 +49,12 @@
 // Billboards
 // http://nehe.gamedev.net/article/billboarding_how_to/18011/
 
+// Web Audio API
+// https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html
+// http://0xfe.blogspot.com/2011/08/generating-tones-with-web-audio-api.html
+// https://wiki.mozilla.org/Audio_Data_API (need to shim to Web Audio)
+
+
 // TODO: race cars
 // TODO: flags
 // TODO: tonkatsu
@@ -2645,4 +2651,396 @@ function vmult(v, w, result) {
 
 function center(e) {
   return {x:e.x, y:e.y + (e.height||SY)/2, z:e.z};
+}
+
+
+// Wave shapes
+var SQUARE = 0;
+var SAWTOOTH = 1;
+var SINE = 2;
+var NOISE = 3;
+var masterVolume = 1;
+var OVERSAMPLING = 8;
+function frnd(range) {
+  return Math.random() * range;
+}
+
+function rndr(from, to) {
+  return Math.random() * (to - from) + from;
+}
+
+function rnd(max) {
+  return Math.floor(Math.random() * (max + 1));
+}
+
+var _AUDIO_CONTEXT;
+function Sound() {
+  var that = this;
+  var k = new Knobs();
+  k.random();
+  this.init(k);
+  if (!_AUDIO_CONTEXT)
+    _AUDIO_CONTEXT = new webkitAudioContext();
+  var node = _AUDIO_CONTEXT.createJavaScriptNode(4096, 0, 1);
+  node.connect(_AUDIO_CONTEXT.destination);
+  node.onaudioprocess = function (e) {
+    that.generate(e.outputBuffer.getChannelData(0));
+  }
+}
+
+
+Sound.prototype.initForRepeat = function(ps) {
+  this.elapsedSinceRepeat = 0;
+  
+  this.period = OVERSAMPLING * 44100 / ps.frequency;
+  this.periodMax = OVERSAMPLING * 44100 / ps.frequencyMin;
+  this.enableFrequencyCutoff = (ps.frequencyMin > 0);
+  this.periodMult = Math.pow(.5, ps.frequencySlide / 44100);
+  this.periodMultSlide = ps.frequencySlideSlide * Math.pow(2, -44101/44100)
+    / 44100;
+  
+  this.dutyCycle = ps.dutyCycle;
+  this.dutyCycleSlide = ps.dutyCycleSweep / (OVERSAMPLING * 44100);
+  
+  this.arpeggioMultiplier = 1 / ps.arpeggioFactor;
+  this.arpeggioTime = ps.arpeggioDelay * 44100;
+}
+
+
+Sound.prototype.init = function (ps) {
+  this.params = ps;
+  this.t = 0;
+
+  //
+  // Convert user-facing parameter values to units usable by the sound
+  // generator
+  //
+
+  this.initForRepeat(ps);  // First time through, this is a bit of a misnomer
+
+  // Waveform shape
+  this.waveShape = ps.shape;
+
+  // Low pass filter
+  this.fltw = ps.lowPassFrequency / (OVERSAMPLING * 44100 + ps.lowPassFrequency);
+  this.enableLowPassFilter = ps.lowPassFrequency < 44100;
+  this.fltw_d = Math.pow(ps.lowPassSweep, 1/44100);
+  this.fltdmp = (1 - ps.lowPassResonance) * 9 * (.01 + this.fltw);
+
+  // High pass filter
+  this.flthp = ps.highPassFrequency / (OVERSAMPLING * 44100 + ps.highPassFrequency);
+  this.flthp_d = Math.pow(ps.highPassSweep, 1/44100);
+
+  // Vibrato
+  this.vibratoSpeed = ps.vibratoRate * 64 / 44100 / 10;
+  this.vibratoAmplitude = ps.vibratoDepth;
+
+  // Envelope
+  this.envelopeLength = [
+    Math.floor(ps.attack * 44100),
+    Math.floor(ps.sustain * 44100),
+    Math.floor(ps.decay * 44100)
+  ];
+  this.envelopePunch = ps.punch;
+
+  // Flanger
+  this.flangerOffset = ps.flangerOffset * 44100;
+  this.flangerOffsetSlide = ps.flangerSweep;
+
+  // Repeat
+  this.repeatTime = ps.retriggerRate ? 1 / (44100 * ps.retriggerRate) : 0;
+
+  // Gain
+  this.gain = Math.sqrt(Math.pow(10, ps.gain/10));
+
+  this.sampleRate = ps.sampleRate;
+  this.bitsPerChannel = ps.sampleSize;
+
+  //
+  // Fields used in sound generation
+  //
+  this.fltp = 0;
+  this.fltdp = 0;
+  this.fltphp = 0;
+  this.num_clipped = 0;
+  if (this.waveShape === NOISE) {
+    this.noise_buffer = Array(32);
+    for (var i = 0; i < 32; ++i)
+      this.noise_buffer[i] = Math.random() * 2 - 1;
+  }
+  this.envelopeStage = 0;
+  this.envelopeElapsed = 0;
+  this.vibratoPhase = 0;
+  this.phase = 0;
+  this.ipp = 0;
+  this.flanger_buffer = Array(1024);
+  for (var i = 0; i < 1024; ++i)
+    this.flanger_buffer[i] = 0;
+}
+
+Sound.prototype.generate = function (buffer) {
+  var it = 0;
+  for(; !this.done && it < buffer.length; ++this.t, ++it) {
+    // Repeats
+    if (this.repeatTime != 0 && ++this.elapsedSinceRepeat >= this.repeatTime)
+      this.initForRepeat(this.params);
+    
+    // Arpeggio (single)
+    if(this.arpeggioTime != 0 && this.t >= this.arpeggioTime) {
+      this.arpeggioTime = 0;
+      this.period *= this.arpeggioMultiplier;
+    }
+    
+    // Frequency slide, and frequency slide slide!
+    this.periodMult += this.periodMultSlide;
+    this.period *= this.periodMult;
+    if(this.period > this.periodMax) {
+      this.period = this.periodMax;
+      if (this.enableFrequencyCutoff) {
+        this.done = true;
+        break;
+      }
+    }
+
+    // Vibrato
+    var rfperiod = this.period;
+    if (this.vibratoAmplitude > 0) {
+      this.vibratoPhase += this.vibratoSpeed;
+      rfperiod = this.period * (1 + Math.sin(this.vibratoPhase) * this.vibratoAmplitude);
+    }
+    var iperiod = Math.floor(rfperiod);
+    if (iperiod < OVERSAMPLING) iperiod = OVERSAMPLING;
+
+    // Square wave duty cycle
+    this.dutyCycle += this.dutyCycleSlide;
+    if (this.dutyCycle < 0) this.dutyCycle = 0;
+    if (this.dutyCycle > 0.5) this.dutyCycle = 0.5;
+
+    // Volume envelope
+    if (++this.envelopeElapsed > this.envelopeLength[this.envelopeStage]) {
+      this.envelopeElapsed = 0;
+      if (++this.envelopeStage > 2) {
+        this.done = true;
+        break;
+      }
+    }
+    var env_vol;
+    var envf = this.envelopeElapsed / this.envelopeLength[this.envelopeStage];
+    if (this.envelopeStage === 0) {         // Attack
+      env_vol = envf;
+    } else if (this.envelopeStage === 1) {  // Sustain
+      env_vol = 1 + (1 - envf) * 2 * this.envelopePunch;
+    } else {                           // Decay
+      env_vol = 1 - envf;
+    }
+
+    // Flanger step
+    this.flangerOffset += this.flangerOffsetSlide;
+    var iphase = Math.abs(Math.floor(this.flangerOffset));
+    if (iphase > 1023) iphase = 1023;
+
+    if (this.flthp_d != 0) {
+      this.flthp *= this.flthp_d;
+      if (this.flthp < 0.00001)
+        this.flthp = 0.00001;
+      if (this.flthp > 0.1)
+        this.flthp = 0.1;
+    }
+
+    // 8x oversampling
+    var sample = 0;
+    var sample_sum = 0;
+    var num_summed = 0;
+    var summands = Math.floor(44100 / this.sampleRate);
+    for (var si = 0; si < OVERSAMPLING; ++si) {
+      var sub_sample = 0;
+      this.phase++;
+      if (this.phase >= iperiod) {
+        this.phase %= iperiod;
+        if (this.waveShape === NOISE)
+          for(var i = 0; i < 32; ++i)
+            this.noise_buffer[i] = Math.random() * 2 - 1;
+      }
+
+      // Base waveform
+      var fp = this.phase / iperiod;
+      if (this.waveShape === SQUARE) {
+        if (fp < this.dutyCycle)
+          sub_sample=0.5;
+        else
+          sub_sample=-0.5;
+      } else if (this.waveShape === SAWTOOTH) {
+        if (fp < this.dutyCycle)
+          sub_sample = -1 + 2 * fp/this.dutyCycle;
+        else
+          sub_sample = 1 - 2 * (fp-this.dutyCycle)/(1-this.dutyCycle);
+      } else if (this.waveShape === SINE) {
+        sub_sample = Math.sin(fp * 2 * Math.PI);
+      } else if (this.waveShape === NOISE) {
+        sub_sample = this.noise_buffer[Math.floor(this.phase * 32 / iperiod)];
+      } else {
+        throw "ERROR: Bad wave type: " + this.waveShape;
+      }
+
+      // Low-pass filter
+      var pp = this.fltp;
+      this.fltw *= this.fltw_d;
+      if (this.fltw < 0) this.fltw = 0;
+      if (this.fltw > 0.1) this.fltw = 0.1;
+      if (this.enableLowPassFilter) {
+        this.fltdp += (sub_sample - this.fltp) * this.fltw;
+        this.fltdp -= this.fltdp * this.fltdmp;
+      } else {
+        this.fltp = sub_sample;
+        this.fltdp = 0;
+      }
+      this.fltp += this.fltdp;
+
+      // High-pass filter
+      this.fltphp += this.fltp - pp;
+      this.fltphp -= this.fltphp * this.flthp;
+      sub_sample = this.fltphp;
+
+      // Flanger
+      this.flanger_buffer[this.ipp & 1023] = sub_sample;
+      sub_sample += this.flanger_buffer[(this.ipp - iphase + 1024) & 1023];
+      this.ipp = (this.ipp + 1) & 1023;
+
+      // final accumulation and envelope application
+      sample += sub_sample * env_vol;
+    }
+
+    // Accumulate samples appropriately for sample rate
+    sample_sum += sample;
+    if (++num_summed >= summands) {
+      num_summed = 0;
+      sample = sample_sum / summands;
+      sample_sum = 0;
+    } else {
+      continue;
+    }
+
+    sample = sample / OVERSAMPLING * masterVolume;
+    sample *= this.gain;
+
+    if (this.bitsPerChannel === 8) {
+      // Rescale [-1, 1) to [0, 256)
+      sample = Math.floor((sample + 1) * 128);
+      if (sample > 255) {
+        sample = 255;
+        ++this.num_clipped;
+      } else if (sample < 0) {
+        sample = 0;
+        ++this.num_clipped;
+      }
+      buffer[it] = sample;
+    } else {
+      // Rescale [-1, 1) to [-32768, 32768)
+      sample = Math.floor(sample * (1<<15));
+      if (sample >= (1<<15)) {
+        sample = (1 << 15)-1;
+        ++this.num_clipped;
+      } else if (sample < -(1<<15)) {
+        sample = -(1 << 15);
+        ++this.num_clipped;
+      }
+      buffer[it] = sample & 0xFF;
+      buffer[it] = (sample >> 8) & 0xFF;
+    }
+  }
+
+  // Fill with emptiness if sound gen done
+  for(; it < buffer.length; ++this.t, ++it)
+    buffer[it] = 0;
+}
+
+var defaultKnobs = {
+  shape: SQUARE, // SQUARE/SAWTOOTH/SINE/NOISE
+
+  attack:  0,   // sec
+  sustain: 0.2, // sec
+  punch:   0,   // proportion
+  decay:   0.2, // sec
+
+  frequency:        1000, // Hz
+  frequencyMin:        0, // Hz
+  frequencySlide:      0, // 8va/sec
+  frequencySlideSlide: 0, // 8va/sec/sec
+
+  vibratoDepth:  0, // proportion
+  vibratoRate:  10, // Hz
+
+  arpeggioFactor: 1,   // multiple of frequency
+  arpeggioDelay:  0.1, // sec  
+  
+  dutyCycle:      0.5, // proportion of wavelength
+  dutyCycleSweep: 0,   // proportion/second
+
+  retriggerRate: 0, // Hz
+
+  flangerOffset: 0, // sec
+  flangerSweep:  0, // offset/sec
+
+  lowPassFrequency: 44100, // Hz
+  lowPassSweep:     1,     // ^sec
+  lowPassResonance: 0.5,   // proportion
+
+  highPassFrequency: 0, // Hz
+  highPassSweep:     0, // ^sec
+  
+  gain: -10, // dB
+
+  sampleRate: 44100, // Hz
+  sampleSize: 8,     // bits per channel
+};
+
+
+function Knobs(settings) {
+  settings = settings||{};
+  for (var i in defaultKnobs) {
+    if (settings.hasOwnProperty(i))
+      this[i] = settings[i];
+    else
+      this[i] = defaultKnobs[i];
+  }
+}
+
+Knobs.prototype.random = function () {
+  function cube(x) { return x * x * x }
+  var pow = Math.pow;
+  if (rnd(1))
+    this.frequency = rndr(885.5, 7941.5);
+  else
+    this.frequency = rndr(3.5, 3532);
+  this.frequencySlide = rndr(-633, 639);
+  if (this.frequency > 1732 && this.frequencySlide > 5)
+    this.frequencySlide = -this.frequencySlide;
+  if (this.frequency < 145 && this.frequencySlide < -0.088)
+    this.frequencySlide = -this.frequencySlide;
+  this.frequencySlideSlide = rndr(-0.88, 0.88);
+  this.dutyCycle = frnd(1);
+  this.dudyCycleSweep = rndr(-17.64, 17.64);
+  this.vibratoDepth = rndr(-0.5, 0.5);
+  this.vibratoRate = rndr(0, 69);
+  this.attack = cube(frnd(1)) * 2.26;
+  this.sustain = sqr(frnd(1)) * 2.26 + 0.09;
+  this.decay = frnd(1) * 2.26;
+  this.punch = sqr(frnd(1)) * 0.64;
+  if (this.attack + this.sustain + this.decay < 0.45) {
+    this.sustain += rndr(0.5, 1.25);
+    this.decay += rndr(0.5, 1.25);
+  }
+  this.lowPassResonance = rndr(0.444, 0.97);
+  this.lowPassFrequency = frnd(39200);
+  this.lowPassSweep = rndr(0.012, 82);
+  if (this.lowPassFrequency < 35 && this.lowPassSweep < 0.802)
+    this.lowPassSweep = 1 - this.lowPassSweep;
+  this.highPassFrequency = 39200 * pow(frnd(1), 5);
+  this.highPassSweep = 555718 * pow(rndr(-1, 1), 5);
+  this.flangerOffset = 0.023 * cube(frnd(2) - 1);
+  this.flangerSweep = cube(frnd(2) - 1);
+  this.retriggerRate = frnd(1378);
+  this.arpeggioDelay = frnd(1.81);
+  this.arpeggioFactor = rndr(0.09, 10);
+  return this;
 }
