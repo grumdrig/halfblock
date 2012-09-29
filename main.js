@@ -2011,6 +2011,7 @@ function onkeydown(event, count) {
         // Jump!
         AVATAR.dy = VJUMP;
         AVATAR.falling = true;
+        new Sound('jump');
       }
       AVATAR.lastHop = GAME.clock();
     }
@@ -2105,6 +2106,7 @@ function onmousedown(event) {
   if (PICKED && (AVATAR.mouselook || AVATAR.pointerLocked)) {
     if (event.button === 0) {
       PICKED.breakBlock();
+      new Sound('hitHurt');
     } else {
       var b = PICKED.neighbor(PICKED_FACE);
       if (!b.outofbounds)
@@ -2674,16 +2676,17 @@ function rnd(max) {
 }
 
 var _AUDIO_CONTEXT;
-function Sound() {
+function Sound(sound) {
   var that = this;
   var k = new Knobs();
-  k.pickupCoin();
+  if (sound) k[sound]();
   this.init(k);
   if (!_AUDIO_CONTEXT)
     _AUDIO_CONTEXT = new webkitAudioContext();
   var node = _AUDIO_CONTEXT.createJavaScriptNode(4096, 0, 1);
   node.connect(_AUDIO_CONTEXT.destination);
   node.onaudioprocess = function (e) {
+    if (that.done) node.disconnect();
     that.generate(e.outputBuffer.getChannelData(0));
   }
 }
