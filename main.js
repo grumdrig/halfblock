@@ -2659,7 +2659,7 @@ var SQUARE = 0;
 var SAWTOOTH = 1;
 var SINE = 2;
 var NOISE = 3;
-var masterVolume = 1;
+var masterVolume = 0.2;
 var OVERSAMPLING = 8;
 function frnd(range) {
   return Math.random() * range;
@@ -2677,7 +2677,7 @@ var _AUDIO_CONTEXT;
 function Sound() {
   var that = this;
   var k = new Knobs();
-  k.random();
+  k.pickupCoin();
   this.init(k);
   if (!_AUDIO_CONTEXT)
     _AUDIO_CONTEXT = new webkitAudioContext();
@@ -2979,6 +2979,162 @@ function Knobs(settings) {
     else
       this[i] = defaultKnobs[i];
   }
+}
+
+
+Knobs.prototype.pickupCoin = function () {
+  this.frequency = rndr(568, 2861);
+  this.attack = 0;
+  this.sustain = frnd(0.227);
+  this.decay = rndr(0.227, 0.567);
+  this.punch = rndr(0.3, 0.6);
+  if (rnd(1)) {
+    this.arpeggioFactor = rndr(1.037, 1.479);
+    this.arpeggioDelay = rndr(0.042, 0.114);
+  }
+  return this;
+}
+
+
+Knobs.prototype.laserShoot = function () {
+  this.shape = rnd(2);
+  if(this.shape === SINE && rnd(1))
+    this.shape = rnd(1);
+  if (rnd(2) === 0) {
+    this.frequency = rndr(321, 2861);
+    this.frequencyMin = frnd(38.8);
+    this.frequencySlide = rndr(-27.3, -174.5);
+  } else {
+    this.frequency = rndr(321, 3532);
+    this.frequencyMin = rndr(144, 2/3 * this.frequency);
+    this.frequencySlide = rndr(-2.15, -27.27);
+  }
+  if (this.shape === SAWTOOTH)
+    this.dutyCycle = 0;
+  if (rnd(1)) {
+    this.dutyCycle = rndr(1/4, 1/2);
+    this.dutyCycleSweep = rndr(0, -3.528);
+  } else {
+    this.dutyCycle = rndr(0.05, 0.3);
+    this.dutyCycleSweep = frnd(12.35);
+  }
+  this.attack = 0;
+  this.sustain = rndr(0.02, 0.2);
+  this.decay = frnd(0.36);
+  if (rnd(1))
+    this.punch = frnd(0.3);
+  if (rnd(2) === 0) {
+    this.flangerOffset = frnd(0.001);
+    this.flangerSweep = -frnd(0.04);
+  }
+  if (rnd(1))
+    this.highPassFrequency = frnd(3204);
+
+  return this;
+}
+
+Knobs.prototype.explosion = function () {
+  this.shape = NOISE;
+  if (rnd(1)) {
+    this.frequency = rndr(4, 224);
+    this.frequencySlide = rndr(-0.623, 17.2);
+  } else {
+    this.frequency = rndr(9, 2318);
+    this.frequencySlide = rndr(-5.1, -40.7);
+  }
+  if (rnd(4) === 0)
+    this.frequencySlide = 0;
+  if (rnd(2) === 0)
+    this.retriggerRate = rndr(4.5, 53);
+  this.attack = 0;
+  this.sustain = rndr(0.0227, 0.363);
+  this.decay = frnd(0.567);
+  if (rnd(1)) {
+    this.flangerOffset = rndr(-0.0021, 0.0083);
+    this.flangerSweep = -frnd(0.09);
+  }
+  this.punch = 0.2 + frnd(0.6);
+  if (rnd(1)) {
+    this.vibratoDepth = frnd(0.35);
+    this.vibratoRate = frnd(24.8);
+  }
+  if (rnd(2) === 0) {
+    this.arpeggioFactor = rndr(0.135, 2.358);
+    this.arpeggioDelay = rndr(0.00526, 0.0733);
+  }
+  return this;
+}
+
+Knobs.prototype.powerUp = function () {
+  if (rnd(1)) {
+    this.shape = SAWTOOTH;
+    this.dutyCycle = 0;
+  } else {
+    this.dutyCycle = rndr(0.2, 0.5);
+  }
+  this.frequency = rndr(145, 886);
+  if (rnd(1)) {
+    this.frequencySlide = rndr(0.636, 79.6);
+    this.retriggerRate = rndr(6, 53);
+  } else {
+    this.frequencySlide = rndr(0.0795, 9.94);
+    if (rnd(1)) {
+      this.vibratoDepth = frnd(0.35);
+      this.vibratoRate = frnd(24.8);
+    }
+  }
+  this.attack = 0;
+  this.sustain = frnd(0.363);
+  this.decay = rndr(0.023, 0.57);
+
+  return this;
+}
+
+Knobs.prototype.hitHurt = function () {
+  this.shape = rnd(2);
+  if (this.shape === SINE)
+    this.shape = NOISE;
+  if (this.shape === SQUARE)
+    this.dutyCycle = rndr(0.2, 0.5);
+  if (this.shape === SAWTOOTH)
+    this.dutyCycle = 0;
+  this.frequency = rndr(145, 2261);
+  this.frequencySlide = rndr(-17.2, -217.9);
+  this.attack = 0;
+  this.sustain = frnd(0.023);
+  this.decay = rndr(0.023, 0.2);
+  if (rnd(1))
+    this.highPassFrequency = frnd(3204);
+  return this;
+}
+
+Knobs.prototype.jump = function () {
+  this.shape = SQUARE;
+  this.dutyCycle = rndr(0.2, 0.5);
+  this.frequency = rndr(321, 1274);
+  this.frequencySlide = rndr(0.64, 17.2);
+  this.attack = 0;
+  this.sustain = rndr(0.023, 0.36);
+  this.decay = rndr(0.023, 0.2);
+  if (rnd(1))
+    this.highPassFrequency = frnd(3204);
+  if (rnd(1))
+    this.lowPassFrequency = rndr(2272, 44100);
+  return this;
+}
+
+Knobs.prototype.blipSelect = function () {
+  this.shape = rnd(1);
+  if (this.shape === SQUARE)
+    this.dutyCycle = rndr(0.2, 0.5);
+  else
+    this.dutyCycle = 0;
+  this.frequency = rndr(145, 1274);
+  this.attack = 0;
+  this.sustain = rndr(0.023, 0.09);
+  this.decay = frnd(0.09);
+  this.highPassFrequency = 353;
+  return this;
 }
 
 Knobs.prototype.random = function () {
