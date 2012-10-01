@@ -325,6 +325,7 @@ var ENTITY_TYPES = {
       if (age(e) > 1) {
         var d = distance(center(AVATAR), e);
         if (d < AVATAR.radius) {
+          new Sound('pop');
           e.die();
         } else if (d < 3) {
           e.flying = true;
@@ -2106,7 +2107,7 @@ function onmousedown(event) {
   if (PICKED && (AVATAR.mouselook || AVATAR.pointerLocked)) {
     if (event.button === 0) {
       PICKED.breakBlock();
-      new Sound('hitHurt');
+      //new Sound('hitHurt');
     } else {
       var b = PICKED.neighbor(PICKED_FACE);
       if (!b.outofbounds)
@@ -2689,6 +2690,8 @@ function Sound(sound) {
     if (that.done) node.disconnect();
     that.generate(e.outputBuffer.getChannelData(0));
   }
+  this.node = node;
+  this.knobs = k;
 }
 
 
@@ -3137,6 +3140,18 @@ Knobs.prototype.blipSelect = function () {
   this.sustain = rndr(0.023, 0.09);
   this.decay = frnd(0.09);
   this.highPassFrequency = 353;
+  return this;
+}
+
+Knobs.prototype.pop = function () {
+  this.shape = SINE;
+  this.attack = 0.01;
+  this.sustain = 0.01;
+  this.decay = 0.165;
+  this.frequency = 300;
+  this.frequencySlide = 22;
+  this.lowPassFrequency = 8829;
+  this.highPassFrequency = 16737;
   return this;
 }
 
