@@ -456,23 +456,32 @@ function Shader(shaders, fragShader) {
   }
 
   // Locate all attributes
+  this.attributes = {};
   var na = gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
   for (var i = 0; i < na; ++i) {
     var a = gl.getActiveAttrib(this.program, i);
-    this[a.name] = gl.getAttribLocation(this.program, a.name);
-    gl.enableVertexAttribArray(this[a.name]);
+    this.attributes[a.name] = gl.getAttribLocation(this.program, a.name);
   }
 
   // Locate all uniforms
+  this.uniforms = {};
   var nu = gl.getProgramParameter(this.program, gl.ACTIVE_UNIFORMS);
   for (var i = 0; i < nu; ++i) {
     var u = gl.getActiveUniform(this.program, i);
-    this[u.name] = gl.getUniformLocation(this.program, u.name);
+    this.uniforms[u.name] = gl.getUniformLocation(this.program, u.name);
   }
 }
 
 Shader.prototype.use = function () {
   gl.useProgram(this.program);
+  for (var a in this.attributes)
+    gl.enableVertexAttribArray(this.attributes[a]);
+}
+
+Shader.prototype.disuse = function () {
+  for (var a in this.attributes)
+    gl.disableVertexAttribArray(this.attributes[a]);
+  gl.useProgram(null);
 }
 
 
@@ -654,7 +663,7 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
 
 function pointToAttribute(shader, buffers, attribute) {
   gl.bindBuffer(gl.ARRAY_BUFFER, buffers[attribute]);
-  gl.vertexAttribPointer(shader[attribute],
+  gl.vertexAttribPointer(shader.attributes[attribute],
                          buffers[attribute].itemSize,
                          gl.FLOAT, false, 0, 0);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
@@ -882,7 +891,6 @@ function drawScene(camera) {
                   0.98 * GAME.sunlight, 1);  // Clear color is sky blue
   else
     gl.clearColor(0,0,0,1);  // Look into the void
-  gl.enable(gl.DEPTH_TEST);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Set up the projection
@@ -899,17 +907,8 @@ function drawScene(camera) {
   mat4.rotateY(mvMatrix, camera.yaw);
 
   // Sky box / title demo
-  if (PANORAMA.enable) {
-    var c = chunk(0,0);
-    gl.disable(gl.DEPTH_TEST);
-    PANORAMA.render();
-    gl.enable(gl.DEPTH_TEST);
-  } else {
-    // Because I'm enabling vertex arrays when I create them, which is stupid
-    // I have to wait until there's something in all of them before I can
-    // render the panorama. Fix this by using VAOs, pretty sure.
-    PANORAMA.enable = true;
-  }
+  var c = chunk(0,0);
+  PANORAMA.render();
 
   mat4.translate(mvMatrix, [-camera.x, -camera.y, -camera.z]);
   mat4.translate(mvMatrix, [0, -EYE_HEIGHT, 0]);
@@ -918,11 +917,13 @@ function drawScene(camera) {
 
   SHADER.use();
 
+  gl.enable(gl.DEPTH_TEST);
+
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
-  gl.uniform1i(SHADER.uSampler, 0);
-  gl.uniform1f(SHADER.uFogDistance, 2 * AVATAR.viewDistance / 5);
-  gl.uniform1f(SHADER.uSunlight, GAME.sunlight);
+  gl.uniform1i(SHADER.uniforms.uSampler, 0);
+  gl.uniform1f(SHADER.uniforms.uFogDistance, 2 * AVATAR.viewDistance / 5);
+  gl.uniform1f(SHADER.uniforms.uSunlight, GAME.sunlight);
 
   var headblock = block(AVATAR.x, AVATAR.y + EYE_HEIGHT, AVATAR.z);
   if (headblock.type.translucent) {
@@ -933,8 +934,8 @@ function drawScene(camera) {
   }
   
   // Set matrix uniforms
-  gl.uniformMatrix4fv(SHADER.uPMatrix,  false,  pMatrix);
-  gl.uniformMatrix4fv(SHADER.uMVMatrix, false, mvMatrix);
+  gl.uniformMatrix4fv(SHADER.uniforms.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(SHADER.uniforms.uMVMatrix, false, mvMatrix);
   
   // Render opaque blocks
   gl.disable(gl.CULL_FACE);  // don't cull backfaces (decals are 1-sided)
@@ -976,6 +977,7 @@ function drawScene(camera) {
   var nttBuffers = new BufferSet(nttSet);
   nttBuffers.render(SHADER);
 
+  SHADER.disuse();
 
   // Render particles
   PARTICLES.render();
@@ -992,6 +994,7 @@ function drawScene(camera) {
   }
   gl.disable(gl.BLEND);
   gl.disable(gl.CULL_FACE);
+  SHADER.disuse();
 
   // Render block selection indicator
   if (PICKED)
@@ -1836,8 +1839,8 @@ Wireframe.prototype.render = function () {
   
   gl.lineWidth(2);
   
-  gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
-  gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
+  gl.uniformMatrix4fv(this.shader.uniforms.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(this.shader.uniforms.uMVMatrix, false, mvMatrix);
   
   pointToAttribute(this.shader, this, 'aPos');
   
@@ -1845,6 +1848,8 @@ Wireframe.prototype.render = function () {
   gl.drawElements(gl.LINES, this.indices.numItems, gl.UNSIGNED_SHORT, 0);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
   
+  this.shader.disuse();
+
   gl.enable(gl.DEPTH_TEST);
   mvPopMatrix();
 }
@@ -1880,18 +1885,22 @@ Panorama.prototype.render = function () {
 
   this.shader.use();
 
+  gl.disable(gl.DEPTH_TEST);
+
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, PANORAMA_TEXTURE);
-  gl.uniform1i(this.shader.uSampler, 0);
+  gl.uniform1i(this.shader.uniforms.uSampler, 0);
 
-  gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
-  gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
+  gl.uniformMatrix4fv(this.shader.uniforms.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(this.shader.uniforms.uMVMatrix, false, mvMatrix);
   
   pointToAttribute(this.shader, this.buffers, 'aPos');
   pointToAttribute(this.shader, this.buffers, 'aTexCoord');
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.indices);
   gl.drawElements(gl.TRIANGLES, this.buffers.indices.numItems, 
                   gl.UNSIGNED_SHORT, 0);
+  
+  this.shader.disuse();
 }
 
 
@@ -1996,7 +2005,6 @@ function onLoad() {
   PANORAMA = new Panorama();
 
   SHADER = new Shader('shader');
-  SHADER.use();
 
   WIREFRAME = new Wireframe();
 
@@ -2429,10 +2437,10 @@ ParticleSystem.prototype.render = function () {
     this.buffers.aTexCoord = makeBuffer(aTexCoord, 2);
   }
 
-  gl.uniform1f(this.shader.uClock, parseFloat(GAME.clock()));
-  gl.uniform1f(this.shader.uGravity, PARTICLE_GRAVITY);
-  gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
-  gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
+  gl.uniform1f(this.shader.uniforms.uClock, parseFloat(GAME.clock()));
+  gl.uniform1f(this.shader.uniforms.uGravity, PARTICLE_GRAVITY);
+  gl.uniformMatrix4fv(this.shader.uniforms.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(this.shader.uniforms.uMVMatrix, false, mvMatrix);
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
@@ -2440,31 +2448,16 @@ ParticleSystem.prototype.render = function () {
   if (ext)
     gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 
                      $('anisotropic').checked ? 4 : 1);
-  gl.uniform1i(this.shader.uSampler, 0);
+  gl.uniform1i(this.shader.uniforms.uSampler, 0);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.aInitialPos);
-  gl.vertexAttribPointer(this.shader.aInitialPos,
-                         this.buffers.aInitialPos.itemSize,
-                         gl.FLOAT, false, 0, 0);
+  pointToAttribute(this.shader, this.buffers, 'aInitialPos');
+  pointToAttribute(this.shader, this.buffers, 'aVelocity');
+  pointToAttribute(this.shader, this.buffers, 'aBirthday');
+  pointToAttribute(this.shader, this.buffers, 'aTexCoord');
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.aVelocity);
-  gl.vertexAttribPointer(this.shader.aVelocity,
-                         this.buffers.aVelocity.itemSize,
-                         gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.aBirthday);
-  gl.vertexAttribPointer(this.shader.aBirthday,
-                         this.buffers.aBirthday.itemSize,
-                         gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.aTexCoord);
-  gl.vertexAttribPointer(this.shader.aTexCoord,
-                         this.buffers.aTexCoord.itemSize,
-                         gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
- 
   gl.drawArrays(gl.POINTS, 0, this.buffers.aInitialPos.numItems);
+
+  this.shader.disuse();
 }
 
 
@@ -2722,15 +2715,16 @@ function drawScreenAlignedQuad(shader, sourceFB, destFB) {
   
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, sourceFB.texture);
-  gl.uniform1i(shader.uSrc, 0);
+  gl.uniform1i(shader.uniforms.uSrc, 0);
   gl.bindFramebuffer(gl.FRAMEBUFFER, destFB);  // destFB may be null
   gl.viewport(0, 0, 
               destFB ? destFB.width : gl.viewportWidth, 
               destFB ? destFB.height : gl.viewportHeight);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, SAQ);
-  gl.vertexAttribPointer(shader.aPos, SAQ.itemSize, gl.FLOAT, false, 0, 0);
+  pointToAttribute(shader, {aPos: SAQ}, 'aPos');
   gl.drawArrays(gl.TRIANGLE_FAN, 0, SAQ.numItems);
+
+  shader.disuse();
 }
 
 
