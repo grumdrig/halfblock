@@ -898,18 +898,21 @@ function drawScene(camera) {
   mat4.rotateX(mvMatrix, camera.pitch);
   mat4.rotateY(mvMatrix, camera.yaw);
 
+  // Sky box / title demo
   if (PANORAMA.enable) {
+    var c = chunk(0,0);
+    gl.disable(gl.DEPTH_TEST);
     PANORAMA.render();
-    return;
+    gl.enable(gl.DEPTH_TEST);
+  } else {
+    // Because I'm enabling vertex arrays when I create them, which is stupid
+    // I have to wait until there's something in all of them before I can
+    // render the panorama. Fix this by using VAOs, pretty sure.
+    PANORAMA.enable = true;
   }
-
 
   mat4.translate(mvMatrix, [-camera.x, -camera.y, -camera.z]);
   mat4.translate(mvMatrix, [0, -EYE_HEIGHT, 0]);
-
-  // Sky box
-  
-  // todo...
 
   // Render the world
 
@@ -933,7 +936,6 @@ function drawScene(camera) {
   gl.uniformMatrix4fv(SHADER.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(SHADER.uMVMatrix, false, mvMatrix);
   
-
   // Render opaque blocks
   gl.disable(gl.CULL_FACE);  // don't cull backfaces (decals are 1-sided)
   for (var i in GAME.chunks) {
@@ -941,6 +943,7 @@ function drawScene(camera) {
     if (c.visible)
       c.opaqueBuffers.render(SHADER);
   }
+
 
   // Render entities
   // For now generate all the info each time
