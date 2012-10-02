@@ -83,6 +83,7 @@ var PICKED = null;
 var PICKED_FACE = 0;
 var PICK_MAX = 8;
 var WIREFRAME;
+var PANORAMA;
 
 var PARTICLES;
 
@@ -117,6 +118,7 @@ var VJUMP = 7.7;   // m/s
 var LIGHT_SUN = 6;
 
 var TERRAIN_TEXTURE;
+var PANORAMA_TEXTURE;
 var EYE_HEIGHT = 1.62;
 
 var KEYS = {};
@@ -895,6 +897,13 @@ function drawScene(camera) {
   mat4.identity(mvMatrix);
   mat4.rotateX(mvMatrix, camera.pitch);
   mat4.rotateY(mvMatrix, camera.yaw);
+
+  if (PANORAMA.enable) {
+    PANORAMA.render();
+    return;
+  }
+
+
   mat4.translate(mvMatrix, [-camera.x, -camera.y, -camera.z]);
   mat4.translate(mvMatrix, [0, -EYE_HEIGHT, 0]);
 
@@ -1799,8 +1808,8 @@ function cube(ntt) {
 }
 
 
-function Wireframe(shader) {
-  this.shader = shader;
+function Wireframe() {
+  this.shader = new Shader('wireframe');
 
   var vertices = [
     0,0,0, 1,0,0, 1,0,1, 0,0,1,  // bottom
@@ -1811,8 +1820,8 @@ function Wireframe(shader) {
     0,4, 1,5, 2,6, 3,7]; // sides
 
   for (var i = 1; i < vertices.length; i += 3) vertices[i] *= SY;
-  this.aPosBuffer = makeBuffer(vertices, 3);
-  this.indexBuffer = makeBuffer(indices, 1, false, true);
+  this.aPos = makeBuffer(vertices, 3);
+  this.indices = makeBuffer(indices, 1, false, true);
 }
 
 
@@ -1827,23 +1836,60 @@ Wireframe.prototype.render = function () {
   gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
   
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.aPosBuffer);
-  gl.vertexAttribPointer(this.shader.aPos,
-                         this.aPosBuffer.itemSize,
-                         gl.FLOAT, false, 0, 0);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  pointToAttribute(this.shader, this, 'aPos');
   
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-  gl.drawElements(gl.LINES, 
-                  this.indexBuffer.numItems,
-                  gl.UNSIGNED_SHORT, 
-                  0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indices);
+  gl.drawElements(gl.LINES, this.indices.numItems, gl.UNSIGNED_SHORT, 0);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
   
   gl.enable(gl.DEPTH_TEST);
   mvPopMatrix();
 }
 
+
+function Panorama() {
+  this.shader = new Shader('panorama');
+
+  var vertices = [].concat.apply([], [].concat.apply([], _FACES));
+  for (var i = 0; i < vertices.length; ++i) 
+    if (vertices[i] === 0)
+      vertices[i] = -1;
+  var textures = [];
+  var indices = [];
+  for (var i = 0; i < 6; ++i) {
+    var x = Math.floor(i / 3);
+    var y = (i % 2);
+    textures.push(x,y+1, x+1,y+1, y+1,x, x,y);
+    var j = i * 4;
+    indices.push(j, j+1, j+2,  j, j+2, j+3);
+  }
+
+  this.buffers = {
+    aPos: makeBuffer(vertices, 3),
+    aTexCoord: makeBuffer(textures, 2),
+    indices: makeBuffer(indices, 1, false, true)
+  };
+}
+
+
+Panorama.prototype.render = function () {
+  if (!PANORAMA_TEXTURE.loaded) return;
+
+  this.shader.use();
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, PANORAMA_TEXTURE);
+  gl.uniform1i(this.shader.uSampler, 0);
+
+  gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
+  
+  pointToAttribute(this.shader, this.buffers, 'aPos');
+  pointToAttribute(this.shader, this.buffers, 'aTexCoord');
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.indices);
+  gl.drawElements(gl.TRIANGLES, this.buffers.indices.numItems, 
+                  gl.UNSIGNED_SHORT, 0);
+}
 
 
 
@@ -1944,21 +1990,30 @@ function onLoad() {
     $('inventory').style.display = 'none';
   }
 
+  PANORAMA = new Panorama();
+
   SHADER = new Shader('shader');
   SHADER.use();
 
-  WIREFRAME = new Wireframe(new Shader('wireframe'));
+  WIREFRAME = new Wireframe();
 
   PARTICLES = new ParticleSystem();
 
-  // Init texture
+  // Init textures
+
+  PANORAMA_TEXTURE = gl.createTexture();
+  PANORAMA_TEXTURE.image = new Image();
+  PANORAMA_TEXTURE.image.onload = function() {
+    handleLoadedTexture(PANORAMA_TEXTURE)
+  }
+  PANORAMA_TEXTURE.image.src = 'panorama.jpg?v=2';
 
   TERRAIN_TEXTURE = gl.createTexture();
   TERRAIN_TEXTURE.image = new Image();
   TERRAIN_TEXTURE.image.onload = function() {
     handleLoadedTexture(TERRAIN_TEXTURE)
   }
-  TERRAIN_TEXTURE.image.src = 'terrain.png';
+  TERRAIN_TEXTURE.image.src = 'terrain.png?';
 
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
