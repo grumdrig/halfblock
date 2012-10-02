@@ -666,6 +666,8 @@ Chunk.prototype.update = function () {
       b.sheltered = !!tops[xz];
       if (!b.sheltered && b.type.opaque)
         tops[xz] = b;
+      if (b.type.update)
+        b.type.update.apply(b);
       if (b.dirtyLight || b.dirtyGeometry) {
         if (b.dirtyLight) uplights++;
         if (b.dirtyGeometry) upgeoms++;
@@ -675,8 +677,13 @@ Chunk.prototype.update = function () {
 
     this.lastUpdate = GAME.clock();
     this.generateBuffers(upgeoms === 0);
-    console.log('Update: ', this.chunkx, this.chunkz, ':', 
-                uplights, upgeoms, '->', this.nDirty);
+    message('Update: ', this.chunkx, this.chunkz, ':', 
+            uplights, upgeoms, '->', this.nDirty);
+  } else {
+    // Update some random block in this chunk
+    var b = this.blocks[Math.floor(Math.random() * NX * NY * NZ)];
+    if (b.type.update)
+      b.type.update.apply(b);
   }
 }
 
@@ -1467,8 +1474,6 @@ Block.prototype.invalidateGeometry = function (andNeighbors) {
 Block.prototype.update = function () {
   if (this.dirtyGeometry)
     delete this.vertices;
-  if (this.type.update)
-    this.type.update.apply(this);
   this.dirtyLight = this.dirtyGeometry = false;
   var light = [0,0,0,0];
   if (this.type.opaque) {
@@ -1651,8 +1656,6 @@ function geometryBlock(b) {
   for (var face = 0; face < 6; ++face) {
     var n = b.neighbor(face);
     var omit = n.type.opaque;
-    // This test isnt reliable until invalidate() invalidates neighbors 
-    // of translucents better...I think maybe?
     omit = omit || (b.type.translucent && b.type === n.type);
     if (!omit) {
       // Add vertices
@@ -1821,6 +1824,7 @@ function Wireframe() {
 
 
 function Entity(init1, init2) {
+  this.isEntity = true;
   var that = this;
   init1 = init1 || {};
   init2 = init2 || {};
@@ -3193,4 +3197,17 @@ Knobs.prototype.random = function () {
   this.arpeggioDelay = frnd(1.81);
   this.arpeggioFactor = rndr(0.09, 10);
   return this;
+}
+
+function hideMessages() { $('chat').style.display = 'none'; }
+function message() {
+  var div = document.createElement('div');
+  m = arguments[0];
+  for (var i = 1; i < arguments.length; ++i)
+    m += arguments[i];
+  div.innerText = '> ' + m;
+  $('chat').appendChild(div);
+  clearTimeout($('chat').hider);
+  $('chat').hider = setTimeout(hideMessages, 5000);
+  $('chat').style.display = 'block';
 }

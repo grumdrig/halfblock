@@ -313,8 +313,8 @@ body {
   position: absolute;
   height: 16px;
   width: 300px;
-  left: 16px;
-  top: 390px;
+  left: 80px;
+  top: 442px;
 }
 
 #tool {
@@ -323,6 +323,15 @@ body {
 
 #terrain {
   display: none;
+}
+
+#chat {
+  position: absolute;
+  width 800px;
+  height: 400px;
+  top: 0px;
+  left: 16px;
+  color: black;
 }
 
 </style>
@@ -343,6 +352,7 @@ body {
         <canvas id="tool" width="48" height="48"></canvas>
       </div>
       <div id="warning">&uarr;<br>Center mouse pointer to enable mouselook</div>
+      <div id="chat"></div>
     </div>
     <div id="options">
       <input id="anisotropic" type="checkbox">
