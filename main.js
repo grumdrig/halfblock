@@ -1857,9 +1857,9 @@ function Panorama() {
   var textures = [];
   var indices = [];
   for (var i = 0; i < 6; ++i) {
-    var x = Math.floor(i / 3);
-    var y = (i % 2);
-    textures.push(x,y+1, x+1,y+1, y+1,x, x,y);
+    var x = i % 3;
+    var y = Math.floor(i / 3);
+    textures.push(x/4,(y+1)/2, (x+1)/4,(y+1)/2, (x+1)/4,y/2, x/4,y/2);
     var j = i * 4;
     indices.push(j, j+1, j+2,  j, j+2, j+3);
   }
@@ -2006,14 +2006,14 @@ function onLoad() {
   PANORAMA_TEXTURE.image.onload = function() {
     handleLoadedTexture(PANORAMA_TEXTURE)
   }
-  PANORAMA_TEXTURE.image.src = 'panorama.jpg?v=2';
+  PANORAMA_TEXTURE.image.src = 'panorama.jpg?v=4';
 
   TERRAIN_TEXTURE = gl.createTexture();
   TERRAIN_TEXTURE.image = new Image();
   TERRAIN_TEXTURE.image.onload = function() {
     handleLoadedTexture(TERRAIN_TEXTURE)
   }
-  TERRAIN_TEXTURE.image.src = 'terrain.png?';
+  TERRAIN_TEXTURE.image.src = 'terrain.png?v=1';
 
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
