@@ -3210,4 +3210,5 @@ function message() {
   clearTimeout($('chat').hider);
   $('chat').hider = setTimeout(hideMessages, 5000);
   $('chat').style.display = 'block';
+  $('chat').scrollTop = $('chat').scrollHeight;
 }
