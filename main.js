@@ -71,7 +71,7 @@ var mvMatrixStack = [];
 var pMatrix = mat4.create();   // projection matrix
 
 var DB;
-var DB_VERSION = 6;
+var DB_VERSION = '8';
 
 var GAME;
 var AVATAR;  // hack-o alias for GAME.avatar because we use it so much
@@ -2004,6 +2004,15 @@ function onkeydown(event, count) {
   if (typeof count === 'undefined') 
     count = (KEYS[k] || 0) + 1;
 
+  if (event.ctrlKey && count === 1) {
+    if (c === 'S') {
+      GAME.save(function () { message('Game saved.'); });
+    } else if (c === 'L') {
+      GAME = loadGame(1, function () { message('Game loaded.'); });
+    }
+    return;
+  }
+
   KEYS[k] = KEYS[c] = count;
 
   if (count === 1) {
@@ -2411,7 +2420,6 @@ function sqr(x) { return x * x }
 
 
 function Game() {
-  this.id = 1;
   this.chunks = {};
   this.entities = {};
   this.timeOfDay = Math.PI;  // 0 is midnight, PI is noon
@@ -2427,20 +2435,22 @@ Game.prototype.clock = function () {
 
 
 Game.prototype.save = function (callback) {
+  var game = this;
   prepStorage(function () {
     var trans = DB.transaction(['games', 'chunks'], 'readwrite');
     var games = trans.objectStore('games');
     var chunks = trans.objectStore('chunks');
-    var ckeys = Object.keys(this.chunks);
+    var ckeys = Object.keys(game.chunks);
     var data = {
       timeOfDay: GAME.timeOfDay,
       nextEntityID: GAME.nextEntityID,
     };
-    var req = (typeof GAME.id === 'unknown') ? games.add(data) : 
+    var req = (typeof GAME.id === 'undefined') ? games.add(data) : 
       games.put(data, GAME.id);
     function putone() {
-      if (ckeys.length === 0)
-        chunks.put(ckeys.pop());
+      console.log('putone', ckeys);
+      if (ckeys.length > 0)
+        saveChunk(game.chunks[ckeys.pop()], putone);
       else
         callback();
     }        
@@ -2453,17 +2463,22 @@ function loadGame(gameid, callback) {
   prepStorage(function () {
     var trans = DB.transaction(['games', 'chunks'], 'readonly');
     var games = trans.objectStore('games');
-    games.get(gameid).onsuccess = function (e) {
-      var data = req.result.value;
+    var req = games.get(gameid);
+    req.onsuccess = function (e) {
+      if (!req.result) {
+        message('Load game failed!');
+        return;
+      }
       GAME = new Game();
       GAME.id = req.result.key;
-      GAME.timeOfDay = data.timeOfDay;
+      GAME.timeOfDay = req.result.timeOfDay;
 
       var chunks = trans.objectStore('chunks');
       chunks.openCursor().onsuccess = function(event) {
         var cursor = event.target.result;
         if (cursor) {
-          new Chunk(cursor.value);
+          var c = new Chunk(cursor.value);
+          c.nDirty = 1;
           cursor.continue();
         } else {
           callback();
@@ -2482,7 +2497,7 @@ function prepStorage(callback) {
   }
   window.indexedDB = window.indexedDB || window.webkitIndexedDB || 
     window.mozIndexedDB || window.msIndexedDB;
-  var req = window.indexedDB.open('dadacraft', 'Dadacraft');
+  var req = window.indexedDB.open('halfblock', 'Halfblock');
   req.onsuccess = function (e) {
     DB = e.target.result;
     DB.onerror = function (e) {
