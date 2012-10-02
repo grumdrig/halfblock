@@ -3199,7 +3199,7 @@ Knobs.prototype.random = function () {
   return this;
 }
 
-function hideMessages() { $('chat').style.display = 'none'; }
+
 function message() {
   var div = document.createElement('div');
   m = arguments[0];
@@ -3207,8 +3207,6 @@ function message() {
     m += arguments[i];
   div.innerText = '> ' + m;
   $('chat').appendChild(div);
-  clearTimeout($('chat').hider);
-  $('chat').hider = setTimeout(hideMessages, 5000);
-  $('chat').style.display = 'block';
+  $('chat').hider = setTimeout(function () { div.style.display = 'none' },5000);
   $('chat').scrollTop = $('chat').scrollHeight;
 }

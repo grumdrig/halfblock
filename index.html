@@ -332,10 +332,12 @@ body {
   top: 0px;
   left: 16px;
   color: black;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
-
+#clog {
+  height: 400px;
+}
 
 </style>
 </head>
@@ -355,7 +357,7 @@ body {
         <canvas id="tool" width="48" height="48"></canvas>
       </div>
       <div id="warning">&uarr;<br>Center mouse pointer to enable mouselook</div>
-      <div id="chat"></div>
+      <div id="chat"><div id="clog">&nbsp;</div></div>
     </div>
     <div id="options">
       <input id="anisotropic" type="checkbox">
