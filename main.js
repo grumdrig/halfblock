@@ -873,8 +873,6 @@ function drawScene(camera) {
 
   RENDER_STAT.start();
 
-  SHADER.use();
-
   // Start from scratch
   if (camera.y + EYE_HEIGHT >= 0)
     gl.clearColor(0.5 * GAME.sunlight, 
@@ -887,7 +885,7 @@ function drawScene(camera) {
 
   // Set up the projection
   var aspectRatio = gl.viewportWidth / gl.viewportHeight;
-  mat4.perspective(camera.horizontalFieldOfView / aspectRatio * 180 / Math.PI, 
+  mat4.perspective(camera.horizontalFieldOfView / aspectRatio * 180/Math.PI, 
                    aspectRatio,
                    0.1,                  // near clipping plane
                    camera.viewDistance,  // far clipping plane
@@ -900,7 +898,13 @@ function drawScene(camera) {
   mat4.translate(mvMatrix, [-camera.x, -camera.y, -camera.z]);
   mat4.translate(mvMatrix, [0, -EYE_HEIGHT, 0]);
 
+  // Sky box
+  
+  // todo...
+
   // Render the world
+
+  SHADER.use();
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
@@ -978,33 +982,8 @@ function drawScene(camera) {
   gl.disable(gl.CULL_FACE);
 
   // Render block selection indicator
-  if (PICKED) {
-    mvPushMatrix();
-    mat4.translate(mvMatrix, [PICKED.x, PICKED.y, PICKED.z]);
-
-    WIREFRAME.shader.use();
-
-    gl.lineWidth(2);
-
-    gl.uniformMatrix4fv(WIREFRAME.shader.uPMatrix,  false,  pMatrix);
-    gl.uniformMatrix4fv(WIREFRAME.shader.uMVMatrix, false, mvMatrix);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, WIREFRAME.aPosBuffer);
-    gl.vertexAttribPointer(WIREFRAME.shader.aPos,
-                           WIREFRAME.aPosBuffer.itemSize,
-                           gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, WIREFRAME.indexBuffer);
-    gl.drawElements(gl.LINES, 
-                    WIREFRAME.indexBuffer.numItems,
-                    gl.UNSIGNED_SHORT, 
-                    0);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-
-    gl.enable(gl.DEPTH_TEST);
-    mvPopMatrix();
-  }
+  if (PICKED)
+    WIREFRAME.render();
 
   RENDER_STAT.end();
 }
@@ -1820,7 +1799,9 @@ function cube(ntt) {
 }
 
 
-function Wireframe() {
+function Wireframe(shader) {
+  this.shader = shader;
+
   var vertices = [
     0,0,0, 1,0,0, 1,0,1, 0,0,1,  // bottom
     0,1,0, 1,1,0, 1,1,1, 0,1,1]; // top
@@ -1833,6 +1814,38 @@ function Wireframe() {
   this.aPosBuffer = makeBuffer(vertices, 3);
   this.indexBuffer = makeBuffer(indices, 1, false, true);
 }
+
+
+Wireframe.prototype.render = function () {
+  mvPushMatrix();
+  mat4.translate(mvMatrix, [PICKED.x, PICKED.y, PICKED.z]);
+  
+  this.shader.use();
+  
+  gl.lineWidth(2);
+  
+  gl.uniformMatrix4fv(this.shader.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(this.shader.uMVMatrix, false, mvMatrix);
+  
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.aPosBuffer);
+  gl.vertexAttribPointer(this.shader.aPos,
+                         this.aPosBuffer.itemSize,
+                         gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+  gl.drawElements(gl.LINES, 
+                  this.indexBuffer.numItems,
+                  gl.UNSIGNED_SHORT, 
+                  0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+  
+  gl.enable(gl.DEPTH_TEST);
+  mvPopMatrix();
+}
+
+
+
 
 
 function Entity(init1, init2) {
@@ -1934,8 +1947,7 @@ function onLoad() {
   SHADER = new Shader('shader');
   SHADER.use();
 
-  WIREFRAME = new Wireframe();
-  WIREFRAME.shader = new Shader('wireframe');
+  WIREFRAME = new Wireframe(new Shader('wireframe'));
 
   PARTICLES = new ParticleSystem();
 
@@ -2653,7 +2665,7 @@ function drawScreenAlignedQuad(shader, sourceFB, destFB) {
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, sourceFB.texture);
   gl.uniform1i(shader.uSrc, 0);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, destFB);  // maybe be null
+  gl.bindFramebuffer(gl.FRAMEBUFFER, destFB);  // destFB may be null
   gl.viewport(0, 0, 
               destFB ? destFB.width : gl.viewportWidth, 
               destFB ? destFB.height : gl.viewportHeight);
