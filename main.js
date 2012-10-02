@@ -311,6 +311,18 @@ for (var i in BLOCK_TYPES)
 
 var ENTITY_TYPES = {
   player: {
+    init: function () {
+      AVATAR = GAME.avatar = this;
+      initCamera(this);
+      this.mouselook = false;
+      this.lastHop = 0;
+      this.viewDistance = 100;
+      var b = topmost(this.x, this.z);
+      if (b)
+        this.y = b.y + 1;
+      else 
+        this.flying = true;
+    },
   },
   block: {
     geometry: cube,
@@ -1908,18 +1920,7 @@ function onLoad() {
   makeChunk(0, 0);
 
   // Create player
-  AVATAR = GAME.avatar = new Entity({type:'player', 
-                                     x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
-  initCamera(AVATAR);
-  AVATAR.mouselook = false;
-  AVATAR.lastHop = 0;
-  AVATAR.viewDistance = 100;
-
-  var b = topmost(AVATAR.x, AVATAR.z);
-  if (b)
-    AVATAR.y = b.y + 1;
-  else 
-    AVATAR.flying = true;
+  new Entity({type:'player', x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
 
   if (!initGL(canvas)) {
     $('warning').innerHTML = '<b>Error of errors! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
