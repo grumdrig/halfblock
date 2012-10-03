@@ -81,13 +81,6 @@ var SPREAD_OUT = false;   // create nearby chunks
 var PICKED = null;
 var PICKED_FACE = 0;
 var PICK_MAX = 8;
-var WIREFRAME;
-var PANORAMA;
-var SKY;
-
-var PARTICLES;
-
-var SHADER;
 
 // Map chunk dimensions
 var LOGNX = 4;
@@ -115,9 +108,6 @@ var VJUMP = 7.7;   // m/s
 
 var LIGHT_SUN = 6;
 
-var TERRAIN_TEXTURE;
-var PANORAMA_TEXTURE;
-var EYE_HEIGHT = 1.62;
 
 var KEYS = {};
 
@@ -287,7 +277,7 @@ var BLOCK_TYPES = {
       if (!this.horizontalFieldOfView)
         initCamera(this);
       if (!this.framebuffer) {
-        this.framebuffer = makeFramebufferForTile(TERRAIN_TEXTURE, 2, 2);
+        this.framebuffer = makeFramebufferForTile(gl.textures.terrain, 2, 2);
       }
       renderToFramebuffer(this, this.framebuffer);
     }
@@ -317,6 +307,7 @@ var ENTITY_TYPES = {
       this.mouselook = false;
       this.lastHop = 0;
       this.viewDistance = 100;
+      var EYE_HEIGHT = 1.62;
       this.eyeHeight = EYE_HEIGHT;
       var b = topmost(this.x, this.z);
       if (b)
@@ -403,31 +394,32 @@ function initGL(canvas) {
   }
 
   if (gl) {
-    PANORAMA = new Skybox('skybox', 'panorama');
+    gl.panorama = new Skybox('skybox', 'panorama');
     
-    SKY = new Skybox('skybox', 'sky');
+    gl.sky = new Skybox('skybox', 'sky');
     
-    SHADER = new Shader('shader');
+    gl.mainShader = new Shader('shader');
     
-    WIREFRAME = new Wireframe();
+    gl.wireframe = new Wireframe();
     
-    PARTICLES = new ParticleSystem();
+    gl.particles = new ParticleSystem();
     
     // Init textures
-    
-    PANORAMA_TEXTURE = gl.createTexture();
-    PANORAMA_TEXTURE.image = new Image();
-    PANORAMA_TEXTURE.image.onload = function() {
-      handleLoadedCubemapTexture(PANORAMA_TEXTURE)
+    gl.textures = {};
+
+    gl.textures.panorama = gl.createTexture();
+    gl.textures.panorama.image = new Image();
+    gl.textures.panorama.image.onload = function() {
+      handleLoadedCubemapTexture(gl.textures.panorama)
     }
-    PANORAMA_TEXTURE.image.src = 'panorama.jpg?v=8';
+    gl.textures.panorama.image.src = 'panorama.jpg?v=8';
     
-    TERRAIN_TEXTURE = gl.createTexture();
-    TERRAIN_TEXTURE.image = new Image();
-    TERRAIN_TEXTURE.image.onload = function() {
-      handleLoadedTexture(TERRAIN_TEXTURE)
+    gl.textures.terrain = gl.createTexture();
+    gl.textures.terrain.image = new Image();
+    gl.textures.terrain.image.onload = function() {
+      handleLoadedTexture(gl.textures.terrain)
     }
-    TERRAIN_TEXTURE.image.src = 'terrain.png?v=1';
+    gl.textures.terrain.image.src = 'terrain.png?v=1';
     
     return gl;
   }
@@ -942,8 +934,8 @@ function drawScene(camera) {
   mat4.rotateX(mvMatrix, camera.pitch);
   mat4.rotateY(mvMatrix, camera.yaw);
   mat4.rotateX(mvMatrix, GAME.timeOfDay);
-  SKY.render();
-  //PANORAMA.render();
+  gl.sky.render();
+  //gl.panorama.render();
 
   // Position for camera
   mat4.identity(mvMatrix);
@@ -954,15 +946,15 @@ function drawScene(camera) {
 
   // Render the world
 
-  SHADER.use();
+  gl.mainShader.use();
 
   gl.enable(gl.DEPTH_TEST);
 
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
-  gl.uniform1i(SHADER.uniforms.uSampler, 0);
-  gl.uniform1f(SHADER.uniforms.uFogDistance, 2 * camera.viewDistance / 5);
-  gl.uniform1f(SHADER.uniforms.uSunlight, GAME.sunlight);
+  gl.bindTexture(gl.TEXTURE_2D, gl.textures.terrain);
+  gl.uniform1i(gl.mainShader.uniforms.uSampler, 0);
+  gl.uniform1f(gl.mainShader.uniforms.uFogDistance, 2 * camera.viewDistance / 5);
+  gl.uniform1f(gl.mainShader.uniforms.uSunlight, GAME.sunlight);
 
   var headblock = block(camera.x, camera.y + camera.eyeHeight, camera.z);
   if (headblock.type.translucent) {
@@ -973,15 +965,15 @@ function drawScene(camera) {
   }
   
   // Set matrix uniforms
-  gl.uniformMatrix4fv(SHADER.uniforms.uPMatrix,  false,  pMatrix);
-  gl.uniformMatrix4fv(SHADER.uniforms.uMVMatrix, false, mvMatrix);
+  gl.uniformMatrix4fv(gl.mainShader.uniforms.uPMatrix,  false,  pMatrix);
+  gl.uniformMatrix4fv(gl.mainShader.uniforms.uMVMatrix, false, mvMatrix);
   
   // Render opaque blocks
   gl.disable(gl.CULL_FACE);  // don't cull backfaces (decals are 1-sided)
   for (var i in GAME.chunks) {
     var c = GAME.chunks[i];
     if (c.visible)
-      c.opaqueBuffers.render(SHADER);
+      c.opaqueBuffers.render(gl.mainShader);
   }
 
 
@@ -1014,30 +1006,30 @@ function drawScene(camera) {
     }
   }
   var nttBuffers = new BufferSet(nttSet);
-  nttBuffers.render(SHADER);
+  nttBuffers.render(gl.mainShader);
 
-  SHADER.disuse();
+  gl.mainShader.disuse();
 
   // Render particles
-  PARTICLES.render();
+  gl.particles.render();
 
   // Render translucent blocks
-  SHADER.use();
+  gl.mainShader.use();
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.enable(gl.BLEND);
   gl.enable(gl.CULL_FACE);  // cull backfaces!
   for (var i in GAME.chunks) {
     var c = GAME.chunks[i];
     if (c.visible)
-      c.translucentBuffers.render(SHADER);
+      c.translucentBuffers.render(gl.mainShader);
   }
   gl.disable(gl.BLEND);
   gl.disable(gl.CULL_FACE);
-  SHADER.disuse();
+  gl.mainShader.disuse();
 
   // Render block selection indicator
   if (PICKED)
-    WIREFRAME.render();
+    gl.wireframe.render();
 
   RENDER_STAT.end();
 }
@@ -1359,7 +1351,7 @@ function tick() {
   if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
   lastFrame = timeNow;
 
-  if (TERRAIN_TEXTURE.loaded) {
+  if (gl.textures.terrain.loaded) {
     if (KEYS.B) {
       blur(AVATAR, 256, 256);
     } else {
@@ -1376,7 +1368,7 @@ function tick() {
     ballistics(ntt, elapsed);
   }
 
-  PARTICLES.tick(elapsed);
+  gl.particles.tick(elapsed);
 
   if (timeNow > lastUpdate + UPDATE_PERIOD) {
     updateWorld();
@@ -1599,13 +1591,13 @@ Block.prototype.breakBlock = function () {
     drop.sourcetype = type;
   }
   for (var i = 0; i < 20; ++i) {
-    var p = PARTICLES.spawn({
+    var p = gl.particles.spawn({
       x0: this.x + 0.5, 
       y0: this.y + 0.5, 
       z0: this.z + 0.5,
       tile: tyle,
     });
-    //PARTICLES.bounceParticle(p);
+    //gl.particles.bounceParticle(p);
   }
   if (type.stack) {
     if (pos > 0)
@@ -1937,7 +1929,7 @@ Skybox.prototype.render = function () {
 
   if (this.shader.uniforms.hasOwnProperty('uSampler')) {
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, PANORAMA_TEXTURE);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, gl.textures.panorama);
     gl.uniform1i(this.shader.uniforms.uSampler, 0);
   }
 
@@ -2159,8 +2151,8 @@ function onkeydown(event, count) {
     if (c === 'K' && PICKED) {
       for (var i = 0; i < 10; ++i) {
         var f = PICKED.neighbor(PICKED_FACE);
-        var p = PARTICLES.spawn({x0: f.x+0.5, y0: f.y+0.5, z0: f.z+0.5});
-        PARTICLES.bounceParticle(p);
+        var p = gl.particles.spawn({x0: f.x+0.5, y0: f.y+0.5, z0: f.z+0.5});
+        gl.particles.bounceParticle(p);
       }
     }
 
@@ -2308,7 +2300,7 @@ ParticleSystem.prototype.spawn = function (init) {
     x0: 0,
     y0: 0,
     z0: 0,
-    id: PARTICLES.nextID++,
+    id: gl.particles.nextID++,
     birthday: GAME.clock() - rewind,
     life: rewind + 0.5 + Math.random() / 2,
     tile: {s:10, t:0},
@@ -2343,7 +2335,7 @@ ParticleSystem.prototype.tick = function (elapsed) {
     var p = this.particles[i];
     p.life -= elapsed;
     if (p.life < 0)
-      PARTICLES.remove(p);
+      this.remove(p);
   }
 }
 
@@ -2470,7 +2462,7 @@ ParticleSystem.prototype.render = function () {
   gl.uniformMatrix4fv(this.shader.uniforms.uMVMatrix, false, mvMatrix);
 
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
+  gl.bindTexture(gl.TEXTURE_2D, gl.textures.terrain);
   var ext = gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic");
   if (ext)
     gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 
