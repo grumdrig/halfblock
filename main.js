@@ -1917,8 +1917,7 @@ function Sky() {
 Sky.prototype.render = function () {
   this.shader.use();
   gl.disable(gl.DEPTH_TEST);
-  var invViewRot = mat4.toRotationMat(mat4.inverse(mvMatrix, mat4.create()),
-    mat3.create());
+  var invViewRot = mat4.toInverseMat3(mvMatrix, mat3.create());
   var invProj = mat4.inverse(pMatrix, mat4.create());
   gl.uniformMatrix3fv(this.shader.uniforms.uInvViewRot, false, invViewRot);
   gl.uniformMatrix4fv(this.shader.uniforms.uInvProj, false, invProj);
