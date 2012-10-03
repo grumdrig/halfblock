@@ -213,35 +213,14 @@
   }
 </script>
 
-<!-- panorama -->
-<script id="panorama-vs" type="x-shader/x-vertex">
-  attribute vec3 aPos;
-  attribute vec2 aTexCoord;
-  uniform mat4 uMVMatrix;
-  uniform mat4 uPMatrix;
-  varying vec2 vTexCoord;
-  void main(void) {
-    gl_Position = uPMatrix * uMVMatrix * vec4(aPos, 1.0);
-    vTexCoord = aTexCoord;
-  }
-</script>
-<script id="panorama-fs" type="x-shader/x-fragment">
-  precision mediump float;
-  varying vec2 vTexCoord;
-  uniform sampler2D uSampler;
-  void main(void) {
-    gl_FragColor = texture2D(uSampler, vTexCoord);
-  }
-</script>
-
-<!-- Sky -->
-<script id="sky-vs" type="x-shader/x-vertex">
+<!-- Skybox shaders -->
+<script id="skybox-vs" type="x-shader/x-vertex">
   attribute vec3 aPos;
   void main(void) {
     gl_Position = vec4(aPos, 1.0);
   }
 </script>
-<script id="sky-fs" type="x-shader/x-fragment">
+<script id="panorama-fs" type="x-shader/x-fragment">
   precision mediump float;
   uniform vec2 uViewport;
   uniform mat4 uInvProj;
@@ -251,8 +230,25 @@
     vec2 frag_coord = 2.0 * gl_FragCoord.xy / uViewport - 1.0;
     vec4 device_normal = vec4(frag_coord, 0.0, 1.0);
     vec3 eye_normal = normalize((uInvProj * device_normal).xyz);
-    vec3 world_normal = normalize(uInvViewRot*eye_normal);
+    vec3 world_normal = normalize(uInvViewRot * eye_normal);
     gl_FragColor = textureCube(uSampler, world_normal);
+  }
+</script>
+<script id="sky-fs" type="x-shader/x-fragment">
+  precision mediump float;
+  uniform vec2 uViewport;
+  uniform mat4 uInvProj;
+  uniform mat3 uInvViewRot;
+  void main(void) {
+    vec2 frag_coord = 2.0 * gl_FragCoord.xy / uViewport - 1.0;
+    vec4 device_normal = vec4(frag_coord, 0.0, 1.0);
+    vec3 eye_normal = normalize((uInvProj * device_normal).xyz);
+    vec3 world_normal = normalize(uInvViewRot*eye_normal);
+    if (fract(398.92 * world_normal.x + 293.211 * world_normal.y + 
+              298.12 * world_normal.z) < 0.1)
+      gl_FragColor = vec4(world_normal.zxy, 1);
+    else
+      gl_FragColor = vec4(world_normal, 1);
   }
 </script>
 

@@ -913,6 +913,7 @@ function drawScene(camera) {
   mat4.rotateY(mvMatrix, camera.yaw);
   mat4.rotateX(mvMatrix, GAME.timeOfDay);
   SKY.render();
+  //PANORAMA.render();
 
   // Position for camera
   mat4.identity(mvMatrix);
@@ -1895,67 +1896,20 @@ Wireframe.prototype.render = function () {
 }
 
 
-function Panorama() {
-  this.shader = new Shader('panorama');
-
-  var vertices = [].concat.apply([], [].concat.apply([], _FACES));
-  for (var i = 0; i < vertices.length; ++i) 
-    if (vertices[i] === 0)
-      vertices[i] = -1;
-  var textures = [];
-  var indices = [];
-  for (var i = 0; i < 6; ++i) {
-    var x = i % 3;
-    var y = Math.floor(i / 3);
-    textures.push(x/4,(y+1)/2, (x+1)/4,(y+1)/2, (x+1)/4,y/2, x/4,y/2);
-    var j = i * 4;
-    indices.push(j, j+1, j+2,  j, j+2, j+3);
-  }
-
-  this.buffers = {
-    aPos: makeBuffer(vertices, 3),
-    aTexCoord: makeBuffer(textures, 2),
-    indices: makeBuffer(indices, 1, false, true)
-  };
-}
-
-
-Panorama.prototype.render = function () {
-  if (!PANORAMA_TEXTURE.loaded) return;
-
-  this.shader.use();
-
-  gl.disable(gl.DEPTH_TEST);
-
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_CUBE_MAP, PANORAMA_TEXTURE);
-  gl.uniform1i(this.shader.uniforms.uSampler, 0);
-
-  gl.uniformMatrix4fv(this.shader.uniforms.uPMatrix,  false,  pMatrix);
-  gl.uniformMatrix4fv(this.shader.uniforms.uMVMatrix, false, mvMatrix);
-  
-  pointToAttribute(this.shader, this.buffers, 'aPos');
-  pointToAttribute(this.shader, this.buffers, 'aTexCoord');
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.indices);
-  gl.drawElements(gl.TRIANGLES, this.buffers.indices.numItems, 
-                  gl.UNSIGNED_SHORT, 0);
-  
-  this.shader.disuse();
-}
-
-
-function Sky() {
-  this.shader = new Shader('sky');
+function Skybox(vs, fs) {
+  this.shader = new Shader(vs, fs);
   this.buffer = makeBuffer([-1,-1, +1,-1, +1,+1, -1,+1], 2);
 }
 
-Sky.prototype.render = function () {
+Skybox.prototype.render = function () {
   this.shader.use();
   gl.disable(gl.DEPTH_TEST);
 
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_CUBE_MAP, PANORAMA_TEXTURE);
-  gl.uniform1i(this.shader.uniforms.uSampler, 0);
+  if (this.shader.uniforms.hasOwnProperty('uSampler')) {
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, PANORAMA_TEXTURE);
+    gl.uniform1i(this.shader.uniforms.uSampler, 0);
+  }
 
   var invViewRot = mat4.toInverseMat3(mvMatrix, mat3.create());
   var invProj = mat4.inverse(pMatrix, mat4.create());
@@ -2068,9 +2022,9 @@ function onLoad() {
     $('inventory').style.display = 'none';
   }
 
-  PANORAMA = new Panorama();
+  PANORAMA = new Skybox('skybox', 'panorama');
 
-  SKY = new Sky();
+  SKY = new Skybox('skybox', 'sky');
 
   SHADER = new Shader('shader');
 
