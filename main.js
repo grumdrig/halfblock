@@ -50,6 +50,9 @@
 // http://0xfe.blogspot.com/2011/08/generating-tones-with-web-audio-api.html
 // https://wiki.mozilla.org/Audio_Data_API (need to shim to Web Audio)
 
+// Cube mapping
+// http://stackoverflow.com/questions/10079368/how-would-i-do-environment-reflection-in-webgl-without-using-a-library-like-thre
+
 
 // TODO: race cars
 // TODO: flags
@@ -1381,7 +1384,7 @@ function readableTime(t) {
 
 function handleLoadedTexture(texture) {
   gl.bindTexture(gl.TEXTURE_2D, texture);
-  //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, 
                 gl.UNSIGNED_BYTE, texture.image);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -1393,6 +1396,38 @@ function handleLoadedTexture(texture) {
   texture.loaded = true;
 }
 
+
+function handleLoadedCubemapTexture(texture) {
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  for (var i = 0; i < 6; ++i) {
+    var x = i % 3, y = Math.floor(i / 3);
+    try {
+      var can = document.createElement('canvas');
+      can.width = texture.image.width / 4;
+      can.height = texture.image.height / 2;
+      var ctx = can.getContext('2d');
+      ctx.drawImage(texture.image, 
+                    x*can.width, y*can.height, can.width, can.height,
+                    0, 0, can.width, can.height);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, 
+                    gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, can);
+      //gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, 
+      //              gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+      //gl.texSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, 
+      //               x*256, y*256, 256, 256,
+      //               gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+    } catch (e) {
+      console.log(e, ''+e);
+    }
+  }
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+  texture.loaded = true;
+}
 
 function topmost(x, z) {
   for (var y = NY-1; y >= 0; --y) {
@@ -1893,7 +1928,7 @@ Panorama.prototype.render = function () {
   gl.disable(gl.DEPTH_TEST);
 
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, PANORAMA_TEXTURE);
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, PANORAMA_TEXTURE);
   gl.uniform1i(this.shader.uniforms.uSampler, 0);
 
   gl.uniformMatrix4fv(this.shader.uniforms.uPMatrix,  false,  pMatrix);
@@ -1917,6 +1952,11 @@ function Sky() {
 Sky.prototype.render = function () {
   this.shader.use();
   gl.disable(gl.DEPTH_TEST);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, PANORAMA_TEXTURE);
+  gl.uniform1i(this.shader.uniforms.uSampler, 0);
+
   var invViewRot = mat4.toInverseMat3(mvMatrix, mat3.create());
   var invProj = mat4.inverse(pMatrix, mat4.create());
   gl.uniformMatrix3fv(this.shader.uniforms.uInvViewRot, false, invViewRot);
@@ -2043,9 +2083,9 @@ function onLoad() {
   PANORAMA_TEXTURE = gl.createTexture();
   PANORAMA_TEXTURE.image = new Image();
   PANORAMA_TEXTURE.image.onload = function() {
-    handleLoadedTexture(PANORAMA_TEXTURE)
+    handleLoadedCubemapTexture(PANORAMA_TEXTURE)
   }
-  PANORAMA_TEXTURE.image.src = 'panorama.jpg?v=5';
+  PANORAMA_TEXTURE.image.src = 'panorama.jpg?v=8';
 
   TERRAIN_TEXTURE = gl.createTexture();
   TERRAIN_TEXTURE.image = new Image();
