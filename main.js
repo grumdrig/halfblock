@@ -1932,7 +1932,7 @@ Skybox.prototype.render = function () {
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, gl.textures.panorama);
     gl.uniform1i(this.shader.uniforms.uSampler, 0);
   } else {
-    gl.uniform1f(this.shader.uniforms.uSunlight, GAME.sunlight);
+    gl.uniform1f(this.shader.uniforms.uTimeOfDay, GAME.timeOfDay);
   }
 
   var invViewRot = mat4.toInverseMat3(mvMatrix, mat3.create());
