@@ -20,12 +20,6 @@
 // http://www.w3.org/TR/IndexedDB/
 // https://developer.mozilla.org/en-US/docs/IndexedDB/Using_IndexedDB
 
-// VAOs
-// http://people.eecs.ku.edu/~miller/Courses/OpenGL/HelloOpenGL/index.html
-// http://www.swiftless.com/tutorials/opengl4/4-opengl-4-vao.html
-// http://www.opengl.org/wiki/Tutorial2:_VAOs,_VBOs,_Vertex_and_Fragment_Shaders_(C_/_SDL)
-// http://stackoverflow.com/questions/7420092/efficient-vbo-allocation-in-webgl
-
 // Blur
 // http://www.gamerendering.com/2008/10/11/gaussian-blur-filter-shader/
 // http://www.geeks3d.com/20100909/shader-library-gaussian-blur-post-processing-filter-in-glsl/
@@ -907,9 +901,17 @@ function drawScene(camera) {
   mat4.rotateY(mvMatrix, camera.yaw);
 
   // Sky box / title demo
-  var c = chunk(0,0);
+  // Position for camera
+  mat4.identity(mvMatrix);
+  mat4.rotateX(mvMatrix, camera.pitch);
+  mat4.rotateY(mvMatrix, camera.yaw);
+  mat4.rotateX(mvMatrix, GAME.timeOfDay);
   PANORAMA.render();
 
+  // Position for camera
+  mat4.identity(mvMatrix);
+  mat4.rotateX(mvMatrix, camera.pitch);
+  mat4.rotateY(mvMatrix, camera.yaw);
   mat4.translate(mvMatrix, [-camera.x, -camera.y, -camera.z]);
   mat4.translate(mvMatrix, [0, -EYE_HEIGHT, 0]);
 
@@ -2017,7 +2019,7 @@ function onLoad() {
   PANORAMA_TEXTURE.image.onload = function() {
     handleLoadedTexture(PANORAMA_TEXTURE)
   }
-  PANORAMA_TEXTURE.image.src = 'panorama.jpg?v=4';
+  PANORAMA_TEXTURE.image.src = 'panorama.jpg?v=5';
 
   TERRAIN_TEXTURE = gl.createTexture();
   TERRAIN_TEXTURE.image = new Image();
