@@ -26,7 +26,9 @@
 // http://encelo.netsons.org/2008/03/23/i-love-depth-of-field/
 
 // Sky
+// http://codeflow.org/entries/2011/apr/13/advanced-webgl-part-2-sky-rendering/
 // http://www.flipcode.com/archives/Sky_Domes.shtml
+// http://http.developer.nvidia.com/GPUGems2/gpugems2_chapter16.html
 
 // Gamma
 // http://http.developer.nvidia.com/GPUGems3/gpugems3_ch24.html
@@ -78,6 +80,7 @@ var PICKED_FACE = 0;
 var PICK_MAX = 8;
 var WIREFRAME;
 var PANORAMA;
+var SKY;
 
 var PARTICLES;
 
@@ -906,7 +909,7 @@ function drawScene(camera) {
   mat4.rotateX(mvMatrix, camera.pitch);
   mat4.rotateY(mvMatrix, camera.yaw);
   mat4.rotateX(mvMatrix, GAME.timeOfDay);
-  PANORAMA.render();
+  SKY.render();
 
   // Position for camera
   mat4.identity(mvMatrix);
@@ -1906,6 +1909,28 @@ Panorama.prototype.render = function () {
 }
 
 
+function Sky() {
+  this.shader = new Shader('sky');
+  this.buffer = makeBuffer([-1,-1, +1,-1, +1,+1, -1,+1], 2);
+}
+
+Sky.prototype.render = function () {
+  this.shader.use();
+  gl.disable(gl.DEPTH_TEST);
+  var invViewRot = mat4.toRotationMat(mat4.inverse(mvMatrix, mat4.create()),
+    mat3.create());
+  var invProj = mat4.inverse(pMatrix, mat4.create());
+  gl.uniformMatrix3fv(this.shader.uniforms.uInvViewRot, false, invViewRot);
+  gl.uniformMatrix4fv(this.shader.uniforms.uInvProj, false, invProj);
+  gl.uniform2f(this.shader.uniforms.uViewport, 
+               gl.viewportWidth, gl.viewportHeight);
+
+  pointToAttribute(this.shader, {aPos: this.buffer}, 'aPos');
+  gl.drawArrays(gl.TRIANGLE_FAN, 0, this.buffer.numItems);
+
+  gl.enable(gl.DEPTH_TEST);
+  this.shader.disuse();
+}
 
 
 function Entity(init1, init2) {
@@ -2005,6 +2030,8 @@ function onLoad() {
   }
 
   PANORAMA = new Panorama();
+
+  SKY = new Sky();
 
   SHADER = new Shader('shader');
 
@@ -2686,6 +2713,7 @@ function renderToFramebuffer(camera, fb) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.disable(gl.SCISSOR_TEST);
 }
+
 
 var FB1, FB2, BLURH, BLURV, SAQ;
 //var BLIT;
