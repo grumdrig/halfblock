@@ -89,8 +89,6 @@ var PARTICLES;
 
 var SHADER;
 
-var FRAMEBUFFER;
-
 // Map chunk dimensions
 var LOGNX = 4;
 var LOGNY = 5;
@@ -319,6 +317,7 @@ var ENTITY_TYPES = {
       this.mouselook = false;
       this.lastHop = 0;
       this.viewDistance = 100;
+      this.eyeHeight = EYE_HEIGHT;
       var b = topmost(this.x, this.z);
       if (b)
         this.y = b.y + 1;
@@ -402,8 +401,38 @@ function initGL(canvas) {
   } catch (e) {
     problem = e;
   }
-  return gl;
+
+  if (gl) {
+    PANORAMA = new Skybox('skybox', 'panorama');
+    
+    SKY = new Skybox('skybox', 'sky');
+    
+    SHADER = new Shader('shader');
+    
+    WIREFRAME = new Wireframe();
+    
+    PARTICLES = new ParticleSystem();
+    
+    // Init textures
+    
+    PANORAMA_TEXTURE = gl.createTexture();
+    PANORAMA_TEXTURE.image = new Image();
+    PANORAMA_TEXTURE.image.onload = function() {
+      handleLoadedCubemapTexture(PANORAMA_TEXTURE)
+    }
+    PANORAMA_TEXTURE.image.src = 'panorama.jpg?v=8';
+    
+    TERRAIN_TEXTURE = gl.createTexture();
+    TERRAIN_TEXTURE.image = new Image();
+    TERRAIN_TEXTURE.image.onload = function() {
+      handleLoadedTexture(TERRAIN_TEXTURE)
+    }
+    TERRAIN_TEXTURE.image.src = 'terrain.png?v=1';
+    
+    return gl;
+  }
 }
+
 
 function $(id) { return document.getElementById(id) }
 
@@ -885,7 +914,7 @@ function drawScene(camera) {
   RENDER_STAT.start();
 
   // Start from scratch
-  if (camera.y + EYE_HEIGHT >= 0)
+  if (camera.y + camera.eyeHeight >= 0)
     gl.clearColor(0.5 * GAME.sunlight, 
                   0.8 * GAME.sunlight, 
                   0.98 * GAME.sunlight, 1);  // Clear color is sky blue
@@ -894,8 +923,9 @@ function drawScene(camera) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Set up the projection
-  var aspectRatio = gl.viewportWidth / gl.viewportHeight;
-  mat4.perspective(camera.horizontalFieldOfView / aspectRatio * 180/Math.PI, 
+  var aspectRatio = camera.aspectRatio || 
+    (gl.viewportWidth / gl.viewportHeight);
+  mat4.perspective(camera.horizontalFieldOfView/aspectRatio * 180/Math.PI, 
                    aspectRatio,
                    0.1,                  // near clipping plane
                    camera.viewDistance,  // far clipping plane
@@ -920,7 +950,7 @@ function drawScene(camera) {
   mat4.rotateX(mvMatrix, camera.pitch);
   mat4.rotateY(mvMatrix, camera.yaw);
   mat4.translate(mvMatrix, [-camera.x, -camera.y, -camera.z]);
-  mat4.translate(mvMatrix, [0, -EYE_HEIGHT, 0]);
+  mat4.translate(mvMatrix, [0, -camera.eyeHeight, 0]);
 
   // Render the world
 
@@ -931,10 +961,10 @@ function drawScene(camera) {
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, TERRAIN_TEXTURE);
   gl.uniform1i(SHADER.uniforms.uSampler, 0);
-  gl.uniform1f(SHADER.uniforms.uFogDistance, 2 * AVATAR.viewDistance / 5);
+  gl.uniform1f(SHADER.uniforms.uFogDistance, 2 * camera.viewDistance / 5);
   gl.uniform1f(SHADER.uniforms.uSunlight, GAME.sunlight);
 
-  var headblock = block(AVATAR.x, AVATAR.y + EYE_HEIGHT, AVATAR.z);
+  var headblock = block(camera.x, camera.y + camera.eyeHeight, camera.z);
   if (headblock.type.translucent) {
     var rgba = headblock.type.translucent;
     $('stats').style.backgroundColor = 'rgba(' + rgba.join(',') + ')';
@@ -1258,7 +1288,7 @@ function ballistics(e, elapsed) {
 
 function pickp() { 
   return pick(AVATAR.x, 
-              AVATAR.y + EYE_HEIGHT, 
+              AVATAR.y + AVATAR.eyeHeight, 
               AVATAR.z, 
               AVATAR.pitch, 
               AVATAR.yaw);
@@ -1770,7 +1800,7 @@ function geometryBillboard(b) {
   // "Look" vector pointing at player
   var l = vec3.create([
     AVATAR.x - b.x, 
-    AVATAR.y + EYE_HEIGHT - b.y, 
+    AVATAR.y + AVATAR.eyeHeight - b.y, 
     AVATAR.z - b.z]);
   vec3.normalize(l);
 
@@ -1985,6 +2015,7 @@ function initCamera(cam) {
   i('viewDistance', 20);
   i('pitch', 0);
   i('yaw', 0);
+  i('eyeHeight', 0);
 }
 
 
@@ -2021,32 +2052,6 @@ function onLoad() {
     $('reticule').style.display = 'none';
     $('inventory').style.display = 'none';
   }
-
-  PANORAMA = new Skybox('skybox', 'panorama');
-
-  SKY = new Skybox('skybox', 'sky');
-
-  SHADER = new Shader('shader');
-
-  WIREFRAME = new Wireframe();
-
-  PARTICLES = new ParticleSystem();
-
-  // Init textures
-
-  PANORAMA_TEXTURE = gl.createTexture();
-  PANORAMA_TEXTURE.image = new Image();
-  PANORAMA_TEXTURE.image.onload = function() {
-    handleLoadedCubemapTexture(PANORAMA_TEXTURE)
-  }
-  PANORAMA_TEXTURE.image.src = 'panorama.jpg?v=8';
-
-  TERRAIN_TEXTURE = gl.createTexture();
-  TERRAIN_TEXTURE.image = new Image();
-  TERRAIN_TEXTURE.image.onload = function() {
-    handleLoadedTexture(TERRAIN_TEXTURE)
-  }
-  TERRAIN_TEXTURE.image.src = 'terrain.png?v=1';
 
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
@@ -2696,6 +2701,28 @@ function makeFramebufferForTile(texture, s, t) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   return fb;
 }
+
+function takePanorama() {
+  var cam = {
+    horizontalFieldOfView: 2 * Math.PI,
+    viewDistance: 20,
+    pitch: 0,
+    yaw: 0,
+    aspectRatio: 4,
+    x: AVATAR.x,
+    y: AVATAR.y,
+    z: AVATAR.z
+  }
+  var can = document.createElement('canvas');
+  can.width = 1024;
+  can.height = 256;
+  var ogl = gl;
+  initGL(can);
+  drawScene(cam);
+  gl = ogl;
+  document.body.appendChild(can);
+}
+
 
 function renderToFramebuffer(camera, fb) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
