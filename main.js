@@ -406,8 +406,8 @@ function initGL(canvas) {
     
     // Init textures
     gl.textures = {
-      panarama: loadTexture('panorama.jpg', true),
-      terrain:  loadTexture('terrain.png');
+      panorama: loadTexture('panorama.jpg', true),
+      terrain:  loadTexture('terrain.png')
     };
 
     return gl;
@@ -1403,8 +1403,8 @@ function loadTexture(filename, cubemap) {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, !!cubemap);
     gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     if (cubemap) {
       // Unpack separate images from 6-sided grid
       for (var i = 0; i < 6; ++i) {
@@ -1426,7 +1426,8 @@ function loadTexture(filename, cubemap) {
     gl.bindTexture(target, null);
     texture.loaded = true;
   }
-  gl.textures.panorama.image.src = filename + '?nocache=' + Math.random();
+  texture.image.src = filename + '?nocache=' + Math.random();
+  return texture;
 }
 
 
@@ -2002,6 +2003,15 @@ function onLoad() {
   var cancan = $('cancan');
   var canvas = $('canvas');
 
+  if (!initGL(canvas)) {
+    $('warning').innerHTML = '<b>Error of errors! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
+    $('warning').style.display = 'block';
+    $('warning').style.width = '80%';
+    $('warning').style.left = '10%';
+    $('reticule').style.display = 'none';
+    $('inventory').style.display = 'none';
+  }
+
   // Polyfills
   cancan.requestFullscreen = 
     cancan.requestFullscreen || 
@@ -2023,15 +2033,6 @@ function onLoad() {
   // Create player
   new Entity({type:'player', x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
 
-  if (!initGL(canvas)) {
-    $('warning').innerHTML = '<b>Error of errors! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
-    $('warning').style.display = 'block';
-    $('warning').style.width = '80%';
-    $('warning').style.left = '10%';
-    $('reticule').style.display = 'none';
-    $('inventory').style.display = 'none';
-  }
-
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
   window.addEventListener('mousemove', onmousemove, true);
@@ -2050,7 +2051,7 @@ function onLoad() {
   document.addEventListener('mozpointerlockerror', pointerLockError, false);
   document.addEventListener('webkitpointerlockerror', pointerLockError, false);
 
-  if (cancan.requestPointerLock) {
+  if (gl && cancan.requestPointerLock) {
     $('warning').innerHTML = 'Click game or hit TAB to activate mouselook';
     pointerLockChange({});
   } else {
