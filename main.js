@@ -2482,7 +2482,7 @@ function resizeCanvas(w, h) {
   // This needs to be called before initGL
   canvas.width = w;
   canvas.height = h;
-  var bigs = 'cancan canvas hud stats options'.split(' ');
+  var bigs = 'cancan hud stats options'.split(' ');
   for (var i = 0; i < bigs.length; ++i) {
     $(bigs[i]).style.width = w + 'px';
     $(bigs[i]).style.height = h + 'px';
