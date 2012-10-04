@@ -405,22 +405,11 @@ function initGL(canvas) {
     gl.particles = new ParticleSystem();
     
     // Init textures
-    gl.textures = {};
+    gl.textures = {
+      panarama: loadTexture('panorama.jpg', true),
+      terrain:  loadTexture('terrain.png');
+    };
 
-    gl.textures.panorama = gl.createTexture();
-    gl.textures.panorama.image = new Image();
-    gl.textures.panorama.image.onload = function() {
-      handleLoadedCubemapTexture(gl.textures.panorama)
-    }
-    gl.textures.panorama.image.src = 'panorama.jpg?v=8';
-    
-    gl.textures.terrain = gl.createTexture();
-    gl.textures.terrain.image = new Image();
-    gl.textures.terrain.image.onload = function() {
-      handleLoadedTexture(gl.textures.terrain)
-    }
-    gl.textures.terrain.image.src = 'terrain.png?v=1';
-    
     return gl;
   }
 }
@@ -1405,51 +1394,47 @@ function readableTime(t) {
 }
 
 
+function loadTexture(filename, cubemap) {
+  var target = cubemap ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
+  var texture = gl.createTexture();
+  texture.image = new Image();
+  texture.image.onload = function() {
+    gl.bindTexture(target, texture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, !!cubemap);
+    gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    if (cubemap) {
+      // Unpack separate images from 6-sided grid
+      for (var i = 0; i < 6; ++i) {
+        var x = i % 3, y = Math.floor(i / 3);
+        var can = document.createElement('canvas');
+        can.width = texture.image.width / 4;
+        can.height = texture.image.height / 2;
+        var ctx = can.getContext('2d');
+        ctx.drawImage(texture.image, 
+                      x * can.width, y * can.height, can.width, can.height,
+                      0, 0, can.width, can.height);
+        gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, 
+                      gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, can);
+      }
+    } else {
+      gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, 
+                    texture.image);
+    }
+    gl.bindTexture(target, null);
+    texture.loaded = true;
+  }
+  gl.textures.panorama.image.src = filename + '?nocache=' + Math.random();
+}
+
+
 function handleLoadedTexture(texture) {
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, 
-                gl.UNSIGNED_BYTE, texture.image);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  // These help not at all with texture atlas bleeding problem
-  //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.bindTexture(gl.TEXTURE_2D, null);
-  texture.loaded = true;
 }
 
 
 function handleLoadedCubemapTexture(texture) {
-  gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  for (var i = 0; i < 6; ++i) {
-    var x = i % 3, y = Math.floor(i / 3);
-    try {
-      var can = document.createElement('canvas');
-      can.width = texture.image.width / 4;
-      can.height = texture.image.height / 2;
-      var ctx = can.getContext('2d');
-      ctx.drawImage(texture.image, 
-                    x*can.width, y*can.height, can.width, can.height,
-                    0, 0, can.width, can.height);
-      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, 
-                    gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, can);
-      //gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, 
-      //              gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
-      //gl.texSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, 
-      //               x*256, y*256, 256, 256,
-      //               gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
-    } catch (e) {
-      console.log(e, ''+e);
-    }
-  }
-  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
-  texture.loaded = true;
 }
 
 function topmost(x, z) {
