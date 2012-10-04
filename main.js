@@ -923,7 +923,7 @@ function drawScene(camera) {
   mat4.rotateX(mvMatrix, camera.pitch);
   mat4.rotateY(mvMatrix, camera.yaw);
   //mat4.rotateX(mvMatrix, GAME.timeOfDay);
-  gl.panorama.render();
+  gl.sky.render();
 
   // Position for camera
   mat4.identity(mvMatrix);
@@ -1341,7 +1341,8 @@ function tick() {
 
   if (gl.textures.terrain.loaded) {
     if (KEYS.B) {
-      blur(AVATAR, 256, 256);
+      //blur(AVATAR, 256, 256);
+      blurryIntro(AVATAR, 1024, 512);
     } else {
       gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
       drawScene(AVATAR);
@@ -2755,10 +2756,8 @@ function renderToFramebuffer(camera, fb) {
 
 
 var FB1, FB2, BLURH, BLURV, SAQ;
-//var BLIT;
+var BLIT;
 function blur(camera, w, h) {
-  w = w || gl.viewportWidth;
-  h = h || gl.viewportHeight;
   if (!FB1) {
     FB1 = makeFramebuffer(w, h, true, false);
     FB2 = makeFramebuffer(w, h, false, false);
@@ -2774,10 +2773,51 @@ function blur(camera, w, h) {
   
   gl.disable(gl.DEPTH_TEST);
   
-  //drawScreenAlignedQuad(BLIT, FB1);
   drawScreenAlignedQuad(BLURH, FB1, FB2);
   drawScreenAlignedQuad(BLURV, FB2);
 }
+
+function blurryIntro(camera, w, h) {
+  if (!FB1) {
+    FB1 = makeFramebuffer(w, h, true, false);
+    FB2 = makeFramebuffer(w, h, false, false);
+    BLURH = new Shader('blur', 'blur-horizontal');
+    BLURV = new Shader('blur', 'blur-vertical');
+    SAQ = makeBuffer([-1,-1, +1,-1, +1,+1, -1,+1], 2);
+    //BLIT = new Shader('blit');
+  }
+  gl.enable(gl.DEPTH_TEST);
+
+  //renderToFramebuffer(camera, FB1);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, FB1);
+  gl.viewport(0, 0, w, h);
+
+  // Set up the projection
+  var aspectRatio = camera.aspectRatio || 
+    (gl.viewportWidth / gl.viewportHeight);
+  mat4.perspective(camera.horizontalFieldOfView/aspectRatio * 180/Math.PI, 
+                   aspectRatio,
+                   0.1,                  // near clipping plane
+                   camera.viewDistance,  // far clipping plane
+                   pMatrix);
+
+  // Position for camera
+  mat4.identity(mvMatrix);
+  mat4.rotateX(mvMatrix, Math.cos(GAME.clock() / 20)/10);
+  mat4.rotateY(mvMatrix, GAME.clock() / 80);
+
+  gl.panorama.render();
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+
+  gl.disable(gl.DEPTH_TEST);
+
+  drawScreenAlignedQuad(BLURH, FB1, FB2);
+  drawScreenAlignedQuad(BLURV, FB2);
+}
+
 
 function drawScreenAlignedQuad(shader, sourceFB, destFB) {
   shader.use();
