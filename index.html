@@ -275,7 +275,7 @@ body {
 }
 
 
-.viewport {
+#cancan, #canvas, #hud, #stats, #options {
   width: 854px;
   height: 480px;
 }
@@ -389,11 +389,11 @@ body {
 
 
 <body onload="onLoad()">
-  <div id="cancan" class="viewport">
-    <canvas id="canvas" width="854" height="480" class="viewport"></canvas>
-    <div id="hud" class="viewport">
+  <div id="cancan">
+    <canvas id="canvas" width="854" height="480"></canvas>
+    <div id="hud">
       <div id="logo"><img src="logo.png"></div>
-      <div id="stats" class="viewport"></div>
+      <div id="stats"></div>
       <div id="reticule">
         <img src="reticule.png" height="24" width="24">
       </div>
@@ -404,7 +404,7 @@ body {
       <div id="warning">&uarr;<br>Center mouse pointer to enable mouselook</div>
       <div id="chat"><div id="clog">&nbsp;</div></div>
     </div>
-    <div id="options" class="viewport">
+    <div id="options">
       <input id="anisotropic" type="checkbox">
       <label for="anisotropic">Anisotropic filtering</label>
     </div>

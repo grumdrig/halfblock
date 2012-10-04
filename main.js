@@ -2003,6 +2003,8 @@ function onLoad() {
   var cancan = $('cancan');
   var canvas = $('canvas');
 
+  //resizeCanvas(1024, 256);
+
   if (!initGL(canvas)) {
     $('warning').innerHTML = '<b>Error of errors! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
     $('warning').style.display = 'block';
@@ -2086,6 +2088,8 @@ function onkeydown(event, count) {
 
   var k = event.keyCode;
   var c = String.fromCharCode(k).toUpperCase();
+  if (112 <= k && k < 124)
+    c = 'F' + (k - 111);
 
   if (typeof count === 'undefined') 
     count = (KEYS[k] || 0) + 1;
@@ -2165,6 +2169,12 @@ function onkeydown(event, count) {
       var tooli = AVATAR.tool ? 
         (NBLOCKTYPES + AVATAR.tool.index - 1) % NBLOCKTYPES : NBLOCKTYPES - 1;
       pickTool(tooli);
+    }
+
+    if (c === 'F1') {
+      var hud = $('hud');
+      hud.hide = !hud.hide;
+      hud.style.display = hud.hide ? 'none' : 'block';
     }
 
     // Number keys select first 10 tools
@@ -2465,6 +2475,18 @@ ParticleSystem.prototype.render = function () {
   gl.drawArrays(gl.POINTS, 0, this.buffers.aInitialPos.numItems);
 
   this.shader.disuse();
+}
+
+
+function resizeCanvas(w, h) {
+  // This needs to be called before initGL
+  canvas.width = w;
+  canvas.height = h;
+  var bigs = 'cancan canvas hud stats options'.split(' ');
+  for (var i = 0; i < bigs.length; ++i) {
+    $(bigs[i]).style.width = w + 'px';
+    $(bigs[i]).style.height = h + 'px';
+  }
 }
 
 
