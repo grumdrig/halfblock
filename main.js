@@ -922,7 +922,7 @@ function drawScene(camera) {
   mat4.identity(mvMatrix);
   mat4.rotateX(mvMatrix, camera.pitch);
   mat4.rotateY(mvMatrix, camera.yaw);
-  mat4.rotateX(mvMatrix, GAME.timeOfDay);
+  //mat4.rotateX(mvMatrix, GAME.timeOfDay);
   gl.sky.render();
   //gl.panorama.render();
 
@@ -942,7 +942,7 @@ function drawScene(camera) {
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, gl.textures.terrain);
   gl.uniform1i(gl.mainShader.uniforms.uSampler, 0);
-  gl.uniform1f(gl.mainShader.uniforms.uFogDistance, 2 * camera.viewDistance / 5);
+  gl.uniform1f(gl.mainShader.uniforms.uFogDistance, 2 * camera.viewDistance /5);
   gl.uniform1f(gl.mainShader.uniforms.uSunlight, GAME.sunlight);
 
   var headblock = block(camera.x, camera.y + camera.eyeHeight, camera.z);
@@ -1916,6 +1916,8 @@ Skybox.prototype.render = function () {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, gl.textures.panorama);
     gl.uniform1i(this.shader.uniforms.uSampler, 0);
+  } else {
+    gl.uniform1f(this.shader.uniforms.uTimeOfDay, GAME.timeOfDay);
   }
 
   var invViewRot = mat4.toInverseMat3(mvMatrix, mat3.create());
