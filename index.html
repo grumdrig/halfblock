@@ -240,7 +240,7 @@
   uniform mat4 uInvProj;
   uniform mat3 uInvViewRot;
   uniform float uTimeOfDay;
-  const vec4 skyColor = vec4(0.5,0.8,0.98,0);
+  const vec4 skyColor = vec4(0.5, 0.8, 0.98, 1.0);
   const float sunset = 0.2;
   void main(void) {
     vec2 frag_coord = 2.0 * gl_FragCoord.xy / uViewport - 1.0;

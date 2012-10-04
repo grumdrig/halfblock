@@ -380,11 +380,11 @@ function updatePlant() {
 }
 
 
-function initGL(canvas) {
+function initGL(canvas, opts) {
   var problem = '';
   try {
-    gl = canvas.getContext('experimental-webgl') ||
-      canvas.getContext('webgl');
+    gl = canvas.getContext('experimental-webgl', opts) ||
+      canvas.getContext('webgl', opts);
     if (gl) {
       gl.viewportWidth = canvas.width;
       gl.viewportHeight = canvas.height;
@@ -923,7 +923,6 @@ function drawScene(camera) {
   mat4.rotateX(mvMatrix, camera.pitch);
   mat4.rotateY(mvMatrix, camera.yaw);
   //mat4.rotateX(mvMatrix, GAME.timeOfDay);
-  //gl.sky.render();
   gl.panorama.render();
 
   // Position for camera
@@ -1394,30 +1393,38 @@ function readableTime(t) {
 }
 
 
+
 function loadTexture(filename, cubemap) {
   var target = cubemap ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
   var texture = gl.createTexture();
   texture.image = new Image();
   texture.image.onload = function() {
     gl.bindTexture(target, texture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, !!cubemap);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);//!!cubemap);
     gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     if (cubemap) {
-      // Unpack separate images from 6-sided grid
+      // Unpack separate images from 6-side grid strip
+      var facings = [
+        gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,  // front
+        gl.TEXTURE_CUBE_MAP_NEGATIVE_X,  // left
+        gl.TEXTURE_CUBE_MAP_POSITIVE_Z,  // back
+        gl.TEXTURE_CUBE_MAP_POSITIVE_X,  // right
+        gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,  // bottom
+        gl.TEXTURE_CUBE_MAP_POSITIVE_Y,  // top
+      ];
       for (var i = 0; i < 6; ++i) {
-        var x = i % 3, y = Math.floor(i / 3);
         var can = document.createElement('canvas');
-        can.width = texture.image.width / 3;
-        can.height = texture.image.height / 2;
+        can.width = texture.image.height;
+        can.height = texture.image.height;
         var ctx = can.getContext('2d');
         ctx.drawImage(texture.image, 
-                      x * can.width, y * can.height, can.width, can.height,
+                      i * can.width, 0, can.width, can.height,
                       0, 0, can.width, can.height);
-        gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, 
-                      gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, can);
+        gl.texImage2D(facings[i], 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, 
+                      can);
       }
     } else {
       gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, 
@@ -2003,9 +2010,19 @@ function onLoad() {
   var cancan = $('cancan');
   var canvas = $('canvas');
 
-  //resizeCanvas(1024, 256);
+  var glopts = {};
+  
+  /*
+  Skybox-screenshottable
+  resizeCanvas(512, 256);
+  setTimeout(function(){
+    AVATAR.horizontalFieldOfView = Math.PI * 2;
+    AVATAR.aspectRatio = 4;
+  }, 0);
+  glopts.preserveDrawingBuffer = true;
+  */
 
-  if (!initGL(canvas)) {
+  if (!initGL(canvas, glopts)) {
     $('warning').innerHTML = '<b>Error of errors! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
     $('warning').style.display = 'block';
     $('warning').style.width = '80%';
