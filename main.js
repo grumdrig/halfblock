@@ -923,8 +923,8 @@ function drawScene(camera) {
   mat4.rotateX(mvMatrix, camera.pitch);
   mat4.rotateY(mvMatrix, camera.yaw);
   //mat4.rotateX(mvMatrix, GAME.timeOfDay);
-  gl.sky.render();
-  //gl.panorama.render();
+  //gl.sky.render();
+  gl.panorama.render();
 
   // Position for camera
   mat4.identity(mvMatrix);
@@ -1410,7 +1410,7 @@ function loadTexture(filename, cubemap) {
       for (var i = 0; i < 6; ++i) {
         var x = i % 3, y = Math.floor(i / 3);
         var can = document.createElement('canvas');
-        can.width = texture.image.width / 4;
+        can.width = texture.image.width / 3;
         can.height = texture.image.height / 2;
         var ctx = can.getContext('2d');
         ctx.drawImage(texture.image, 
