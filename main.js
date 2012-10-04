@@ -2177,6 +2177,12 @@ function onkeydown(event, count) {
       hud.style.display = hud.hide ? 'none' : 'block';
     }
 
+    if (c === 'F3') {
+      var stats = $('stats');
+      stats.hide = !stats.hide;
+      stats.style.display = stats.hide ? 'none' : 'block';
+    }
+
     // Number keys select first 10 tools
     var t = k - '0'.charCodeAt(0);
     if (0 <= t && t <= 9)

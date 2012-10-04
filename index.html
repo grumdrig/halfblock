@@ -293,19 +293,13 @@ body {
   display: none;
 }
 
-#hud, #options {
+#hud, #stats, #options {
   font-family: Inconsolata, Helvetica;
   font-size: 18px;
   position: absolute;
   top: 0;
   left: 0;
   color: white;
-}
-
-#stats {
-  position: absolute;
-  left: 0;
-  top: 0;
 }
 
 #reticule {
@@ -393,7 +387,6 @@ body {
     <canvas id="canvas" width="854" height="480"></canvas>
     <div id="hud">
       <div id="logo"><img src="logo.png"></div>
-      <div id="stats"></div>
       <div id="reticule">
         <img src="reticule.png" height="24" width="24">
       </div>
@@ -404,6 +397,7 @@ body {
       <div id="warning">&uarr;<br>Center mouse pointer to enable mouselook</div>
       <div id="chat"><div id="clog">&nbsp;</div></div>
     </div>
+    <div id="stats"></div>
     <div id="options">
       <input id="anisotropic" type="checkbox">
       <label for="anisotropic">Anisotropic filtering</label>
