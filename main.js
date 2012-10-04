@@ -406,7 +406,7 @@ function initGL(canvas, opts) {
     
     // Init textures
     gl.textures = {
-      panorama: loadTexture('panorama.jpg', true),
+      panorama: loadTexture('panorama.png', true),
       terrain:  loadTexture('terrain.png')
     };
 
@@ -2006,18 +2006,34 @@ function initCamera(cam) {
 }
 
 
+function takePanorama() {
+  AVATAR.pitch = AVATAR.yaw = 0;
+  function snap() {
+    drawScene(AVATAR);
+    window.open(canvas.toDataURL());
+    AVATAR.yaw += Math.PI/2;
+  }
+  snap();
+  snap();
+  snap();
+  snap();
+}  
+
+
+
 function onLoad() {
   var cancan = $('cancan');
   var canvas = $('canvas');
 
   var glopts = {};
   
+  // Skybox-screenshottable with takePanorama()
+  // then copypaste into acorn
   /*
-  Skybox-screenshottable
-  resizeCanvas(512, 256);
+  resizeCanvas(256, 256);
   setTimeout(function(){
-    AVATAR.horizontalFieldOfView = Math.PI * 2;
-    AVATAR.aspectRatio = 4;
+    AVATAR.horizontalFieldOfView = Math.PI/2;
+    AVATAR.aspectRatio = 1;
   }, 0);
   glopts.preserveDrawingBuffer = true;
   */
@@ -2726,28 +2742,6 @@ function makeFramebufferForTile(texture, s, t) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   return fb;
 }
-
-function takePanorama() {
-  var cam = {
-    horizontalFieldOfView: 2 * Math.PI,
-    viewDistance: 20,
-    pitch: 0,
-    yaw: 0,
-    aspectRatio: 4,
-    x: AVATAR.x,
-    y: AVATAR.y,
-    z: AVATAR.z
-  }
-  var can = document.createElement('canvas');
-  can.width = 1024;
-  can.height = 256;
-  var ogl = gl;
-  initGL(can);
-  drawScene(cam);
-  gl = ogl;
-  document.body.appendChild(can);
-}
-
 
 function renderToFramebuffer(camera, fb) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
