@@ -309,27 +309,12 @@ var ENTITY_TYPES = {
       this.radius = 0.5 * this.type.scale;
       this.rebound = 0.75;
     },
-    update: function (e) {
-      if (age(e) > 1) {
-        var d = distance(center(AVATAR), e);
-        if (d < AVATAR.radius) {
-          new Sound('pop');
-          e.die();
-        } else if (d < 3) {
-          e.flying = true;
-          e.dx = AVATAR.x - e.x;
-          e.dy = AVATAR.y + 1 - e.y;
-          e.dz = AVATAR.z - e.z;
-          e.dx *= e.FLY_MAX / d;
-          e.dy *= e.FLY_MAX / d;
-          e.dz *= e.FLY_MAX / d;
-        }
-      }
-    },
+    collectable: true,
     scale: 0.25,
   },
   soybean: {
     tile: [9,2],
+    collectable: true,
     init: function () {
       hopEntity(this);
     },
@@ -1338,7 +1323,27 @@ function tick() {
 
   for (var i in GAME.entities) {
     var ntt = GAME.entities[i];
+
     if (ntt.type.tick) ntt.type.tick.apply(ntt, [ntt]);
+
+    if (ntt.type.collectable) {
+      if (age(ntt) > 1) {
+        var d = distance(center(AVATAR), ntt);
+        if (d < AVATAR.radius) {
+          new Sound('pop');
+          ntt.die();
+        } else if (d < 3) {
+          ntt.flying = true;
+          ntt.dx = AVATAR.x - ntt.x;
+          ntt.dy = AVATAR.y + 1 - ntt.y;
+          ntt.dz = AVATAR.z - ntt.z;
+          ntt.dx *= ntt.FLY_MAX / d;
+          ntt.dy *= ntt.FLY_MAX / d;
+          ntt.dz *= ntt.FLY_MAX / d;
+        }
+      }
+    }
+
     ballistics(ntt, elapsed);
   }
 
