@@ -132,7 +132,6 @@ var BLOCK_TYPES = {
     tile: 1,
     solid: true,
     opaque: true,
-    geometry: geometryBlock,
   },
   dirt: {
     tile: 1,
@@ -140,7 +139,6 @@ var BLOCK_TYPES = {
     solid: true,
     opaque: true,
     plantable: true,
-    geometry: geometryBlock,
   },
   grass: {
     tile: 1,
@@ -148,7 +146,6 @@ var BLOCK_TYPES = {
     solid: true,
     opaque: true,
     plantable: true,
-    geometry: geometryBlock,
     update: function () {
       if (this.neighbor(FACE_TOP).type.opaque)
         this.placeBlock(BLOCK_TYPES.dirt);
@@ -159,49 +156,43 @@ var BLOCK_TYPES = {
     solid: true,
     opaque: true,
     stack: 1,
-    geometry: geometryBlock,
   },
   testpattern: {
     tile: 5,
     solid: true,
     opaque: true,
     stack: 1,
-    geometry: geometryBlock,
   },
   bedrock: {
     tile:6,
     solid: true,
     opaque: true,
-    geometry: geometryBlock,
   },
   ice: {
     tile: 7,
     solid: true,
     translucent: [36,205,205,0.5],
-    geometry: geometryBlock,
   },
   flower: {
     tile: 8,
-    geometry: geometryHash,
+    hashes: 1,
     scale: 0.6,
     update: updatePlant,
   },
   grassy: {
     tile: [4,2],
-    geometry: geometryHash,
     hashes: 2,
     height: 0.5,
   },
   soybeans: {
     tile: [7,2],
-    geometry: geometryHash,
     hashes: 2,
     update: updatePlant,
     drop: 'soybean',
   },
   lamp: {
     tile: 9,
-    geometry: geometryHash,
+    hashes: 1,
     luminosity: [8,2,2],
     scale: 0.6,
     update: updateResting,
@@ -210,41 +201,36 @@ var BLOCK_TYPES = {
     tile: 10,
     solid: true,
     opaque: true,
-    geometry: geometryBlock,
   },
   'grape jelly': {
     tile: 14,
     liquid: true,
     translucent: [154,40,155,0.85],
-    geometry: geometryBlock,
     viscosity: 0.85,
   },
   'strawberry jelly': {
     tile: 13,
     liquid: true,
     translucent: [200,81,83,0.85],
-    geometry: geometryBlock,
     viscosity: 0.85,
   },
   'apricot jelly': {
     tile: 15,
     liquid: true,
     translucent: [191,124,66,0.85],
-    geometry: geometryBlock,
     viscosity: 0.85,
   },
   'water': {
     tile: [6, 2],
     liquid: true,
     translucent: [30, 137, 157, 0.5],
-    geometry: geometryBlock,
     viscosity: 0.5,
     unpickable: true,
   },
   rope: {
     tile: [1, 2],
     liquid: true,
-    geometry: geometryHash,
+    hashes: 1,
     update: function updateHanging() {
       this.tile = [(this.neighbor(FACE_BOTTOM).type === this.type) ? 0 : 1, 2];
       var nt = this.neighbor(FACE_TOP).type;
@@ -263,14 +249,12 @@ var BLOCK_TYPES = {
     opaque: true,
     solid: true,
     stack: 1,
-    geometry: geometryBlock,
   },
   hal9000: {
     tile: [3, 2],
     opaque: true,
     solid: true,
     stack: 1,
-    geometry: geometryBlock,
     update: function () {
       if (!this.horizontalFieldOfView)
         initCamera(this);
@@ -285,7 +269,6 @@ var BLOCK_TYPES = {
     stack: 2,
     solid: true,
     opaque: true,
-    geometry: geometryBlock,
   },
 };
 var NBLOCKTYPES = 0;
@@ -299,6 +282,7 @@ for (var i in BLOCK_TYPES)
 
 var ENTITY_TYPES = {
   player: {
+    invisible: true,
     init: function () {
       AVATAR = GAME.avatar = this;
       initCamera(this);
@@ -318,7 +302,6 @@ var ENTITY_TYPES = {
     },
   },
   block: {
-    geometry: cube,
     init: function () {
       this.dyaw = 1;
       hopEntity(this);
@@ -350,7 +333,7 @@ var ENTITY_TYPES = {
     init: function () {
       hopEntity(this);
     },
-    geometry: geometryBillboard,
+    billboard: true,
   },
 };
 var NENTITYTYPES = 0;
@@ -639,9 +622,9 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
   var opaques = {}, translucents = {};
   for (var i = 0; i < this.blocks.length; ++i) {
     var b = this.blocks[i];
-    if (b.type.geometry) {
+    if (!b.type.empty) {
       if (!b.vertices) 
-        b.type.geometry(b);
+        b.buildGeometry();
       var dest = b.type.translucent ? translucents : opaques;
       if (!dest.indices) {
         dest.aPos = [];
@@ -978,9 +961,11 @@ function drawScene(camera) {
   var justUpdateLight = false;
   for (var i in GAME.entities) {
     var ntt = GAME.entities[i];
-    if (ntt.type.geometry) {
+    //if (!ntt.vertices)
+    ntt.buildGeometry();
+    if (ntt.vertices) {
+      var geo = ntt.vertices;
       var color = ntt.type.color || [1,1,1];
-      var geo = ntt.type.geometry(ntt);
       nttSet.aLighting.push.apply(nttSet.aLighting, geo.aLighting);
       if (justUpdateLight)
         continue;
@@ -1629,7 +1614,7 @@ Block.prototype.toString = function () {
 var ZERO = 0.01, ONE = 1-ZERO;
 
 
-function geometryHash(b) {
+function blockGeometryHash(b) {
   var v = b.vertices = {
     aPos: [],
     aLighting: [],
@@ -1700,7 +1685,31 @@ var _FACES = [
   [[0,0,1], [0,0,0], [0,1,0], [0,1,1]],  // right
   [[1,0,0], [1,0,1], [1,1,1], [1,1,0]]]; // left
 
-function geometryBlock(b) {
+
+Block.prototype.buildGeometry = function () {
+  if (this.type.empty) {
+    // do nothing
+  } else if (this.type.hashes) {
+    blockGeometryHash(this);
+  } else {
+    blockGeometryBlock(this);
+  }
+}
+
+Entity.prototype.buildGeometry = function () {
+  if (this.type.invisible) {
+    // do nothing
+  } else if (this.type.billboard) {
+    entityGeometryBillboard(this);
+  } else if (this.sourcetype && this.sourcetype.hashes) {
+    entityGeometryHash(this);
+  } else {
+    entityGeometryBlock(this);
+  }
+}
+
+
+function blockGeometryBlock(b) {
   var v = b.vertices = {
     aPos: [],
     aLighting: [],
@@ -1755,8 +1764,8 @@ function geometryBlock(b) {
   }
 }
 
-function hash(ntt) {
-  geometryHash(ntt);
+function entityGeometryHash(ntt) {
+  blockGeometryHash(ntt);
   for (var i = 0; i < ntt.vertices.aPos.length; i += 3) {
     ntt.vertices.aPos[i] -= 0.5;
     ntt.vertices.aPos[i+2] -= 0.5;
@@ -1765,7 +1774,7 @@ function hash(ntt) {
 }
 
 
-function geometryBillboard(b) {
+function entityGeometryBillboard(b) {
   var v = b.vertices = {
     aPos: [],
     aLighting: [],
@@ -1815,11 +1824,8 @@ function geometryBillboard(b) {
 
 
 
-function cube(ntt) {
-  if (ntt.sourcetype.geometry === geometryHash)
-    return hash(ntt);
-
-  var v = {
+function entityGeometryBlock(ntt) {
+  var v = ntt.vertices = {
     aPos: [],
     aLighting: [],
     aColor: [],
