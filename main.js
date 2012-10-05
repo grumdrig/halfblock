@@ -508,6 +508,9 @@ function Chunk(data) {
         this.nDirty++;
     }
   }
+
+  for (var i in data.entities||{})
+    new Entity(data.entities[i]);
 }
 
 
@@ -516,10 +519,15 @@ Chunk.prototype.data = function () {
     key: this.chunkx + ',' + this.chunkz,
     chunkx: this.chunkx,
     chunkz: this.chunkz,
-    blocks: new Array(NX * NY * NZ)
+    blocks: new Array(NX * NY * NZ),
+    entities: {},
   };
   for (var i = 0; i < NX * NY * NZ; ++i)
     result.blocks[i] = this.blocks[i].data();
+  for (var i in this.entities) {
+    var ntt = this.entities[i];
+    result.entities[i] = ntt.data();
+  }
   return result;
 }
 
@@ -1568,9 +1576,9 @@ Block.prototype.breakBlock = function () {
       type: type.drop || 'block',
       x: this.x + 0.5, 
       y: this.y + (this.stack || this.height || SY)/2,
-      z: this.z + 0.5
+      z: this.z + 0.5,
+      sourcetype: type
     }, this);
-    drop.sourcetype = type;
   }
   for (var i = 0; i < 20; ++i) {
     var p = gl.particles.spawn({
@@ -1711,7 +1719,7 @@ Entity.prototype.buildGeometry = function () {
     // do nothing
   } else if (this.type.billboard) {
     entityGeometryBillboard(this);
-  } else if (this.sourcetype && this.sourcetype.hashes) {
+  } else if (this.sourcetype.hashes) {
     entityGeometryHash(this);
   } else {
     entityGeometryBlock(this);
@@ -1844,8 +1852,8 @@ function entityGeometryBlock(ntt) {
   };
 
   var light = block(ntt).light;
-  var color = ntt.type.color || (ntt.sourcetype||{}).color || [1,1,1];
-  var h = ntt.type.stack || (ntt.sourcetype||{}).stack || SY;
+  var color = ntt.type.color || ntt.sourcetype.color || [1,1,1];
+  var h = ntt.type.stack || ntt.sourcetype.stack || SY;
   for (var face = 0; face < 6; ++face) {
     // Add vertices
     var pindex = v.aPos.length / 3;
@@ -1959,8 +1967,10 @@ function Entity(init1, init2) {
   init1 = init1 || {};
   init2 = init2 || {};
   function init(prop, defa) {
-    that[prop] = (typeof init1[prop] !== 'undefined') ? init1[prop] :
-                 (typeof init2[prop] !== 'undefined') ? init2[prop] : defa;
+    if      (typeof init1[prop] !== 'undefined') that[prop] = init1[prop];
+    else if (typeof init2[prop] !== 'undefined') that[prop] = init2[prop];
+    else if (typeof defa === 'function') that[prop] = defa();
+    else that[prop] = defa;
   }
   init('x', 0);
   init('y', HY);
@@ -1972,10 +1982,15 @@ function Entity(init1, init2) {
   init('pitch', 0);
   init('dyaw', 0);
   init('dpitch', 0);
-  init('falling', false);
+  //init('falling', false);
+  init('birthday', GAME.clock());
+  init('id', function () { return GAME.nextEntityID++} );
   init('type');
-  if (typeof this.type === 'string') this.type = ENTITY_TYPES[this.type];
-  this.birthday = GAME.clock();
+  init('sourcetype', {});
+  if (typeof this.type === 'string') 
+    this.type = ENTITY_TYPES[this.type];
+  if (typeof this.sourcetype === 'string') 
+    this.sourcetype = BLOCK_TYPES[this.sourcetype];
   this.flying = this.falling = false;
   this.radius = 0.3;
   this.height = 1.8;
@@ -1983,12 +1998,23 @@ function Entity(init1, init2) {
   this.FLY_MAX = 10.8; // m/s
   this.SPIN_RATE = 2;  // radians/s
   this.ACCELERATION = 20;  // m/s^2
-  this.id = GAME.nextEntityID++;
   this.chunk = chunk(0,0);  // for now - all entities in 1 chunk
   this.chunk.entities[this.id] = this;
   if (this.type.init) this.type.init.apply(this);
 }
 
+
+Entity.prototype.data = function () {
+  var result = {};
+  var keeps = 'x y z dx dy dz yaw pitch dyaw dpitch birthday id'.split(' ');
+  for (var i = 0; i < keeps.length; ++i) {
+    var k = keeps[i];
+    result[k] = this[k];
+  }
+  result.type = this.type.name;
+  result.sourcetype = this.sourcetype.name;
+  return result;
+}
 
 Entity.prototype.die = function () {
   delete this.chunk.entities[this.id];
@@ -2120,7 +2146,10 @@ function onLoad() {
   }
 
   $('loadgame').onclick = function () {
-    loadGame();
+    loadGame(1, function () { 
+      message('Loaded.'); 
+      showAndHideUI();
+    });
     togglePointerLock();
   }
 
@@ -2134,8 +2163,15 @@ function onLoad() {
     togglePointerLock();
   }
 
+  $('savegame').onclick = function () {
+    GAME.save(function () { 
+      message('Saved.'); 
+      showAndHideUI();
+    });
+    togglePointerLock();
+  }
+
   $('quitgame').onclick = function () {
-    console.log('here');
     GAME = null;
     AVATAR = null;
     showAndHideUI();
@@ -2623,7 +2659,6 @@ Game.prototype.save = function (callback) {
     var req = (typeof GAME.id === 'undefined') ? games.add(data) : 
       games.put(data, GAME.id);
     function putone() {
-      console.log('putone', ckeys);
       if (ckeys.length > 0)
         saveChunk(game.chunks[ckeys.pop()], putone);
       else
