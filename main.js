@@ -2101,30 +2101,6 @@ function onLoad() {
     $('loadgame').style.display = 'none';
   }
 
-  /*
-  if (gl && cancan.requestPointerLock) {
-    $('warning').innerHTML = 'Click game or hit TAB to activate mouselook';
-    pointerLockChange({});
-  } else {
-    toggleMouselook();
-    toggleMouselook();
-    window.addEventListener('mouseout', function (event) {
-      if (AVATAR.mouselook) {
-        event = event || window.event;
-        var from = event.relatedTarget || event.toElement;
-        if (!from)
-          toggleMouselook();
-      }
-    });
-    $('reticule').addEventListener('mousemove', function (event) {
-      if (!AVATAR.mouselook) {
-        toggleMouselook();
-        document.body.focus();  // get focus out of debug tools area
-      }
-    }, true);
-  }
-  */
-
   tick();
 }
 
