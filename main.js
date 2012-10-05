@@ -111,8 +111,6 @@ var LIGHT_SUN = 6;
 
 var KEYS = {};
 
-var lastX, lastY;
-
 var FACE_FRONT = 0;
 var FACE_BACK = 1;
 var FACE_BOTTOM = 2;
@@ -304,7 +302,6 @@ var ENTITY_TYPES = {
     init: function () {
       AVATAR = GAME.avatar = this;
       initCamera(this);
-      this.mouselook = false;
       this.lastHop = 0;
       this.viewDistance = 100;
       var EYE_HEIGHT = 1.62;
@@ -1090,19 +1087,13 @@ function processInput(avatar, elapsed) {
 }
 
 
-function toggleMouselook() {
+function togglePointerLock() {
   if (cancan.requestPointerLock) {
-    if (AVATAR.pointerLocked)
+    if (window.pointerLocked)
       document.exitPointerLock();
     else
       cancan.requestPointerLock();
-  } else {
-    AVATAR.mouselook = !AVATAR.mouselook;
-    document.body.style.cursor = AVATAR.mouselook ? 'none' : 'default';
-    $('warning').style.display = AVATAR.mouselook ? 'none' : 'block';
-    if (!AVATAR.mouselook) lastX = null;
   }
-  $('logo').style.opacity = '0';
 }
 
 
@@ -1331,6 +1322,21 @@ window.requestAnimationFrame =
 function tick() {
   requestAnimationFrame(tick);
 
+  if (gl.textures.terrain.loaded) {
+    if (GAME) {
+      if (KEYS.B) {
+        blur(AVATAR, 256, 256);
+      } else {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        drawScene(AVATAR);
+      }
+    } else {
+      blurryIntro(1024, 512);
+    }
+  }
+
+  if (!GAME) return;
+
   // Monkey with the clock
   var timeNow = GAME.clock();
   if (!lastFrame) lastFrame = timeNow;
@@ -1338,16 +1344,6 @@ function tick() {
   FPS_STAT.add(elapsed);
   if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
   lastFrame = timeNow;
-
-  if (gl.textures.terrain.loaded) {
-    if (KEYS.B) {
-      //blur(AVATAR, 256, 256);
-      blurryIntro(AVATAR, 1024, 512);
-    } else {
-      gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-      drawScene(AVATAR);
-    }
-  }
 
   processInput(AVATAR, elapsed);
 
@@ -2054,20 +2050,13 @@ function onLoad() {
     cancan.mozRequestFullscreen || 
     cancan.mozRequestFullScreen ||
     cancan.webkitRequestFullscreen;
-  cancan.requestPointerLock = 
+  cancan.requestPointerLock =
     cancan.requestPointerLock ||
     cancan.mozRequestPointerLock || 
     cancan.webkitRequestPointerLock;
   document.exitPointerLock = document.exitPointerLock ||
     document.mozExitPointerLock ||
     document.webkitExitPointerLock;
-
-  // Create game
-  GAME = new Game();
-  makeChunk(0, 0);
-
-  // Create player
-  new Entity({type:'player', x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
 
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
@@ -2087,6 +2076,32 @@ function onLoad() {
   document.addEventListener('mozpointerlockerror', pointerLockError, false);
   document.addEventListener('webkitpointerlockerror', pointerLockError, false);
 
+  $('newgame').onclick = function () {
+    // Create game
+    GAME = new Game();
+    makeChunk(0, 0);
+    
+    // Create player
+    new Entity({type:'player', x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
+
+    $('title').style.display = 'none';
+    $('hud').style.display = 'block';
+    togglePointerLock();
+  }
+
+  $('loadgame').onclick = function () {
+    loadGame();
+    $('hud').style.display = 'block';
+    $('title').style.display = 'none';
+  }
+
+  if (!cancan.requestPointerLock) {
+    $('incompatible').style.display = 'block';
+    $('newgame').style.display = 'none';
+    $('loadgame').style.display = 'none';
+  }
+
+  /*
   if (gl && cancan.requestPointerLock) {
     $('warning').innerHTML = 'Click game or hit TAB to activate mouselook';
     pointerLockChange({});
@@ -2108,6 +2123,7 @@ function onLoad() {
       }
     }, true);
   }
+  */
 
   tick();
 }
@@ -2169,7 +2185,7 @@ function onkeydown(event, count) {
       AVATAR.yaw = AVATAR.pitch = 0;
   
     if (c === '\t' || k === 27) // tab or escape
-      toggleMouselook();
+      togglePointerLock();
 
     if (c === 'L' && cancan.requestFullscreen)
       cancan.requestFullscreen();
@@ -2225,47 +2241,39 @@ function onkeydown(event, count) {
 }
 
 function onmousemove(event) {
-  if (AVATAR.mouselook || AVATAR.pointerLocked) {
-    var movementX, movementY;
-    if (typeof lastX === 'undefined' || lastX === null) {
-      movementX = movementY = 0;
-    } else {
-      movementX = event.movementX || 
-        event.mozMovementX || 
-        event.webkitMovementX ||
-        (event.pageX - lastX);
-      movementY = event.movementY || 
-        event.mozMovementY ||
-        event.webkitMovementY ||
-        (event.pageY - lastY);
-    }
+  if (window.pointerLocked) {
+    var movementX = event.movementX || 
+      event.mozMovementX || 
+      event.webkitMovementX;
+    var movementY = event.movementY || 
+      event.mozMovementY ||
+      event.webkitMovementY;
     var spinRate = 0.01;
     AVATAR.yaw += movementX * spinRate;
     AVATAR.pitch += movementY * spinRate;
     AVATAR.pitch = Math.max(Math.min(Math.PI/2, AVATAR.pitch), -Math.PI/2);
-    lastX = event.pageX;
-    lastY = event.pageY;
   }
 }
 
 
 function onmousedown(event) {
-  if (window.showOptions) return;
-  event = event || window.event;
-  if (event.preventDefault) event.preventDefault();
-  if (PICKED && (AVATAR.mouselook || AVATAR.pointerLocked)) {
-    if (event.button === 0) {
-      PICKED.breakBlock();
-      //new Sound('hitHurt');
-    } else {
-      var b = PICKED.neighbor(PICKED_FACE);
-      if (!b.outofbounds)
-        b.placeBlock(AVATAR.tool || PICKED.type);
+  if (!window.pointerLocked) {
+    if (GAME) togglePointerLock();
+  } else {
+    event = event || window.event;
+    if (event.preventDefault) event.preventDefault();
+    if (PICKED) {
+      if (event.button === 0) {
+        PICKED.breakBlock();
+        //new Sound('hitHurt');
+      } else {
+        var b = PICKED.neighbor(PICKED_FACE);
+        if (!b.outofbounds)
+          b.placeBlock(AVATAR.tool || PICKED.type);
+      }
     }
-  } else if (cancan.requestPointerLock && !AVATAR.pointerLocked) {
-    toggleMouselook();
+    return false;
   }
-  return false;
 }
 
 
@@ -2314,12 +2322,8 @@ function fullscreenChange() {
 }
 
 function pointerLockChange() {
-  AVATAR.pointerLocked = (document.mozPointerLockElement ||
+  window.pointerLocked = (document.mozPointerLockElement ||
                           document.webkitPointerLockElement) === cancan;
-  lastX = null;
-  $('warning').style.display = AVATAR.pointerLocked ? 'none' : 'block';
-  if (!AVATAR.mouselook) lastX = null;
-
 }
 
 
@@ -2562,6 +2566,10 @@ function Game() {
 }
 
 
+function wallClock() {
+  return +new Date()/1000;
+}
+
 Game.prototype.clock = function () {
   return +new Date()/1000 - this.birthday;
 }
@@ -2777,7 +2785,7 @@ function blur(camera, w, h) {
   drawScreenAlignedQuad(BLURV, FB2);
 }
 
-function blurryIntro(camera, w, h) {
+function blurryIntro(w, h) {
   if (!FB1) {
     FB1 = makeFramebuffer(w, h, true, false);
     FB2 = makeFramebuffer(w, h, false, false);
@@ -2788,26 +2796,24 @@ function blurryIntro(camera, w, h) {
   }
   gl.enable(gl.DEPTH_TEST);
 
-  //renderToFramebuffer(camera, FB1);
-
   gl.bindFramebuffer(gl.FRAMEBUFFER, FB1);
   gl.viewport(0, 0, w, h);
 
   // Set up the projection
-  var aspectRatio = camera.aspectRatio || 
-    (gl.viewportWidth / gl.viewportHeight);
-  mat4.perspective(camera.horizontalFieldOfView/aspectRatio * 180/Math.PI, 
+  var aspectRatio = gl.viewportWidth / gl.viewportHeight;
+  mat4.perspective(Math.PI/3/aspectRatio * 180/Math.PI, 
                    aspectRatio,
-                   0.1,                  // near clipping plane
-                   camera.viewDistance,  // far clipping plane
+                   0.1, // near clipping plane
+                   10,  // far clipping plane
                    pMatrix);
 
   // Position for camera
   mat4.identity(mvMatrix);
-  mat4.rotateX(mvMatrix, Math.cos(GAME.clock() / 20)/10);
-  mat4.rotateY(mvMatrix, GAME.clock() / 80);
+  mat4.rotateX(mvMatrix, Math.cos(wallClock() / 20)/10);
+  mat4.rotateY(mvMatrix, wallClock() / 80);
 
-  gl.panorama.render();
+  if (gl.textures.panorama.loaded)
+    gl.panorama.render();
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 

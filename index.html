@@ -275,7 +275,7 @@ body {
 }
 
 
-#cancan, #hud, #stats, #options {
+#cancan, #hud, #stats, #title, #options {
   width: 854px;
   height: 480px;
 }
@@ -293,13 +293,33 @@ body {
   display: none;
 }
 
-#hud, #stats, #options {
+#hud, #stats, #title, #options {
   font-family: Inconsolata, Helvetica;
   font-size: 18px;
   position: absolute;
   top: 0;
   left: 0;
   color: white;
+}
+#hud {
+  display: none;
+}
+
+button {
+  font-size: 20px;
+  font-family: Inconsolata;
+  position: absolute;
+  left: 50%;
+  width: 150px;
+  height: 40px;
+  margin-left: -75px;
+  color: black;
+}
+#newgame {
+  top: 250px;
+}
+#loadgame {
+  top: 310px;
 }
 
 #reticule {
@@ -324,12 +344,12 @@ body {
   -webkit-transition: opacity 1s ease-in-out;
 }
 
-#warning {
+#warning, #incompatible {
   position: absolute;
   left: 50%;
   top: 60%;
-  width: 100%;
-  margin-left: -50%;
+  width: 80%;
+  margin-left: -40%;
   margin-top: -24px;
   height: 48px;
   font-size: 20px;
@@ -386,7 +406,6 @@ body {
   <div id="cancan">
     <canvas id="canvas" width="854" height="480"></canvas>
     <div id="hud">
-      <div id="logo"><img src="logo.png"></div>
       <div id="reticule">
         <img src="reticule.png" height="24" width="24">
       </div>
@@ -401,6 +420,14 @@ body {
     <div id="options">
       <input id="anisotropic" type="checkbox">
       <label for="anisotropic">Anisotropic filtering</label>
+    </div>
+    <div id="title">
+      <div id="logo"><img src="logo.png"></div>
+      <button id="newgame">New Game</button>
+      <button id="loadgame">Load Game</button>
+      <div id="incompatible">This browser does not support mouse
+        pointer locking, so Halfblock won't run here. Try the latest
+        version of Chrome or Firefox.</div>
     </div>
   </div>
   <img src="terrain.png" id="terrain">
