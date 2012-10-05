@@ -2052,11 +2052,11 @@ function onLoad() {
 
   if (!initGL(canvas, glopts)) {
     $('warning').innerHTML = '<b>Error of errors! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
-    $('warning').style.display = 'block';
     $('warning').style.width = '80%';
     $('warning').style.left = '10%';
-    $('reticule').style.display = 'none';
-    $('inventory').style.display = 'none';
+    show('warning', true);
+    show('reticule', false);
+    show('inventory', false);
   }
 
   // Polyfills
@@ -2108,9 +2108,9 @@ function onLoad() {
   }
 
   if (!cancan.requestPointerLock) {
-    $('incompatible').style.display = 'block';
-    $('newgame').style.display = 'none';
-    $('loadgame').style.display = 'none';
+    show('incompatible', true);
+    show('newgame', false);
+    show('loadgame', false);
   }
 
   $('resumegame').onclick = function () {
@@ -2121,10 +2121,10 @@ function onLoad() {
     console.log('here');
     GAME = null;
     AVATAR = null;
-    pointerLockChange();
+    showAndHideUI();
   }
 
-  pointerLockChange();
+  showAndHideUI();
 
   tick();
 }
@@ -2205,8 +2205,8 @@ function onkeydown(event, count) {
     if (c === 'T') {
       // Toggle options page
       window.showOptions = !window.showOptions;
-      $('options').style.display = window.showOptions ? 'block' : 'none';
-      $('hud').style.display = window.showOptions ? 'none' : 'block';
+      show('options', window.showOptions);
+      show('hud', !window.showOptions);
     }
 
     // 'I', right paren/brace/bracket means select next tool
@@ -2225,13 +2225,13 @@ function onkeydown(event, count) {
     if (c === 'F1') {
       var hud = $('hud');
       hud.hide = !hud.hide;
-      hud.style.display = hud.hide ? 'none' : 'block';
+      showAndHideUI();
     }
 
     if (c === 'F3') {
       var stats = $('stats');
       stats.hide = !stats.hide;
-      stats.style.display = stats.hide ? 'none' : 'block';
+      showAndHideUI();
     }
 
     if (c === 'F4') {
@@ -2328,9 +2328,14 @@ function fullscreenChange() {
 function pointerLockChange() {
   window.pointerLocked = (document.mozPointerLockElement ||
                           document.webkitPointerLockElement) === cancan;
+  showAndHideUI();
+}
+
+function showAndHideUI() {
   show('title', !window.pointerLocked && !GAME);
   show('pause', !window.pointerLocked && !!GAME);
-  show('hud', window.pointerLocked);
+  show('hud', window.pointerLocked && !$('hud').hide);
+  show('stats', GAME && !$('stats').hide);
 }
 
 
