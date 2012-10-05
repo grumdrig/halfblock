@@ -311,6 +311,10 @@ var ENTITY_TYPES = {
         this.y = b.y + 1;
       else 
         this.flying = true;
+      if (window.panoramaMode) {
+        this.horizontalFieldOfView = Math.PI / 2;
+        this.aspectRatio = 1;
+      }
     },
   },
   block: {
@@ -1435,13 +1439,6 @@ function loadTexture(filename, cubemap) {
 }
 
 
-function handleLoadedTexture(texture) {
-}
-
-
-function handleLoadedCubemapTexture(texture) {
-}
-
 function topmost(x, z) {
   for (var y = NY-1; y >= 0; --y) {
     var b = block(x, y*SY, z);
@@ -2004,15 +2001,36 @@ function initCamera(cam) {
 
 
 function takePanorama() {
-  AVATAR.pitch = AVATAR.yaw = 0;
+  var can = document.createElement('canvas');
+  can.width = 256 * 6;
+  can.height = 256;
+  var ctx = can.getContext('2d', {preserveDrawingBuffer:true});
+  var dones = 0;
+  var snappers = [
+    [0, 0, 0],
+    [1, 0, Math.PI/2],
+    [2, 0, Math.PI],
+    [3, 0, 3*Math.PI/2],
+    [4, Math.PI/2, 0],
+    [5, -Math.PI/2, 0],
+  ];
   function snap() {
-    drawScene(AVATAR);
-    window.open(canvas.toDataURL());
-    AVATAR.yaw += Math.PI/2;
+    if (snappers.length > 0) {
+      var s = snappers.pop();
+      var i = s[0];
+      AVATAR.pitch = s[1];
+      AVATAR.yaw = s[2];
+      drawScene(AVATAR);
+      var img = new Image();
+      img.src = canvas.toDataURL();
+      img.onload = function() {
+        ctx.drawImage(img, i * 256, 0);
+        snap();
+      }
+    } else {
+      window.open(can.toDataURL());
+    }
   }
-  snap();
-  snap();
-  snap();
   snap();
 }  
 
@@ -2026,14 +2044,11 @@ function onLoad() {
   
   // Skybox-screenshottable with takePanorama()
   // then copypaste into acorn
-  /*
-  resizeCanvas(256, 256);
-  setTimeout(function(){
-    AVATAR.horizontalFieldOfView = Math.PI/2;
-    AVATAR.aspectRatio = 1;
-  }, 0);
-  glopts.preserveDrawingBuffer = true;
-  */
+  if (window.location.search === '?shot') {
+    resizeCanvas(256, 256);
+    glopts.preserveDrawingBuffer = true;
+    window.panoramaMode = true;
+  }
 
   if (!initGL(canvas, glopts)) {
     $('warning').innerHTML = '<b>Error of errors! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
@@ -2207,6 +2222,11 @@ function onkeydown(event, count) {
       var stats = $('stats');
       stats.hide = !stats.hide;
       stats.style.display = stats.hide ? 'none' : 'block';
+    }
+
+    if (c === 'F4') {
+      if (window.panoramaMode)
+        takePanorama();
     }
 
     // Number keys select first 10 tools
@@ -2783,10 +2803,12 @@ function blurryIntro(w, h) {
                    10,  // far clipping plane
                    pMatrix);
 
+  var S = KEYS.S ? 1 : 20;
+
   // Position for camera
   mat4.identity(mvMatrix);
-  mat4.rotateX(mvMatrix, Math.cos(wallClock() / 20)/10);
-  mat4.rotateY(mvMatrix, wallClock() / 80);
+  mat4.rotateX(mvMatrix, Math.cos(wallClock() / S)/10);
+  mat4.rotateY(mvMatrix, wallClock() / 4 / S);
 
   if (gl.textures.panorama.loaded)
     gl.panorama.render();
