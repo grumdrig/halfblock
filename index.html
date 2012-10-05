@@ -275,7 +275,7 @@ body {
 }
 
 
-#cancan, #hud, #stats, #title, #options {
+#cancan, #hud, #stats, #title, #pause, #options {
   width: 854px;
   height: 480px;
 }
@@ -289,20 +289,17 @@ body {
   height: 100%;
 }
 
-#options {
+#hud, #pause, #title, #options {
   display: none;
 }
 
-#hud, #stats, #title, #options {
+#hud, #stats, #title, #pause, #options {
   font-family: Inconsolata, Helvetica;
   font-size: 18px;
   position: absolute;
   top: 0;
   left: 0;
   color: white;
-}
-#hud {
-  display: none;
 }
 
 button {
@@ -315,10 +312,10 @@ button {
   margin-left: -75px;
   color: black;
 }
-#newgame {
+#newgame, #resumegame {
   top: 250px;
 }
-#loadgame {
+#loadgame, #quitgame {
   top: 310px;
 }
 
@@ -332,7 +329,7 @@ button {
   margin-left: -12px;
 }
 
-#logo {
+.logo {
   position: absolute;
   left: 50%;
   top: 60px;
@@ -422,12 +419,16 @@ button {
       <label for="anisotropic">Anisotropic filtering</label>
     </div>
     <div id="title">
-      <div id="logo"><img src="logo.png"></div>
+      <div class="logo"><img src="logo.png"></div>
       <button id="newgame">New Game</button>
       <button id="loadgame">Load Game</button>
       <div id="incompatible">This browser does not support mouse
         pointer locking, so Halfblock won't run here. Try the latest
         version of Chrome or Firefox.</div>
+    </div>
+    <div id="pause">
+      <button id="resumegame">Resume Game</button>
+      <button id="quitgame">Quit Game</button>
     </div>
   </div>
   <img src="terrain.png" id="terrain">

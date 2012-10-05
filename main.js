@@ -2099,15 +2099,12 @@ function onLoad() {
     // Create player
     new Entity({type:'player', x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
 
-    $('title').style.display = 'none';
-    $('hud').style.display = 'block';
     togglePointerLock();
   }
 
   $('loadgame').onclick = function () {
     loadGame();
-    $('hud').style.display = 'block';
-    $('title').style.display = 'none';
+    togglePointerLock();
   }
 
   if (!cancan.requestPointerLock) {
@@ -2115,6 +2112,19 @@ function onLoad() {
     $('newgame').style.display = 'none';
     $('loadgame').style.display = 'none';
   }
+
+  $('resumegame').onclick = function () {
+    togglePointerLock();
+  }
+
+  $('quitgame').onclick = function () {
+    console.log('here');
+    GAME = null;
+    AVATAR = null;
+    pointerLockChange();
+  }
+
+  pointerLockChange();
 
   tick();
 }
@@ -2253,9 +2263,7 @@ function onmousemove(event) {
 
 
 function onmousedown(event) {
-  if (!window.pointerLocked) {
-    if (GAME) togglePointerLock();
-  } else {
+  if (window.pointerLocked) {
     event = event || window.event;
     if (event.preventDefault) event.preventDefault();
     if (PICKED) {
@@ -2320,6 +2328,14 @@ function fullscreenChange() {
 function pointerLockChange() {
   window.pointerLocked = (document.mozPointerLockElement ||
                           document.webkitPointerLockElement) === cancan;
+  show('title', !window.pointerLocked && !GAME);
+  show('pause', !window.pointerLocked && !!GAME);
+  show('hud', window.pointerLocked);
+}
+
+
+function show(id, visible) {
+  $(id).style.display = visible ? 'block' : 'none';
 }
 
 
