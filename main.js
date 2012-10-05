@@ -487,6 +487,7 @@ function Chunk(data) {
   this.chunkz = z;
 
   this.blocks = Array(NX * NY * NZ);
+  this.entities = {};
 
   this.lastUpdate = 0;
   this.nDirty = 0;
@@ -649,12 +650,42 @@ function pointToAttribute(shader, buffers, attribute) {
 }
 
 
+Chunk.prototype.tick = function (elapsed) {
+  for (var i in this.entities) {
+    var ntt = this.entities[i];
+
+    if (ntt.type.tick) ntt.type.tick.apply(ntt, [ntt]);
+
+    if (ntt.type.collectable) {
+      if (age(ntt) > 1) {
+        var d = distance(center(AVATAR), ntt);
+        if (d < AVATAR.radius) {
+          new Sound('pop');
+          ntt.die();
+        } else if (d < 3) {
+          ntt.flying = true;
+          ntt.dx = AVATAR.x - ntt.x;
+          ntt.dy = AVATAR.y + 1 - ntt.y;
+          ntt.dz = AVATAR.z - ntt.z;
+          ntt.dx *= ntt.FLY_MAX / d;
+          ntt.dy *= ntt.FLY_MAX / d;
+          ntt.dz *= ntt.FLY_MAX / d;
+        }
+      }
+    }
+
+    ballistics(ntt, elapsed);
+  }
+}
+
+
 Chunk.prototype.updatePeriod = function () {
   return Math.max(UPDATE_PERIOD, 2 * this.hdistance / AVATAR.viewDistance);
 }
 
 Chunk.prototype.update = function () {
-  if (this.nDirty > 0 && GAME.clock() > this.lastUpdate+this.updatePeriod()){
+  if (this.nDirty > 0 && 
+      GAME.clock() > this.lastUpdate + this.updatePeriod()) {
     this.nDirty = 0;
     var uplights = 0, upgeoms = 0;
     
@@ -687,6 +718,12 @@ Chunk.prototype.update = function () {
     if (b.type.update)
       b.type.update.apply(b);
   }
+
+  for (var i in this.entities) {
+    var ntt = this.entities[i];
+    if (ntt.type.update) ntt.type.update.apply(ntt, [ntt]);
+  }
+
 }
 
 
@@ -929,43 +966,11 @@ function drawScene(camera) {
   gl.disable(gl.CULL_FACE);  // don't cull backfaces (decals are 1-sided)
   for (var i in GAME.chunks) {
     var c = GAME.chunks[i];
-    if (c.visible)
+    if (c.visible) {
       c.opaqueBuffers.render(gl.mainShader);
-  }
-
-
-  // Render entities
-  // For now generate all the info each time
-  var nttSet = {
-    aPos: [],
-    aTexCoord: [],
-    aLighting: [],
-    aColor: [],
-    indices: [],
-  };
-  var justUpdateLight = false;
-  for (var i in GAME.entities) {
-    var ntt = GAME.entities[i];
-    //if (!ntt.vertices)
-    ntt.buildGeometry();
-    if (ntt.vertices) {
-      var geo = ntt.vertices;
-      var color = ntt.type.color || [1,1,1];
-      nttSet.aLighting.push.apply(nttSet.aLighting, geo.aLighting);
-      if (justUpdateLight)
-        continue;
-      nttSet.aColor.push.apply(nttSet.aColor, geo.aColor);
-      var pindex = nttSet.aPos.length / 3;
-      nttSet.aPos.push.apply(nttSet.aPos, 
-                                        geo.aPos);
-      nttSet.aTexCoord.push.apply(nttSet.aTexCoord, 
-                                      geo.aTexCoord);
-      for (var j = 0; j < geo.indices.length; ++j)
-        nttSet.indices.push(pindex + geo.indices[j]);
+      c.renderEntities();
     }
   }
-  var nttBuffers = new BufferSet(nttSet);
-  nttBuffers.render(gl.mainShader);
 
   gl.mainShader.disuse();
 
@@ -993,13 +998,39 @@ function drawScene(camera) {
   RENDER_STAT.end();
 }
 
-quat4.rotateX = function (quat, angle, dest) {
-  if (!dest) dest = quat;
-  quat4.multiply(quat, [Math.sin(angle/2), 0, 0, Math.cos(angle/2)]);
-}
-quat4.rotateY = function (quat, angle, dest) {
-  if (!dest) dest = quat;
-  quat4.multiply(quat, [0, Math.sin(angle/2), 0, Math.cos(angle/2)]);
+
+Chunk.prototype.renderEntities = function () {
+  // For now, generate all the info each time
+  var nttSet = {
+    aPos: [],
+    aTexCoord: [],
+    aLighting: [],
+    aColor: [],
+    indices: [],
+  };
+  var justUpdateLight = false;
+  for (var i in this.entities) {
+    var ntt = this.entities[i];
+    //if (!ntt.vertices)
+    ntt.buildGeometry();
+    if (ntt.vertices) {
+      var geo = ntt.vertices;
+      var color = ntt.type.color || [1,1,1];
+      nttSet.aLighting.push.apply(nttSet.aLighting, geo.aLighting);
+      if (justUpdateLight)
+        continue;
+      nttSet.aColor.push.apply(nttSet.aColor, geo.aColor);
+      var pindex = nttSet.aPos.length / 3;
+      nttSet.aPos.push.apply(nttSet.aPos, 
+                                        geo.aPos);
+      nttSet.aTexCoord.push.apply(nttSet.aTexCoord, 
+                                      geo.aTexCoord);
+      for (var j = 0; j < geo.indices.length; ++j)
+        nttSet.indices.push(pindex + geo.indices[j]);
+    }
+  }
+  var nttBuffers = new BufferSet(nttSet);
+  nttBuffers.render(gl.mainShader);
 }
 
 
@@ -1026,11 +1057,6 @@ function updateWorld() {
     c.visible = (c.hdistance < AVATAR.viewDistance);
     c.update();
   }  
-
-  for (var i in GAME.entities) {
-    var ntt = GAME.entities[i];
-    if (ntt.type.update) ntt.type.update.apply(ntt, [ntt]);
-  }
 
   UPDATE_STAT.end();
 }
@@ -1321,32 +1347,11 @@ function tick() {
 
   processInput(AVATAR, elapsed);
 
-  for (var i in GAME.entities) {
-    var ntt = GAME.entities[i];
-
-    if (ntt.type.tick) ntt.type.tick.apply(ntt, [ntt]);
-
-    if (ntt.type.collectable) {
-      if (age(ntt) > 1) {
-        var d = distance(center(AVATAR), ntt);
-        if (d < AVATAR.radius) {
-          new Sound('pop');
-          ntt.die();
-        } else if (d < 3) {
-          ntt.flying = true;
-          ntt.dx = AVATAR.x - ntt.x;
-          ntt.dy = AVATAR.y + 1 - ntt.y;
-          ntt.dz = AVATAR.z - ntt.z;
-          ntt.dx *= ntt.FLY_MAX / d;
-          ntt.dy *= ntt.FLY_MAX / d;
-          ntt.dz *= ntt.FLY_MAX / d;
-        }
-      }
-    }
-
-    ballistics(ntt, elapsed);
+  for (var i in GAME.chunks) {
+    var c = GAME.chunks[i];
+    c.tick(elapsed);
   }
-
+  
   gl.particles.tick(elapsed);
 
   if (timeNow > lastUpdate + UPDATE_PERIOD) {
@@ -1979,13 +1984,14 @@ function Entity(init1, init2) {
   this.SPIN_RATE = 2;  // radians/s
   this.ACCELERATION = 20;  // m/s^2
   this.id = GAME.nextEntityID++;
-  GAME.entities[this.id] = this;
+  this.chunk = chunk(0,0);  // for now - all entities in 1 chunk
+  this.chunk.entities[this.id] = this;
   if (this.type.init) this.type.init.apply(this);
 }
 
 
 Entity.prototype.die = function () {
-  delete GAME.entities[this.id];
+  delete this.chunk.entities[this.id];
 }
 
 Entity.prototype.toString = function () {
