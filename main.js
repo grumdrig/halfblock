@@ -2158,8 +2158,8 @@ function onLoad() {
 
   for (var i = 0; i < 9 * 4; ++i) {
     var row = 100 + 64 * Math.floor(i / 9);
-    var col = 150 + 64 * (i % 9);
-    if (i >= 3 * 9) row += 50;
+    var col = 170 + 64 * (i % 9);
+    if (i >= 3 * 9) row += 30;
 
     var div = document.createElement('div');
     div.className = 'toolbox';
@@ -2170,6 +2170,7 @@ function onLoad() {
     var can = document.createElement('canvas');
     can.className = 'tool';
     can.id = 'inventory' + i;
+    can.width = can.height = 48;
     div.appendChild(can);
   }
 
