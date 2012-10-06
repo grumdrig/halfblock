@@ -286,6 +286,7 @@ var ENTITY_TYPES = {
     init: function () {
       AVATAR = GAME.avatar = this;
       initCamera(this);
+      this.inventory = Array(9 * 4);
       this.lastHop = 0;
       this.viewDistance = 100;
       var EYE_HEIGHT = 1.62;
@@ -669,6 +670,7 @@ Chunk.prototype.tick = function (elapsed) {
         var d = distance(center(AVATAR), ntt);
         if (d < AVATAR.radius) {
           new Sound('pop');
+          AVATAR.gain(ntt.sourcetype ? ntt.sourcetype.name : ntt.type.name);
           ntt.die();
         } else if (d < 3) {
           ntt.flying = true;
@@ -1735,6 +1737,17 @@ Entity.prototype.buildGeometry = function () {
   }
 }
 
+Entity.prototype.gain = function (itemtype, qty) {
+  if (typeof qty === 'undefined') qty = 1;
+  for (var i = 0; i < this.inventory.length; ++i)
+    if (this.inventory[i] && this.inventory[i].type === itemtype) 
+      return this.inventory[i].qty += qty;
+  for (var i = 0; i < this.inventory.length; ++i)
+    if (!this.inventory[i] || !this.inventory[i].type)
+      return this.inventory[i] = {type: itemtype, qty: qty};
+  message('Inventory full!');
+}
+
 
 function blockGeometryBlock(b) {
   var v = b.vertices = {
@@ -2156,6 +2169,7 @@ function onLoad() {
     
     var can = document.createElement('canvas');
     can.className = 'tool';
+    can.id = 'inventory' + i;
     div.appendChild(can);
   }
 
@@ -2268,7 +2282,20 @@ function onkeydown(event, count) {
 
     // E and I for inventory
     if (c === 'E' || c === 'I') {
-      if (GAME) {
+      if (GAME && !GAME.loading && AVATAR) {
+        for (var i = 0; i < AVATAR.inventory.length; ++i) {
+          var can = $('inventory' + i);
+          var ctx = can.getContext('2d');
+          ctx.clearRect(0, 0, can.width, can.height);
+          var type = AVATAR.inventory[i] && AVATAR.inventory[i].type;
+          if (type) {
+            type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
+            var tyle = tile(type);
+            ctx.drawImage($('terrain'), 
+                          16 * tyle.s, 16 * tyle.t,  16, 16,
+                          0, 0,                      can.width, can.height);
+          }
+        }
         GAME.showInventory = !GAME.showInventory;
         togglePointerLock();
       }
