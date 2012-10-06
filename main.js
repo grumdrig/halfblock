@@ -691,9 +691,9 @@ Chunk.prototype.updatePeriod = function () {
   return Math.max(UPDATE_PERIOD, 2 * this.hdistance / AVATAR.viewDistance);
 }
 
-Chunk.prototype.update = function () {
+Chunk.prototype.update = function (force) {
   if (this.nDirty > 0 && 
-      GAME.clock() > this.lastUpdate + this.updatePeriod()) {
+      (force || GAME.clock() > this.lastUpdate + this.updatePeriod())) {
     this.nDirty = 0;
     var uplights = 0, upgeoms = 0;
     
@@ -827,8 +827,8 @@ function chunk(chunkx, chunkz) {
 function makeChunk(chunkx, chunkz) {
   chunkx &= ~(NX - 1);
   chunkz &= ~(NZ - 1);
-  var result = chunk(chunkx, chunkz);
-  if (!result) {
+  var result;
+  if (!chunk(chunkx, chunkz)) {
     // New chunk needed
     result = new Chunk({chunkx:chunkx, chunkz:chunkz});
     result.generateTerrain();
@@ -1052,12 +1052,9 @@ function updateWorld() {
   var wasface = PICKED_FACE;
   PICKED = pickp();
   
-  if (SPREAD_OUT) {
-    var d = CHUNK_RADIUS;//AVATAR.viewDistance;
-    for (var dx = -d; dx < d; dx += NX)
-      for (var dz = -d; dz < d; dz += NZ)
-        makeChunk(AVATAR.x + dx, AVATAR.z + dz);
-  }
+  
+  if (SPREAD_OUT) 
+    loadNearbyChunks(AVATAR, CHUNK_RADIUS, 1);//AVATAR.viewDistance);
   
   for (var i in GAME.chunks) {
     var c = GAME.chunks[i];
@@ -1067,6 +1064,19 @@ function updateWorld() {
   }  
 
   UPDATE_STAT.end();
+}
+
+
+function loadNearbyChunks(epicenter, d, limit) {
+  limit = limit || 1000;
+  for (var dx = -d; dx < d; dx += NX) {
+    for (var dz = -d; dz < d; dz += NZ) {
+      if (makeChunk(epicenter.x + dx, epicenter.z + dz)) {
+        if (--limit <= 0) 
+          return true;
+      }
+    }
+  }
 }
 
 
@@ -2136,12 +2146,32 @@ function onLoad() {
   $('newgame').onclick = function () {
     // Create game
     GAME = new Game();
-    makeChunk(0, 0);
-    
-    // Create player
-    new Entity({type:'player', x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
+    GAME.loading = true;
+    showAndHideUI();
+    var updates = 10;
+    var c;
+    function forceUpdate() {
+      if (c = loadNearbyChunks({x:0, z:0}, CHUNK_RADIUS, 1)) {
+        setTimeout(forceUpdate, 0);
+        console.log('LOAD', c.chunkx, c.chunkz);
+      } else if (updates) {
+        for (var i in GAME.chunks) {
+          var c = GAME.chunks[i];
+          c.update(true);
+        }
+        updates--;
+        setTimeout(forceUpdate, 0);
+      } else {
+        // Create player
+        new Entity({type:'player', x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
+        GAME.loading = false; 
+        showAndHideUI();
+      }
+    }
 
     togglePointerLock();
+    makeChunk(0,0);
+    forceUpdate();
   }
 
   $('loadgame').onclick = function () {
