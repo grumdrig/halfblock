@@ -2145,10 +2145,7 @@ function onLoad() {
   }
 
   $('loadgame').onclick = function () {
-    loadGame(1, function () { 
-      message('Loaded.'); 
-      showAndHideUI();
-    });
+    loadGame(1);
     togglePointerLock();
   }
 
@@ -2202,7 +2199,7 @@ function onkeydown(event, count) {
     if (c === 'S') {
       GAME.save(function () { message('Game saved.'); });
     } else if (c === 'L') {
-      GAME = loadGame(1, function () { message('Game loaded.'); });
+      loadGame(1);
     }
     return;
   }
@@ -2386,8 +2383,10 @@ function pointerLockChange() {
 
 function showAndHideUI() {
   show('title', !window.pointerLocked && !GAME);
-  show('pause', !window.pointerLocked && !!GAME);
-  show('hud', window.pointerLocked && !$('hud').hide);
+  show('pause', !window.pointerLocked && GAME && !GAME.loading);
+  show('loading', GAME && GAME.loading);
+  show('hud', window.pointerLocked && GAME && !GAME.loading 
+       && !$('hud').hide);
   show('stats', GAME && !$('stats').hide);
 }
 
@@ -2681,6 +2680,7 @@ function loadGame(gameid, callback) {
       }
       GAME = new Game();
       GAME.loading = true;
+      showAndHideUI();
       GAME.id = req.result.key;
       GAME.timeOfDay = req.result.timeOfDay;
 
@@ -2693,7 +2693,9 @@ function loadGame(gameid, callback) {
           cursor.continue();
         } else {
           GAME.loading = false;
-          callback();
+          message('Game loaded.'); 
+          showAndHideUI();
+          if (callback) callback();
         }
       };
     };      
