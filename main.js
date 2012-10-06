@@ -2385,8 +2385,7 @@ function showAndHideUI() {
   show('title', !window.pointerLocked && !GAME);
   show('pause', !window.pointerLocked && GAME && !GAME.loading);
   show('loading', GAME && GAME.loading);
-  show('hud', window.pointerLocked && GAME && !GAME.loading 
-       && !$('hud').hide);
+  show('hud', GAME && !GAME.loading && !$('hud').hide);
   show('stats', GAME && !$('stats').hide);
 }
 
