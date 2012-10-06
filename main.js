@@ -2108,7 +2108,7 @@ function onLoad() {
     $('warning').style.left = '10%';
     show('warning', true);
     show('reticule', false);
-    show('inventory', false);
+    show('toolbox', false);
   }
 
   // Polyfills
@@ -2143,6 +2143,22 @@ function onLoad() {
   document.addEventListener('mozpointerlockerror', pointerLockError, false);
   document.addEventListener('webkitpointerlockerror', pointerLockError, false);
 
+  for (var i = 0; i < 9 * 4; ++i) {
+    var row = 100 + 64 * Math.floor(i / 9);
+    var col = 150 + 64 * (i % 9);
+    if (i >= 3 * 9) row += 50;
+
+    var div = document.createElement('div');
+    div.className = 'toolbox';
+    div.style.left = col + 'px';
+    div.style.top = row + 'px';
+    $('inventory').appendChild(div);
+    
+    var can = document.createElement('canvas');
+    can.className = 'tool';
+    div.appendChild(can);
+  }
+
   $('newgame').onclick = function () {
     // Create game
     GAME = new Game();
@@ -2153,7 +2169,6 @@ function onLoad() {
     function forceUpdate() {
       if (c = loadNearbyChunks({x:0, z:0}, CHUNK_RADIUS, 1)) {
         setTimeout(forceUpdate, 0);
-        console.log('LOAD', c.chunkx, c.chunkz);
       } else if (updates) {
         for (var i in GAME.chunks) {
           var c = GAME.chunks[i];
@@ -2251,15 +2266,12 @@ function onkeydown(event, count) {
       AVATAR.lastHop = GAME.clock();
     }
 
-    // Q same as left mouse button
-    if (c === 'Q' && PICKED)
-      PICKED.breakBlock();
-
-    // E same as right mouse button
-    if (c === 'E' && PICKED) {
-      var b = PICKED.neighbor(PICKED_FACE);
-      if (!b.outofbounds)
-        b.placeBlock(AVATAR.tool || PICKED.type);
+    // E and I for inventory
+    if (c === 'E' || c === 'I') {
+      if (GAME) {
+        GAME.showInventory = !GAME.showInventory;
+        togglePointerLock();
+      }
     }
 
     if (c === '0') 
@@ -2289,8 +2301,8 @@ function onkeydown(event, count) {
       show('hud', !window.showOptions);
     }
 
-    // 'I', right paren/brace/bracket means select next tool
-    if (k === 190 || k === 221 || c === 'I') { 
+    // right paren/brace/bracket means select next tool
+    if (k === 190 || k === 221) { 
       var tooli = AVATAR.tool ? (AVATAR.tool.index + 1) % NBLOCKTYPES : 1;
       pickTool(tooli);
     }
@@ -2411,11 +2423,23 @@ function pointerLockChange() {
   showAndHideUI();
 }
 
+var _MODES = 'title,loading,hud,inventory,pause'.split(',');
 function showAndHideUI() {
-  show('title', !window.pointerLocked && !GAME);
-  show('pause', !window.pointerLocked && GAME && !GAME.loading);
-  show('loading', GAME && GAME.loading);
-  show('hud', GAME && !GAME.loading && !$('hud').hide);
+  var mode;
+  if (!GAME) {
+    mode = 'title';
+  } else if (GAME.loading) {
+    mode = 'loading';
+  } else if (window.pointerLocked) {
+    mode = 'hud';
+  } else if (GAME.showInventory) {
+    mode = 'inventory';
+  } else {
+    mode = 'pause';
+  }
+  for (var i = 0; i < _MODES.length; ++i)
+    show(_MODES[i], mode === _MODES[i] && !$(mode).hide);
+
   show('stats', GAME && !$('stats').hide);
 }
 

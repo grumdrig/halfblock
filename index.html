@@ -275,7 +275,7 @@ body {
 }
 
 
-#cancan, #hud, #stats, #title, #pause, #loading, #options {
+#cancan, #hud, #stats, #title, #pause, #loading, #inventory, #options {
   width: 854px;
   height: 480px;
 }
@@ -289,11 +289,11 @@ body {
   height: 100%;
 }
 
-#hud, #pause, #loading, #title, #options {
+#hud, #pause, #loading, #inventory, #title, #options {
   display: none;
 }
 
-#hud, #stats, #title, #pause, #loading, #options {
+#hud, #stats, #title, #pause, #loading, #inventory, #options {
   font-family: Inconsolata, Helvetica;
   font-size: 18px;
   position: absolute;
@@ -370,14 +370,16 @@ button {
   display: none;
 }
 
-#inventory {
+.toolbox {
   position: absolute;
-  left: 16px;
-  bottom: 3.33%;
   width: 48px;
   height: 48px;
   border: solid 2px rgb(128, 128, 128);
   background: rgba(128, 128, 128, 0.5);
+}
+#toolbox {
+  left: 16px;
+  bottom: 3.33%;
 }
 
 #toolname {
@@ -388,7 +390,7 @@ button {
   bottom: 5%;
 }
 
-#tool {
+.tool {
   background: transparent;
 }
 
@@ -422,8 +424,8 @@ button {
         <img src="reticule.png" height="24" width="24">
       </div>
       <div id="toolname"></div>
-      <div id="inventory">
-        <canvas id="tool" width="48" height="48"></canvas>
+      <div id="toolbox" class="toolbox">
+        <canvas id="tool" class="tool" width="48" height="48"></canvas>
       </div>
       <div id="warning">&uarr;<br>Center mouse pointer to enable mouselook</div>
       <div id="chat"><div id="clog">&nbsp;</div></div>
@@ -446,7 +448,8 @@ button {
       <button id="savegame">Save Game &amp; Quit</button>
       <button id="quitgame">Quit Game</button>
     </div>
-    <div id="loading"><div>Loading...<div></div>
+    <div id="loading"><div>Loading...</div></div>
+    <div id="inventory"></div>
   </div>
   <img src="terrain.png" id="terrain">
 </body>
