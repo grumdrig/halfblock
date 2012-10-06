@@ -110,6 +110,7 @@ if (typeof exports != 'undefined') {
   var g = 0;
   for (var i = 0; i < 100000; ++i)
     g += pinkNoise(i*823.2, i*27.533, i*2982.02, 64, 2);
-  var e = +new Date() - st;;
-  require('util').puts(e/1000 + ' sec        (and ignore this:) ' + g);
+  var e = +new Date() - st;
+  require('assert').equal(g, 8.171890399128474);
+  require('util').puts(e/1000 + ' sec');
 }
