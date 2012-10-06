@@ -2164,10 +2164,11 @@ function onLoad() {
 
   $('savegame').onclick = function () {
     GAME.save(function () { 
-      message('Saved.'); 
+      message('Saved.');
+      GAME = null;
+      AVATAR = null;
       showAndHideUI();
     });
-    togglePointerLock();
   }
 
   $('quitgame').onclick = function () {
@@ -2299,7 +2300,7 @@ function onkeydown(event, count) {
 }
 
 function onmousemove(event) {
-  if (window.pointerLocked) {
+  if (window.pointerLocked && GAME && !GAME.loading) {
     var movementX = event.movementX || 
       event.mozMovementX || 
       event.webkitMovementX;
@@ -2315,7 +2316,7 @@ function onmousemove(event) {
 
 
 function onmousedown(event) {
-  if (window.pointerLocked) {
+  if (window.pointerLocked && GAME && !GAME.loading) {
     event = event || window.event;
     if (event.preventDefault) event.preventDefault();
     if (PICKED) {
