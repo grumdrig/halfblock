@@ -2305,8 +2305,12 @@ function onkeydown(event, count) {
     if (c === '0') 
       AVATAR.yaw = AVATAR.pitch = 0;
   
-    if (c === '\t' || k === 27) // tab or escape
+    if (c === '\t' || k === 27) { // tab or escape
+      GAME.showInventory = false;
       togglePointerLock();
+      // Esc key to close inventory isn't a good idea, since it kills
+      // pointer lock / fullscreen, unavoidably
+    }
 
     if (c === 'L' && cancan.requestFullscreen)
       cancan.requestFullscreen();
