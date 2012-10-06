@@ -1330,20 +1330,19 @@ window.requestAnimationFrame =
 function tick() {
   requestAnimationFrame(tick);
 
+  if (!GAME || GAME.loading) {
+    blurryIntro(1024, 512);
+    return;
+  }
+    
   if (gl.textures.terrain.loaded) {
-    if (GAME) {
-      if (KEYS.B) {
-        blur(AVATAR, 256, 256);
-      } else {
-        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        drawScene(AVATAR);
-      }
+    if (KEYS.B) {
+      blur(AVATAR, 256, 256);
     } else {
-      blurryIntro(1024, 512);
+      gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+      drawScene(AVATAR);
     }
   }
-
-  if (!GAME) return;
 
   // Monkey with the clock
   var timeNow = GAME.clock();
@@ -2219,7 +2218,7 @@ function onkeydown(event, count) {
         // Jump!
         AVATAR.dy = VJUMP;
         AVATAR.falling = true;
-        new Sound('jump');
+        //new Sound('jump');
       }
       AVATAR.lastHop = GAME.clock();
     }
@@ -2680,6 +2679,7 @@ function loadGame(gameid, callback) {
         return;
       }
       GAME = new Game();
+      GAME.loading = true;
       GAME.id = req.result.key;
       GAME.timeOfDay = req.result.timeOfDay;
 
@@ -2691,6 +2691,7 @@ function loadGame(gameid, callback) {
           c.nDirty = 1;
           cursor.continue();
         } else {
+          GAME.loading = false;
           callback();
         }
       };
