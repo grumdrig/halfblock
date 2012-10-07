@@ -6,7 +6,8 @@
 <script type="text/javascript" src="gl-matrix.js"></script>
 <script type="text/javascript" src="perlin.js"></script>
 <script type="text/javascript" src="main.js"></script>
-
+<link href='http://fonts.googleapis.com/css?family=Cousine' 
+      rel='stylesheet' type='text/css'>
 <!-- Shaders for wireframe selection box -->
 <script id="wireframe-vs" type="x-shader/x-vertex">
   attribute vec3 aPos;
@@ -294,7 +295,7 @@ body {
 }
 
 #hud, #stats, #title, #pause, #loading, #inventory, #options {
-  font-family: Inconsolata, Helvetica;
+  font-family: Cousine, sans-serif;
   font-size: 18px;
   position: absolute;
   top: 0;
@@ -304,7 +305,7 @@ body {
 
 #loading div {
   text-align: center;
-  font: 24px Inconsolata;
+  font: 24px Cousine, sans-serif;
   position: absolute;
   margin-top: -20px;
   top: 50%;
@@ -316,12 +317,12 @@ body {
 
 button {
   font-size: 20px;
-  font-family: Inconsolata;
+  font-family: Cousine, sans-serif;
   position: absolute;
   left: 50%;
-  width: 200px;
+  width: 220px;
   height: 40px;
-  margin-left: -100px;
+  margin-left: -110px;
   color: black;
 }
 #resumegame {
