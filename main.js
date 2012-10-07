@@ -2154,11 +2154,27 @@ function onLoad() {
   
   document.addEventListener('pointerlockerror', pointerLockError, false);
   document.addEventListener('mozpointerlockerror', pointerLockError, false);
-  document.addEventListener('webkitpointerlockerror', pointerLockError, false);
+  document.addEventListener('webkitpointerlockerror', pointerLockError,false);
 
+  $('inventory').addEventListener('mousemove', function (e) {
+    var rect = $('inventory').getBoundingClientRect();
+    var mouseX = e.clientX - rect.left;
+    var mouseY = e.clientY - rect.top;
+    var held = $('held');
+    held.style.left = (mouseX - held.width/2) + 'px';
+    held.style.top = (mouseY - held.height/2) + 'px';
+  }, false);
+  var held = document.createElement('canvas');
+  held.className = 'tool';
+  held.id = 'held';
+  held.width = held.height = 48;
+  held.style.position = 'absolute';
+  held.style.zIndex = 5;
+  held.style.pointerEvents = 'none';
+  $('inventory').appendChild(held);
   for (var i = 0; i < 9 * 4; ++i) {
     var row = 356 - 64 * Math.floor(i / 9);
-    var col = 170 + 64 * (i % 9);
+    var col = 140 + 64 * (i % 9);
     if (i < 9) row += 30;
 
     var div = document.createElement('div');
@@ -2372,19 +2388,16 @@ function onkeydown(event, count) {
 
 
 function redisplayInventory(whom) {
-  if (whom.held && whom.held.type) {
-    var can = $('inventory0');
-    var ctx = can.getContext('2d');
-    ctx.clearRect(0, 0, can.width, can.height);
-    var type = whom.held.type;
+  var can = $('held');
+  var ctx = held.getContext('2d');
+  ctx.clearRect(0, 0, can.width, can.height);
+  var type = whom.held && whom.held.type;
+  if (type) {
     type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
     var tyle = tile(type);
     ctx.drawImage($('terrain'), 
                   16 * tyle.s, 16 * tyle.t,  16, 16,
                   0, 0,                      can.width, can.height);
-    $('inventory').style.cursor = 'url(' + can.toDataURL() + ')';
-  } else {
-    $('inventory').style.cursor = 'auto';
   }
   for (var i = 0; i < whom.inventory.length; ++i) {
     var can = $('inventory' + i);
