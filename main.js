@@ -227,6 +227,13 @@ var BLOCK_TYPES = {
     viscosity: 0.5,
     unpickable: true,
   },
+  'miso soup': {
+    tile: [10, 2],
+    liquid: true,
+    translucent: [174, 154, 112, 0.85],
+    viscosity: 0.5,
+    unpickable: true,
+  },
   rope: {
     tile: [1, 2],
     liquid: true,
@@ -1507,7 +1514,7 @@ Block.prototype.generateTerrain = function () {
     else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
     else if (n < 0) this.type = GRASSY ? BLOCK_TYPES.dirt : BLOCK_TYPES.grass;
     else if (this.y < HY / 4) this.type = BLOCK_TYPES['apricot jelly'];
-    else if (this.y < HY / 2) this.type = BLOCK_TYPES.water;
+    else if (this.y < HY / 2) this.type = BLOCK_TYPES['miso soup'];
     else this.type = BLOCK_TYPES.air;
 
     if (Math.pow(noise(this.x/10, this.y/10, this.z/10 + 1000), 3) < -0.12)
