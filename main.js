@@ -2255,13 +2255,9 @@ function onkeydown(event, count) {
   if (typeof count === 'undefined') 
     count = (KEYS[k] || 0) + 1;
 
-  if (event.ctrlKey && count === 1) {
-    if (c === 'S') {
-      GAME.save(function () { message('Game saved.'); });
-    } else if (c === 'L') {
-      loadGame(1);
-    }
-    return;
+  if (event.ctrlKey) {
+    k = '^' + k;
+    c = '^' + c;
   }
 
   KEYS[k] = KEYS[c] = count;
@@ -2302,9 +2298,6 @@ function onkeydown(event, count) {
       }
     }
 
-    if (c === '0') 
-      AVATAR.yaw = AVATAR.pitch = 0;
-  
     if (c === '\t' || k === 27) { // tab or escape
       GAME.showInventory = false;
       togglePointerLock();
@@ -2344,6 +2337,18 @@ function onkeydown(event, count) {
       var tooli = AVATAR.tool ? 
         (NBLOCKTYPES + AVATAR.tool.index - 1) % NBLOCKTYPES : NBLOCKTYPES - 1;
       pickTool(tooli);
+    }
+
+    if (c === '^S') {
+      GAME.save(function () { message('Game saved.'); });
+    }
+
+    if (c === '^L') {
+      loadGame(1);
+    } 
+
+    if (c === '^0') {
+      AVATAR.yaw = AVATAR.pitch = 0;
     }
 
     if (c === 'F1') {
