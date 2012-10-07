@@ -2372,6 +2372,20 @@ function onkeydown(event, count) {
 
 
 function redisplayInventory(whom) {
+  if (whom.held && whom.held.type) {
+    var can = $('inventory0');
+    var ctx = can.getContext('2d');
+    ctx.clearRect(0, 0, can.width, can.height);
+    var type = whom.held.type;
+    type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
+    var tyle = tile(type);
+    ctx.drawImage($('terrain'), 
+                  16 * tyle.s, 16 * tyle.t,  16, 16,
+                  0, 0,                      can.width, can.height);
+    $('inventory').style.cursor = 'url(' + can.toDataURL() + ')';
+  } else {
+    $('inventory').style.cursor = 'auto';
+  }
   for (var i = 0; i < whom.inventory.length; ++i) {
     var can = $('inventory' + i);
     var ctx = can.getContext('2d');
