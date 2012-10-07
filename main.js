@@ -2157,14 +2157,21 @@ function onLoad() {
   document.addEventListener('webkitpointerlockerror', pointerLockError, false);
 
   for (var i = 0; i < 9 * 4; ++i) {
-    var row = 100 + 64 * Math.floor(i / 9);
+    var row = 356 - 64 * Math.floor(i / 9);
     var col = 170 + 64 * (i % 9);
-    if (i >= 3 * 9) row += 30;
+    if (i < 9) row += 30;
 
     var div = document.createElement('div');
     div.className = 'toolbox';
     div.style.left = col + 'px';
     div.style.top = row + 'px';
+    div.position = i;
+    div.addEventListener('mousedown', function () { 
+      var slotted = AVATAR.inventory[this.position];
+      AVATAR.inventory[this.position] = AVATAR.held;
+      AVATAR.held = slotted;
+      redisplayInventory(AVATAR);
+    }, false);
     $('inventory').appendChild(div);
     
     var can = document.createElement('canvas');
@@ -2280,19 +2287,7 @@ function onkeydown(event, count) {
     // E and I for inventory
     if (c === 'E' || c === 'I') {
       if (GAME && !GAME.loading && AVATAR) {
-        for (var i = 0; i < AVATAR.inventory.length; ++i) {
-          var can = $('inventory' + i);
-          var ctx = can.getContext('2d');
-          ctx.clearRect(0, 0, can.width, can.height);
-          var type = AVATAR.inventory[i] && AVATAR.inventory[i].type;
-          if (type) {
-            type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
-            var tyle = tile(type);
-            ctx.drawImage($('terrain'), 
-                          16 * tyle.s, 16 * tyle.t,  16, 16,
-                          0, 0,                      can.width, can.height);
-          }
-        }
+        redisplayInventory(AVATAR);
         GAME.showInventory = !GAME.showInventory;
         togglePointerLock();
       }
@@ -2374,6 +2369,24 @@ function onkeydown(event, count) {
       pickTool(t || 10);
   }
 }
+
+
+function redisplayInventory(whom) {
+  for (var i = 0; i < whom.inventory.length; ++i) {
+    var can = $('inventory' + i);
+    var ctx = can.getContext('2d');
+    ctx.clearRect(0, 0, can.width, can.height);
+    var type = whom.inventory[i] && whom.inventory[i].type;
+    if (type) {
+      type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
+      var tyle = tile(type);
+      ctx.drawImage($('terrain'), 
+                    16 * tyle.s, 16 * tyle.t,  16, 16,
+                    0, 0,                      can.width, can.height);
+    }
+  }
+}
+
 
 function onmousemove(event) {
   if (window.pointerLocked && GAME && !GAME.loading) {
