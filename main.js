@@ -76,7 +76,7 @@ var GAME;
 var AVATAR;  // hack-o alias for GAME.avatar because we use it so much
 
 var GRASSY = false;       // true to use decal-style grass
-var SPREAD_OUT = false;   // create nearby chunks
+var SPREAD_OUT = 3;       // create nearby chunks at this radius
 
 var PICKED = null;
 var PICKED_FACE = 0;
@@ -1064,9 +1064,8 @@ function updateWorld() {
   var wasface = PICKED_FACE;
   PICKED = pickp();
   
-  
   if (SPREAD_OUT) 
-    loadNearbyChunks(AVATAR, CHUNK_RADIUS, 1);//AVATAR.viewDistance);
+    loadNearbyChunks(AVATAR, SPREAD_OUT);
   
   for (var i in GAME.chunks) {
     var c = GAME.chunks[i];
@@ -1081,8 +1080,8 @@ function updateWorld() {
 
 function loadNearbyChunks(epicenter, d, limit) {
   limit = limit || 1000;
-  for (var dx = -d; dx < d; dx += NX) {
-    for (var dz = -d; dz < d; dz += NZ) {
+  for (var dx = -d; dx <= d; dx += Math.min(NX, 2*d)) {
+    for (var dz = -d; dz <= d; dz += Math.min(NZ, 2*d)) {
       if (makeChunk(epicenter.x + dx, epicenter.z + dz)) {
         if (--limit <= 0) 
           return true;
@@ -2185,7 +2184,7 @@ function onLoad() {
     var updates = 10;
     var c;
     function forceUpdate() {
-      if (c = loadNearbyChunks({x:0, z:0}, CHUNK_RADIUS, 1)) {
+      if (c = loadNearbyChunks({x:0, z:0}, SPREAD_OUT, 1)) {
         setTimeout(forceUpdate, 0);
       } else if (updates) {
         for (var i in GAME.chunks) {
@@ -2335,7 +2334,7 @@ function onkeydown(event, count) {
     }
 
     if (c === 'H') // Toggle chunk generation
-      SPREAD_OUT = !SPREAD_OUT;
+      SPREAD_OUT = (SPREAD_OUT === 3) ? AVATAR.viewDistance : 3;
 
     if (c === 'T') {
       // Toggle options page
