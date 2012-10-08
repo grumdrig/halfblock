@@ -678,6 +678,7 @@ Chunk.prototype.tick = function (elapsed) {
         if (d < AVATAR.radius) {
           new Sound('pop');
           AVATAR.gain(ntt.sourcetype ? ntt.sourcetype.name : ntt.type.name);
+          redisplayInventory(AVATAR);
           ntt.die();
         } else if (d < 3) {
           ntt.flying = true;
@@ -2171,37 +2172,9 @@ function onLoad() {
     held.style.left = (mouseX - held.width/2) + 'px';
     held.style.top = (mouseY - held.height/2) + 'px';
   }, false);
-  var held = document.createElement('canvas');
-  held.className = 'tool';
-  held.id = 'held';
-  held.width = held.height = 48;
-  held.style.position = 'absolute';
-  held.style.zIndex = 5;
-  held.style.pointerEvents = 'none';
-  $('inventory').appendChild(held);
   for (var i = 0; i < 9 * 4; ++i) {
-    var row = 356 - 64 * Math.floor(i / 9);
-    var col = 140 + 64 * (i % 9);
-    if (i < 9) row += 30;
-
-    var div = document.createElement('div');
-    div.className = 'toolbox';
-    div.style.left = col + 'px';
-    div.style.top = row + 'px';
-    div.position = i;
-    div.addEventListener('mousedown', function () { 
-      var slotted = AVATAR.inventory[this.position];
-      AVATAR.inventory[this.position] = AVATAR.held;
-      AVATAR.held = slotted;
-      redisplayInventory(AVATAR);
-    }, false);
-    $('inventory').appendChild(div);
-    
-    var can = document.createElement('canvas');
-    can.className = 'tool';
-    can.id = 'inventory' + i;
-    can.width = can.height = 48;
-    div.appendChild(can);
+    makeInventorySlot('inventory', i);
+    if (i < 9) makeInventorySlot('hud', i);
   }
 
   $('newgame').onclick = function () {
@@ -2267,6 +2240,33 @@ function onLoad() {
   showAndHideUI();
 
   tick();
+}
+
+
+
+function makeInventorySlot(parent, i) {
+  var row = 356 - 64 * Math.floor(i / 9);
+  var col = 140 + 64 * (i % 9);
+  if (i < 9) row += 30;
+  var div = document.createElement('div');
+  div.className = 'toolbox';
+  div.style.left = col + 'px';
+  div.style.top = row + 'px';
+  div.position = i;
+  if (parent === 'inventory') {
+    div.addEventListener('mousedown', function () { 
+      var slotted = AVATAR.inventory[this.position];
+      AVATAR.inventory[this.position] = AVATAR.held;
+      AVATAR.held = slotted;
+      redisplayInventory(AVATAR);
+    }, false);
+  }
+  $(parent).appendChild(div);
+  var can = document.createElement('canvas');
+  can.className = 'tool';
+  can.id = parent + i;
+  can.width = can.height = 48;
+  div.appendChild(can);
 }
 
 
@@ -2407,7 +2407,8 @@ function redisplayInventory(whom) {
                   0, 0,                      can.width, can.height);
   }
   for (var i = 0; i < whom.inventory.length; ++i) {
-    var can = $('inventory' + i);
+    var can = $(window.mode + i);
+    if (!can) break;
     var ctx = can.getContext('2d');
     ctx.clearRect(0, 0, can.width, can.height);
     var type = whom.inventory[i] && whom.inventory[i].type;
@@ -2509,20 +2510,21 @@ function pointerLockChange() {
 
 var _MODES = 'title,loading,hud,inventory,pause'.split(',');
 function showAndHideUI() {
-  var mode;
   if (!GAME) {
-    mode = 'title';
+    window.mode = 'title';
   } else if (GAME.loading) {
-    mode = 'loading';
+    window.mode = 'loading';
   } else if (window.pointerLocked) {
-    mode = 'hud';
+    window.mode = 'hud';
   } else if (GAME.showInventory) {
-    mode = 'inventory';
+    window.mode = 'inventory';
   } else {
-    mode = 'pause';
+    window.mode = 'pause';
   }
   for (var i = 0; i < _MODES.length; ++i)
-    show(_MODES[i], mode === _MODES[i] && !$(mode).hide);
+    show(_MODES[i], window.mode === _MODES[i] && !$(window.mode).hide);
+  if (window.mode === 'inventory' || window.mode === 'hud')
+    redisplayInventory(AVATAR);
 
   show('stats', GAME && !$('stats').hide);
 }

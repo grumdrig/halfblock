@@ -395,6 +395,12 @@ button {
   background: transparent;
 }
 
+#held {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
 #terrain {
   display: none;
 }
@@ -450,7 +456,9 @@ button {
       <button id="quitgame">Quit Game</button>
     </div>
     <div id="loading"><div>Loading...</div></div>
-    <div id="inventory"></div>
+    <div id="inventory">
+      <canvas id="held" class="tool" width="48" height="48"></canvas>
+    </div>
   </div>
   <img src="terrain.png" id="terrain">
 </body>
