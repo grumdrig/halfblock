@@ -680,6 +680,7 @@ Chunk.prototype.tick = function (elapsed) {
           new Sound('pop');
           AVATAR.gain(ntt.sourcetype ? ntt.sourcetype.name : ntt.type.name);
           redisplayInventory(AVATAR);
+          pickTool(AVATAR.slot);
           ntt.die();
         } else if (d < 3) {
           ntt.flying = true;
@@ -2443,8 +2444,8 @@ function onmousedown(event) {
         //new Sound('hitHurt');
       } else {
         var b = PICKED.neighbor(PICKED_FACE);
-        if (!b.outofbounds)
-          b.placeBlock(AVATAR.tool || PICKED.type);
+        if (!b.outofbounds && AVATAR.tool)
+          b.placeBlock(AVATAR.tool);
       }
     }
     return false;
@@ -2742,6 +2743,7 @@ function pickTool(slot) {
   AVATAR.slot = slot;
   AVATAR.tool = type;
   $('toolname').innerText = type ? type.name : '';
+  $('toolname').style.left = $('hud' + slot).parentNode.style.left;
   for (var i = 0; i < 9; ++i)
     $('hud'+i).parentNode.style.borderColor = 
       (i === slot) ? 'white' : 'rgb(128, 128, 128)';
