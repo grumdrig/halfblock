@@ -307,6 +307,7 @@ var ENTITY_TYPES = {
         this.horizontalFieldOfView = Math.PI / 2;
         this.aspectRatio = 1;
       }
+      pickTool(0);
     },
   },
   block: {
@@ -2124,12 +2125,10 @@ function onLoad() {
   }
 
   if (!initGL(canvas, glopts)) {
-    $('warning').innerHTML = '<b>Error of errors! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
-    $('warning').style.width = '80%';
-    $('warning').style.left = '10%';
-    show('warning', true);
-    show('reticule', false);
-    show('toolbox', false);
+    $('incompatible').innerHTML = '<b>Error! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
+    show('incompatible', true);
+    show('newgame', false);
+    show('loadgame', false);
   }
 
   // Polyfills
@@ -2345,17 +2344,12 @@ function onkeydown(event, count) {
     }
 
     // right paren/brace/bracket means select next tool
-    if (k === 190 || k === 221) { 
-      var tooli = AVATAR.tool ? (AVATAR.tool.index + 1) % NBLOCKTYPES : 1;
-      pickTool(tooli);
-    }
+    if (k === 190 || k === 221)
+      pickTool((AVATAR.slot + 1) % 9);
     
     // Left paren/brace//bracket means select previous tool
-    if (k === 188 || k === 219) {  
-      var tooli = AVATAR.tool ? 
-        (NBLOCKTYPES + AVATAR.tool.index - 1) % NBLOCKTYPES : NBLOCKTYPES - 1;
-      pickTool(tooli);
-    }
+    if (k === 188 || k === 219)
+      pickTool((AVATAR.slot + 8) % 9);
 
     if (c === '^S') {
       GAME.save(function () { message('Game saved.'); });
@@ -2386,10 +2380,10 @@ function onkeydown(event, count) {
         takePanorama();
     }
 
-    // Number keys select first 10 tools
-    var t = k - '0'.charCodeAt(0);
-    if (0 <= t && t <= 9)
-      pickTool(t || 10);
+    // Number keys 1-9 select the 9 item slots
+    var t = k - '1'.charCodeAt(0);
+    if (0 <= t && t < 9)
+      pickTool(t);
   }
 }
 
@@ -2742,22 +2736,15 @@ function resizeCanvas(w, h) {
 }
 
 
-function pickTool(blocktype) {
-  if (typeof blocktype !== 'object') 
-    blocktype = BLOCK_TYPES[blocktype];
-  if (blocktype === BLOCK_TYPES.air)
-    blocktype = null;
-  AVATAR.tool = blocktype;
-  $('toolname').innerText = blocktype ? blocktype.name : '';
-  var toolcan = $('tool');
-  var ctx = toolcan.getContext('2d');
-  ctx.clearRect(0, 0, toolcan.width, toolcan.height);
-  if (blocktype) {
-    var tyle = tile(blocktype);
-    ctx.drawImage($('terrain'), 
-                  16 * tyle.s, 16 * tyle.t,  16, 16,
-                  0, 0,                      toolcan.width, toolcan.height);
-  }
+function pickTool(slot) {
+  var type = (AVATAR.inventory[slot]||{}).type;
+  if (type) type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
+  AVATAR.slot = slot;
+  AVATAR.tool = type;
+  $('toolname').innerText = type ? type.name : '';
+  for (var i = 0; i < 9; ++i)
+    $('hud'+i).parentNode.style.borderColor = 
+      (i === slot) ? 'white' : 'rgb(128, 128, 128)';
 }
 
 
@@ -2998,6 +2985,7 @@ function blur(camera, w, h) {
 }
 
 function blurryIntro(w, h) {
+  if (!gl) return;
   if (!FB1) {
     FB1 = makeFramebuffer(w, h, true, false);
     FB2 = makeFramebuffer(w, h, false, false);
