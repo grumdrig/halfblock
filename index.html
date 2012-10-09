@@ -6,6 +6,8 @@ g<!DOCTYPE html>
 <script type="text/javascript" src="gl-matrix.js"></script>
 <script type="text/javascript" src="perlin.js"></script>
 <script type="text/javascript" src="main.js"></script>
+<link href='http://fonts.googleapis.com/css?family=Chivo'
+      rel='stylesheet' type='text/css'>
 <!-- Shaders for wireframe selection box -->
 <script id="wireframe-vs" type="x-shader/x-vertex">
   attribute vec3 aPos;
@@ -293,7 +295,7 @@ body {
 }
 
 * {
-  font-family: Tahoma, sans-serif;
+  font-family: Chivo, sans-serif;
 }
 
 #hud, #stats, #title, #pause, #loading, #inventory, #options {
@@ -317,7 +319,7 @@ body {
 }
 
 button {
-  font-size: 20px;
+  font-size: 18px;
   position: absolute;
   left: 50%;
   width: 220px;
@@ -356,6 +358,37 @@ button {
   -moz-transition: opacity 1s ease-in-out;
   -webkit-transition: opacity 1s ease-in-out;
 }
+
+#banner {
+  position: absolute;
+  left: 50%;
+  width: 300px;
+  left-margin: -150px;
+  text-align: center;
+  top: 95px;
+  font-size: 30px;
+  -webkit-transform: rotate(-18deg);
+  -moz-transform: rotate(-18deg);
+  color: yellow;
+  text-shadow: 3px 3px 2px #222;
+  animation: pulse 0.27s ease-in-out 0s infinite alternate;
+  -moz-animation: pulse 0.27s ease-in-out 0s infinite alternate;
+  -webkit-animation: pulse 0.27s ease-in-out 0s infinite alternate;
+}
+
+@keyframes pulse {
+  0% { font-size: 30px; }
+  100% { font-size: 31px; }
+} 
+@-webkit-keyframes pulse {
+  0% { font-size: 30px; }
+  100% { font-size: 31px; }
+} 
+@-moz-keyframes pulse {
+  0% { font-size: 30px; }
+  100% { font-size: 31px; }
+} 
+
 
 #warning, #incompatible {
   position: absolute;
@@ -419,6 +452,7 @@ button {
   height: 400px;
 }
 
+
 </style>
 </head>
 
@@ -441,6 +475,7 @@ button {
     </div>
     <div id="title">
       <div class="logo"><img src="logo.png"></div>
+      <div id="banner">Lots of candy!</div>
       <button id="newgame">New Game</button>
       <button id="loadgame">Load Game</button>
       <div id="incompatible">This browser does not support mouse

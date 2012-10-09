@@ -1069,7 +1069,8 @@ function updateWorld() {
   
   for (var i in GAME.chunks) {
     var c = GAME.chunks[i];
-    c.hdistance = Math.max(0, hDistance(AVATAR, c.centerPoint())-CHUNK_RADIUS);
+    c.hdistance = 
+      Math.max(0, hDistance(AVATAR, c.centerPoint())-CHUNK_RADIUS);
     c.visible = (c.hdistance < AVATAR.viewDistance);
     c.update();
   }  
