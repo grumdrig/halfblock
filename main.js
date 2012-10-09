@@ -731,8 +731,8 @@ Chunk.prototype.update = function (force) {
 
     this.lastUpdate = GAME.clock();
     this.generateBuffers(upgeoms === 0);
-    message('Update: ', this.chunkx, this.chunkz, ':', 
-            uplights, upgeoms, '->', this.nDirty);
+    //message('Update: ', this.chunkx, this.chunkz, ':', 
+    //        uplights, upgeoms, '->', this.nDirty);
   } else {
     // Update some random block in this chunk
     var b = this.blocks[Math.floor(Math.random() * NX * NY * NZ)];
@@ -2340,8 +2340,12 @@ function onkeydown(event, count) {
       }
     }
 
-    if (c === 'H') // Toggle chunk generation
-      SPREAD_OUT = (SPREAD_OUT === 3) ? CHUNKR * 2 : 3;
+    if (c === 'H') {
+      // Toggle chunk generation radiusness
+      SPREAD_OUT = 
+        (SPREAD_OUT < CHUNK_RADIUS) ? Math.floor(CHUNK_RADIUS * 2) : 3;
+      message('Chunk spread = ' + SPREAD_OUT);
+    }
 
     if (c === 'T') {
       // Toggle options page
@@ -2396,23 +2400,26 @@ function onkeydown(event, count) {
 
 
 function redisplayInventory(whom) {
-  var can = $('held');
-  var ctx = held.getContext('2d');
-  ctx.clearRect(0, 0, can.width, can.height);
-  var type = whom.held && whom.held.type;
-  if (type) {
-    type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
-    var tyle = tile(type);
-    ctx.drawImage($('terrain'), 
-                  16 * tyle.s, 16 * tyle.t,  16, 16,
-                  0, 0,                      can.width, can.height);
+  if (window.mode === 'inventory') {
+    var can = $('held');
+    var ctx = held.getContext('2d');
+    ctx.clearRect(0, 0, can.width, can.height);
+    var type = whom.held && whom.held.type;
+    if (type) {
+      type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
+      var tyle = tile(type);
+      ctx.drawImage($('terrain'), 
+                    16 * tyle.s, 16 * tyle.t,  16, 16,
+                    0, 0,                      can.width, can.height);
+    }
   }
   for (var i = 0; i < whom.inventory.length; ++i) {
     var can = $(window.mode + i);
     if (!can) break;
     var ctx = can.getContext('2d');
     ctx.clearRect(0, 0, can.width, can.height);
-    var type = whom.inventory[i] && whom.inventory[i].type;
+    var type = whom.inventory[i] && whom.inventory[i].qty > 0 &&
+      whom.inventory[i].type;
     if (type) {
       type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
       var tyle = tile(type);
@@ -2450,8 +2457,13 @@ function onmousedown(event) {
         //new Sound('hitHurt');
       } else {
         var b = PICKED.neighbor(PICKED_FACE);
-        if (!b.outofbounds && AVATAR.tool)
+        if (!b.outofbounds && AVATAR.tool) {
           b.placeBlock(AVATAR.tool);
+          if (--AVATAR.inventory[AVATAR.slot].qty <= 0)
+            AVATAR.inventory[i] = null;
+          redisplayInventory(AVATAR);
+          pickTool(AVATAR.slot);
+        }
       }
     }
     return false;
@@ -2746,6 +2758,7 @@ function resizeCanvas(w, h) {
 function pickTool(slot) {
   var type = (AVATAR.inventory[slot]||{}).type;
   if (type) type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
+  if (type && AVATAR.inventory[slot].qty <= 0) type = null;
   AVATAR.slot = slot;
   AVATAR.tool = type;
   $('toolname').innerText = type ? type.name : '';
