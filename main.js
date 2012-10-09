@@ -1511,20 +1511,20 @@ Block.prototype.generateTerrain = function () {
   if (this.y < 0.75 + 2*noise(this.x * 23.2, this.y * 938.2, this.z * 28.1)) {
     this.type = BLOCK_TYPES.bedrock;
   } else {
-    var n = pinkNoise(this.x, this.y, this.z, 32, 2) + 
+    var n = pinkNoise(this.x, this.y, this.z + GAME.seed, 32, 2) + 
       (2 * this.y/SY - NY) / NY;
     if (n < -0.2) this.type = BLOCK_TYPES.rock;
     else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
     else if (n < 0) this.type = GRASSY ? BLOCK_TYPES.dirt : BLOCK_TYPES.grass;
     else if (this.y < HY / 4) this.type = BLOCK_TYPES['apricot jelly'];
-    else if (this.y < HY / 2) this.type = BLOCK_TYPES['miso soup'];
+    else if (this.y < HY / 2) this.type = BLOCK_TYPES['water'];
     else this.type = BLOCK_TYPES.air;
 
-    if (Math.pow(noise(this.x/10, this.y/10, this.z/10 + 1000), 3) < -0.12)
+    if (Math.pow(noise(this.x/10 + GAME.seed, this.y/10, this.z/10 + 1000), 3) < -0.12)
       this.type = BLOCK_TYPES.candy;
 
     // Caves
-    if (Math.pow(noise(this.x/20, this.y/20, this.z/20), 3) < -0.1)
+    if (Math.pow(noise(this.x/20, this.y/20 + GAME.seed, this.z/20), 3) < -0.1)
       this.type = BLOCK_TYPES.air;
   }
 }
@@ -2338,7 +2338,7 @@ function onkeydown(event, count) {
     }
 
     if (c === 'H') // Toggle chunk generation
-      SPREAD_OUT = (SPREAD_OUT === 3) ? AVATAR.viewDistance : 3;
+      SPREAD_OUT = (SPREAD_OUT === 3) ? CHUNKR * 2 : 3;
 
     if (c === 'T') {
       // Toggle options page
@@ -2757,6 +2757,7 @@ function sqr(x) { return x * x }
 
 
 function Game() {
+  this.seed = Math.random() * 9999999;
   this.chunks = {};
   this.entities = {};
   this.timeOfDay = Math.PI;  // 0 is midnight, PI is noon
@@ -3618,8 +3619,8 @@ var THROBBERS = [
   'Throbber!',
   'Lots of candy!',
   'Halfsize blocks!',
-  'DOCTYPE html!',
-  'No mines or crafting!',
+  '!DOCTYPE html!',
+  'No mining, no crafting!',
   '3D!',
   'Better than nothing!',
   'Japanese food!',
