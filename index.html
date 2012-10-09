@@ -361,32 +361,32 @@ button {
 
 #banner {
   position: absolute;
-  left: 50%;
+  left: 48%;
   width: 300px;
   left-margin: -150px;
   text-align: center;
-  top: 95px;
+  top: 100px;
   font-size: 30px;
   -webkit-transform: rotate(-18deg);
   -moz-transform: rotate(-18deg);
   color: yellow;
   text-shadow: 3px 3px 2px #222;
-  animation: pulse 0.27s ease-in-out 0s infinite alternate;
-  -moz-animation: pulse 0.27s ease-in-out 0s infinite alternate;
+  animation:         pulse 0.27s ease-in-out 0s infinite alternate;
+  -moz-animation:    pulse 0.27s ease-in-out 0s infinite alternate;
   -webkit-animation: pulse 0.27s ease-in-out 0s infinite alternate;
 }
 
 @keyframes pulse {
-  0% { font-size: 30px; }
-  100% { font-size: 31px; }
+  0% {   transform: scale(1,1)       rotate(-19deg); }
+  100% { transform: scale(1.07,1.07) rotate(-19deg); }
 } 
 @-webkit-keyframes pulse {
-  0% { font-size: 30px; }
-  100% { font-size: 31px; }
+  0% {   -webkit-transform: scale(1,1)       rotate(-19deg); }
+  100% { -webkit-transform: scale(1.07,1.07) rotate(-19deg); }
 } 
 @-moz-keyframes pulse {
-  0% { font-size: 30px; }
-  100% { font-size: 31px; }
+  0% {   -moz-transform: scale(1,1)       rotate(-19deg); }
+  100% { -moz-transform: scale(1.07,1.07) rotate(-19deg); }
 } 
 
 
