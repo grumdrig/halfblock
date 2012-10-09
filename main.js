@@ -2112,6 +2112,9 @@ function takePanorama() {
 
 
 function onLoad() {
+  $('throbber').innerText = 
+    THROBBERS[Math.floor(Math.random()*THROBBERS.length)];
+
   var cancan = $('cancan');
   var canvas = $('canvas');
 
@@ -3609,3 +3612,18 @@ function message() {
   $('chat').hider = setTimeout(function () { div.style.display = 'none' },5000);
   $('chat').scrollTop = $('chat').scrollHeight;
 }
+
+var THROBBERS = [
+  'Slavish duplication!',
+  'Throbber!',
+  'Lots of candy!',
+  'Halfsize blocks!',
+  'DOCTYPE html!',
+  'No mines or crafting!',
+  '3D!',
+  'Better than nothing!',
+  'Japanese food!',
+  'Open source!',
+  'No IE support!',
+  'Halfbaked!',
+];
