@@ -147,51 +147,43 @@ g<!DOCTYPE html>
     vTexCoord = sign(aPos) * 0.5 + 0.5;
   }
 </script>
+<script id="blur-box-fs" type="x-shader/x-fragment">
+  precision mediump float;
+  uniform sampler2D uSrc;
+  uniform vec2 uResolution;
+  varying vec2 vTexCoord;
+  void main() {
+    gl_FragColor = 
+      4.0/9.0 * texture2D(uSrc, vTexCoord + vec2(-0.5, -0.5) / uResolution) +
+      2.0/9.0 * texture2D(uSrc, vTexCoord + vec2(-0.5, +0.5) / uResolution) +
+      2.0/9.0 * texture2D(uSrc, vTexCoord + vec2(+0.5, -0.5) / uResolution) +
+      1.0/9.0 * texture2D(uSrc, vTexCoord + vec2(+1.0, +1.0) / uResolution);
+  }
+</script>
 <script id="blur-horizontal-fs" type="x-shader/x-fragment">
   precision mediump float;
-  uniform sampler2D uSrc; // the texture with the scene you want to blur
+  uniform sampler2D uSrc;
+  uniform float uStep;
   varying vec2 vTexCoord;
- 
-  const float bsize = 1.0/256.0;
+  const int d = 8;
   void main(void) {
-    vec4 sum = vec4(0.0);
- 
-    // Blur in x (horizontal)
-    // Take nine samples, with the distance bsize between them
-    sum += texture2D(uSrc, vTexCoord - vec2(4.0*bsize, 0.0)) * 0.05;
-    sum += texture2D(uSrc, vTexCoord - vec2(3.0*bsize, 0.0)) * 0.09;
-    sum += texture2D(uSrc, vTexCoord - vec2(2.0*bsize, 0.0)) * 0.12;
-    sum += texture2D(uSrc, vTexCoord - vec2(    bsize, 0.0)) * 0.15;
-    sum += texture2D(uSrc, vTexCoord)                        * 0.16;
-    sum += texture2D(uSrc, vTexCoord + vec2(    bsize, 0.0)) * 0.15;
-    sum += texture2D(uSrc, vTexCoord + vec2(2.0*bsize, 0.0)) * 0.12;
-    sum += texture2D(uSrc, vTexCoord + vec2(3.0*bsize, 0.0)) * 0.09;
-    sum += texture2D(uSrc, vTexCoord + vec2(4.0*bsize, 0.0)) * 0.05;
-    
-    gl_FragColor = sum;
+    gl_FragColor = vec4(0,0,0,0);
+    for (int i = -d; i <= d; ++i)
+      gl_FragColor += texture2D(uSrc, vTexCoord - vec2(float(i) * uStep, 0.0));
+    gl_FragColor /= float(d) * 2.0 + 1.0;
   }
 </script>
 <script id="blur-vertical-fs" type="x-shader/x-fragment">
   precision mediump float;
-  uniform sampler2D uSrc; // the texture rendered by the horizontal blur pass
+  uniform sampler2D uSrc;
+  uniform float uStep;
   varying vec2 vTexCoord;
-  const float bsize = 1.0/256.0;
+  const int d = 8;
   void main(void) {
-    vec4 sum = vec4(0.0);
- 
-    // Blur in y (vertical)
-    // Take nine samples, with the distance bsize between them
-    sum += texture2D(uSrc, vTexCoord - vec2(0.0, 4.0*bsize)) * 0.05;
-    sum += texture2D(uSrc, vTexCoord - vec2(0.0, 3.0*bsize)) * 0.09;
-    sum += texture2D(uSrc, vTexCoord - vec2(0.0, 2.0*bsize)) * 0.12;
-    sum += texture2D(uSrc, vTexCoord - vec2(0.0,     bsize)) * 0.15;
-    sum += texture2D(uSrc, vTexCoord)                        * 0.16;
-    sum += texture2D(uSrc, vTexCoord + vec2(0.0,     bsize)) * 0.15;
-    sum += texture2D(uSrc, vTexCoord + vec2(0.0, 2.0*bsize)) * 0.12;
-    sum += texture2D(uSrc, vTexCoord + vec2(0.0, 3.0*bsize)) * 0.09;
-    sum += texture2D(uSrc, vTexCoord + vec2(0.0, 4.0*bsize)) * 0.05;
-    
-    gl_FragColor = sum;
+    gl_FragColor = vec4(0,0,0,0);
+    for (int i = -d; i <= d; ++i)
+      gl_FragColor += texture2D(uSrc, vTexCoord - vec2(0.0, float(i) * uStep));
+    gl_FragColor /= float(d) * 2.0 + 1.0;
   }
 </script>
 

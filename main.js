@@ -24,6 +24,7 @@
 // http://www.gamerendering.com/2008/10/11/gaussian-blur-filter-shader/
 // http://www.geeks3d.com/20100909/shader-library-gaussian-blur-post-processing-filter-in-glsl/
 // http://encelo.netsons.org/2008/03/23/i-love-depth-of-field/
+// Real-Time Rendering p. 471
 
 // Sky
 // http://codeflow.org/entries/2011/apr/13/advanced-webgl-part-2-sky-rendering/
@@ -1432,6 +1433,8 @@ function loadTexture(filename, cubemap) {
     gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     if (cubemap) {
       // Unpack separate images from 6-side grid strip
+      gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       var facings = [
         gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,  // front
         gl.TEXTURE_CUBE_MAP_NEGATIVE_X,  // left
@@ -2998,7 +3001,6 @@ function blurryIntro(w, h) {
     BLURH = new Shader('blur', 'blur-horizontal');
     BLURV = new Shader('blur', 'blur-vertical');
     SAQ = makeBuffer([-1,-1, +1,-1, +1,+1, -1,+1], 2);
-    //BLIT = new Shader('blit');
   }
   gl.enable(gl.DEPTH_TEST);
 
@@ -3025,20 +3027,20 @@ function blurryIntro(w, h) {
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-
   gl.disable(gl.DEPTH_TEST);
 
-  drawScreenAlignedQuad(BLURH, FB1, FB2);
-  drawScreenAlignedQuad(BLURV, FB2);
+  drawScreenAlignedQuad(BLURH, 1/w, FB1, FB2);
+  drawScreenAlignedQuad(BLURV, 1/h, FB2);
 }
 
 
-function drawScreenAlignedQuad(shader, sourceFB, destFB) {
+function drawScreenAlignedQuad(shader, step, sourceFB, destFB) {
   shader.use();
   
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, sourceFB.texture);
   gl.uniform1i(shader.uniforms.uSrc, 0);
+  gl.uniform1f(shader.uniforms.uStep, step);
   gl.bindFramebuffer(gl.FRAMEBUFFER, destFB);  // destFB may be null
   gl.viewport(0, 0, 
               destFB ? destFB.width : gl.viewportWidth, 
