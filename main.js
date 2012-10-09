@@ -2400,33 +2400,32 @@ function onkeydown(event, count) {
 
 
 function redisplayInventory(whom) {
-  if (window.mode === 'inventory') {
-    var can = $('held');
-    var ctx = held.getContext('2d');
+  function renderInventoryItem(can, item) {
+    var ctx = can.getContext('2d');
     ctx.clearRect(0, 0, can.width, can.height);
-    var type = whom.held && whom.held.type;
+    var qty = item && item.qty;
+    var type = qty && item.type;
     if (type) {
       type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
       var tyle = tile(type);
       ctx.drawImage($('terrain'), 
                     16 * tyle.s, 16 * tyle.t,  16, 16,
                     0, 0,                      can.width, can.height);
+      if (qty > 1) {
+        ctx.fillStyle = 'white';
+        ctx.font = '12pt Chivo';
+        ctx.textAlign = 'right';
+        ctx.fillText(qty, can.width-2, can.height-3);
+      }
     }
   }
+  
+  if (window.mode === 'inventory')
+    renderInventoryItem($('held'), whom.held);
   for (var i = 0; i < whom.inventory.length; ++i) {
     var can = $(window.mode + i);
     if (!can) break;
-    var ctx = can.getContext('2d');
-    ctx.clearRect(0, 0, can.width, can.height);
-    var type = whom.inventory[i] && whom.inventory[i].qty > 0 &&
-      whom.inventory[i].type;
-    if (type) {
-      type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
-      var tyle = tile(type);
-      ctx.drawImage($('terrain'), 
-                    16 * tyle.s, 16 * tyle.t,  16, 16,
-                    0, 0,                      can.width, can.height);
-    }
+    renderInventoryItem(can, whom.inventory[i]);
   }
 }
 
