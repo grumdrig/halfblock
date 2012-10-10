@@ -1710,13 +1710,19 @@ function vclamp(v) {
   return v;
 }
 
+//var _TWEAKERS = {};
 function tweaker(pos) {
-  //return [0,0,0];
+  /*var key = pos.join(',');
+  if (key in _TWEAKERS)
+    return _TWEAKERS[key];
+  else
+    return _TWEAKERS[key] = 
+  */
   return [
-    0.25 * pinkNoise(pos[0], pos[1], pos[2]+1593.1, 4, 1),
-    0.25 * pinkNoise(pos[0], pos[1], pos[2]+2483.7, 4, 1), 
-    0.25 * pinkNoise(pos[0], pos[1], pos[2]+9384.3, 4, 1) 
-  ];
+      0.25 * pinkNoise(pos[0], pos[1], pos[2]+1593.1, 4, 1),
+      0.25 * pinkNoise(pos[0], pos[1], pos[2]+2483.7, 4, 1), 
+      0.25 * pinkNoise(pos[0], pos[1], pos[2]+9384.3, 4, 1) 
+    ];
 }
 
 var _FACES = [
