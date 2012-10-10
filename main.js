@@ -2431,6 +2431,9 @@ function renderInventoryItem(can, item) {
       ctx.textAlign = 'right';
       ctx.fillText(qty, can.width-2, can.height-3);
     }
+    can.title = type.name;
+  } else {
+    can.title = null;
   }
 }
 
@@ -2776,8 +2779,6 @@ function pickTool(slot) {
   if (type && AVATAR.inventory[slot].qty <= 0) type = null;
   AVATAR.slot = slot;
   AVATAR.tool = type;
-  $('toolname').innerText = type ? type.name : '';
-  $('toolname').style.left = $('hud' + slot).parentNode.style.left;
   for (var i = 0; i < 9; ++i)
     $('hud'+i).parentNode.style.borderColor = 
       (i === slot) ? 'white' : 'rgb(128, 128, 128)';
