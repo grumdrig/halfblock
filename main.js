@@ -100,9 +100,6 @@ var UPDATE_STAT = new Stat('Update');
 var FPS_STAT = new Stat('FPS');
 FPS_STAT.invert = true;
 
-var lastFrame = 0;
-var lastUpdate = 0;
-
 var GRAVITY = 23;  // m/s/s
 var PARTICLE_GRAVITY = 6.4; // m/s/s
 var VJUMP = 7.7;   // m/s
@@ -675,7 +672,7 @@ Chunk.prototype.tick = function (elapsed) {
     if (ntt.type.tick) ntt.type.tick.apply(ntt, [ntt]);
 
     if (ntt.type.collectable) {
-      if (age(ntt) > 1) {
+      if (ntt.age() > 1) {
         var d = distance(center(AVATAR), ntt);
         if (d < AVATAR.radius) {
           new Sound('pop');
@@ -766,8 +763,8 @@ function distance(p, q) {
                    (p.z - q.z) * (p.z - q.z));
 }
 
-function age(e) {
-  return GAME.clock() - e.birthday;
+Entity.prototype.age = function () {
+  return GAME.clock() - this.birthday;
 }
 
 function signedHDistanceFromLine(a, angle, p) {
@@ -1096,7 +1093,7 @@ function loadNearbyChunks(epicenter, d, limit) {
 function processInput(avatar, elapsed) {
   if (KEYS.O) {
     GAME.timeOfDay = (GAME.timeOfDay + elapsed) % (2*Math.PI);
-    GAME.sunlight = 0.5 - Math.cos(GAME.timeOfDay) / 2;
+    GAME.calcSunlight();
   }
 
   // Movement keys
@@ -1369,11 +1366,10 @@ function tick() {
 
   // Monkey with the clock
   var timeNow = GAME.clock();
-  if (!lastFrame) lastFrame = timeNow;
-  var elapsed = timeNow - lastFrame;
+  var elapsed = timeNow - GAME.lastFrame;
   FPS_STAT.add(elapsed);
   if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
-  lastFrame = timeNow;
+  GAME.lastFrame = timeNow;
 
   processInput(AVATAR, elapsed);
 
@@ -1384,9 +1380,9 @@ function tick() {
   
   gl.particles.tick(elapsed);
 
-  if (timeNow > lastUpdate + UPDATE_PERIOD) {
+  if (timeNow > GAME.lastUpdate + UPDATE_PERIOD) {
     updateWorld();
-    lastUpdate = timeNow;
+    GAME.lastUpdate = timeNow;
   }
 
   var feedback = 
@@ -1862,7 +1858,7 @@ function entityGeometryBillboard(b) {
 
   var S = 0.25;
   var quad = [-S,-S, S,-S, S,S, -S,S];
-  var bob = (1 + Math.sin(2 * age(b))) / 16;
+  var bob = (1 + Math.sin(2 * b.age())) / 16;
   var p = [b.x, b.y + S + bob, b.z];
   for (var i = 0; i < quad.length; i += 2) {
     var x = quad[i], y = quad[i+1], z = -0.5;
@@ -1899,7 +1895,7 @@ function entityGeometryBlock(ntt) {
     // Add vertices
     var pindex = v.aPos.length / 3;
     var f = _FACES[face];
-    var bob = (1 + Math.sin(2 * age(ntt))) / 16;
+    var bob = (1 + Math.sin(2 * ntt.age())) / 16;
     for (var i = 3; i >= 0; --i) {
       var ff = Array(3);
       for (var j = 0; j < f[i].length; ++j) 
@@ -2329,7 +2325,7 @@ function onkeydown(event, count) {
     }
 
     if (c === '\t' || k === 27) { // tab or escape
-      GAME.showInventory = false;
+      if (GAME) GAME.showInventory = false;
       togglePointerLock();
       // Esc key to close inventory isn't a good idea, since it kills
       // pointer lock / fullscreen, unavoidably
@@ -2788,14 +2784,42 @@ function pickTool(slot) {
 function sqr(x) { return x * x }
 
 
-function Game() {
-  this.seed = Math.random() * 9999999;
+function Game(data) {
+  var game = this;
+  function init(key, defa) { 
+    if (data && data.hasOwnProperty(key))
+      game[key] = data[key];
+    else
+      game[key] = defa;
+  }
+  init('seed', Math.random() * 9999999);
+  init('timeOfDay', Math.PI);  // 0 is midnight, PI is noon
+  init('nextEntityID', 1);
+  if (data && data.hasOwnProperty('age'))
+    this.birthday = wallClock() - data.age;
+  else
+    this.birthday = wallClock();
+  this.lastFrame = this.lastUpdate = this.clock();
+
   this.chunks = {};
   this.entities = {};
-  this.timeOfDay = Math.PI;  // 0 is midnight, PI is noon
-  this.sunlight = 1;         // full daylight
-  this.birthday = +new Date()/1000;
-  this.nextEntityID = 1;
+  this.calcSunlight();
+
+}
+
+
+Game.prototype.data = function () {
+  return {
+    seed: this.seed,
+    timeOfDay: this.timeOfDay,
+    nextEntityID: this.nextEntityID,
+    age: wallClock() - this.birthday,
+  };
+}
+
+
+Game.prototype.calcSunlight = function () {
+  this.sunlight = 0.5 - Math.cos(this.timeOfDay) / 2;
 }
 
 
@@ -2804,7 +2828,7 @@ function wallClock() {
 }
 
 Game.prototype.clock = function () {
-  return +new Date()/1000 - this.birthday;
+  return wallClock() - this.birthday;
 }
 
 
@@ -2815,11 +2839,9 @@ Game.prototype.save = function (callback) {
     var games = trans.objectStore('games');
     var chunks = trans.objectStore('chunks');
     var ckeys = Object.keys(game.chunks);
-    var data = {
-      timeOfDay: GAME.timeOfDay,
-      nextEntityID: GAME.nextEntityID,
-    };
-    var req = (typeof GAME.id === 'undefined') ? games.add(data) : 
+    var data = game.data();
+    var req = (typeof GAME.id === 'undefined') ? 
+      games.add(data) : 
       games.put(data, GAME.id);
     function putone() {
       if (ckeys.length > 0)
@@ -2842,11 +2864,9 @@ function loadGame(gameid, callback) {
         message('Load game failed!');
         return;
       }
-      GAME = new Game();
+      GAME = new Game(req.result);
       GAME.loading = true;
       showAndHideUI();
-      GAME.id = req.result.key;
-      GAME.timeOfDay = req.result.timeOfDay;
 
       var chunks = trans.objectStore('chunks');
       chunks.openCursor().onsuccess = function(event) {
