@@ -2405,27 +2405,37 @@ function onkeydown(event, count) {
 }
 
 
-function redisplayInventory(whom) {
-  function renderInventoryItem(can, item) {
-    var ctx = can.getContext('2d');
-    ctx.clearRect(0, 0, can.width, can.height);
-    var qty = item && item.qty;
-    var type = qty && item.type;
-    if (type) {
-      type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
-      var tyle = tile(type);
-      ctx.drawImage($('terrain'), 
-                    16 * tyle.s, 16 * tyle.t,  16, 16,
-                    0, 0,                      can.width, can.height);
-      if (qty > 1) {
-        ctx.fillStyle = 'white';
-        ctx.font = '12pt Chivo';
-        ctx.textAlign = 'right';
-        ctx.fillText(qty, can.width-2, can.height-3);
+function renderInventoryItem(can, item) {
+  var ctx = can.getContext('2d');
+  ctx.clearRect(0, 0, can.width, can.height);
+  var qty = item && item.qty;
+  var type = qty && item.type;
+  if (type) {
+    type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
+    var tyle = tile(type);
+    ctx.drawImage($('terrain'), 
+                  16 * tyle.s, 16 * tyle.t,  16, 16,
+                  0, 0,                      can.width, can.height);
+    if (type.color) {
+      var im = ctx.getImageData(0,0,can.width,can.height);
+      for (var i = 0; i < im.width * im.height; ++i) {
+        im.data[i * 4 + 0] *= type.color[0];
+        im.data[i * 4 + 1] *= type.color[1];
+        im.data[i * 4 + 2] *= type.color[2];
       }
+      ctx.putImageData(im, 0, 0);
+    }
+    if (qty > 1) {
+      ctx.fillStyle = 'white';
+      ctx.font = '12pt Chivo';
+      ctx.textAlign = 'right';
+      ctx.fillText(qty, can.width-2, can.height-3);
     }
   }
-  
+}
+
+ 
+function redisplayInventory(whom) {
   if (window.mode === 'inventory')
     renderInventoryItem($('held'), whom.held);
   for (var i = 0; i < whom.inventory.length; ++i) {
