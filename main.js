@@ -3137,8 +3137,11 @@ function rnd(max) {
 var _AUDIO_CONTEXT;
 function Sound(sound) {
   var that = this;
-  var k = new Knobs();
-  if (sound) k[sound]();
+  var k = sound;
+  if (typeof k === 'string') {
+    k = new Knobs();
+    k[sound]();
+  }
   this.init(k);
   if (!_AUDIO_CONTEXT)
     _AUDIO_CONTEXT = new webkitAudioContext();
@@ -3161,7 +3164,7 @@ Sound.prototype.initForRepeat = function(ps) {
   this.enableFrequencyCutoff = (ps.frequencyMin > 0);
   this.periodMult = Math.pow(.5, ps.frequencySlide / 44100);
   this.periodMultSlide = ps.frequencySlideSlide * Math.pow(2, -44101/44100)
-    / 44100;
+    / -44100;
   
   this.dutyCycle = ps.dutyCycle;
   this.dutyCycleSlide = ps.dutyCycleSweep / (OVERSAMPLING * 44100);
@@ -3245,7 +3248,8 @@ Sound.prototype.generate = function (buffer) {
   var it = 0;
   for(; !this.done && it < buffer.length; ++this.t, ++it) {
     // Repeats
-    if (this.repeatTime != 0 && ++this.elapsedSinceRepeat >= this.repeatTime)
+    if (this.repeatTime != 0 && 
+        ++this.elapsedSinceRepeat >= this.repeatTime)
       this.initForRepeat(this.params);
     
     // Arpeggio (single)
@@ -3437,12 +3441,12 @@ var defaultKnobs = {
 
 function Knobs(settings) {
   settings = settings||{};
-  for (var i in defaultKnobs) {
+  for (var i in defaultKnobs)
+    this[i] = defaultKnobs[i];
+  if (settings.init) this[settings.init]();
+  for (var i in defaultKnobs)
     if (settings.hasOwnProperty(i))
       this[i] = settings[i];
-    else
-      this[i] = defaultKnobs[i];
-  }
 }
 
 
@@ -3654,6 +3658,16 @@ Knobs.prototype.random = function () {
 }
 
 
+Knobs.prototype.tone = function () {
+  this.shape = SINE;
+  this.frequency = 440;
+  this.attack = 0;
+  this.sustain = 1;
+  this.decay = 0;
+  return this;
+}
+
+
 function message() {
   var div = document.createElement('div');
   m = arguments[0];
@@ -3671,11 +3685,16 @@ var THROBBERS = [
   'Lots of candy!',
   'Halfsize blocks!',
   '!DOCTYPE html!',
-  'No mining, no crafting!',
+  'Some mining, but no crafting!',
   '3D!',
-  'Better than nothing!',
+  'Worse than wolves!',
   'Japanese food!',
   'Open source!',
   'No IE support!',
   'Halfbaked!',
+  'Not by Notch!',
+  'No QA dept here either!',
+  'Child-driven design!',
+  'Herobrine removed!',
+  'No multiplayer!',
 ];
