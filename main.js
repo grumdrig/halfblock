@@ -189,6 +189,11 @@ var BLOCK_TYPES = {
     update: updatePlant,
     drop: 'soybean',
   },
+  weeds: {
+    tile: [11,2],
+    hashes: 3,
+    update: updatePlant,
+  },
   lamp: {
     tile: 9,
     hashes: 1,
@@ -334,11 +339,14 @@ var ENTITY_TYPES = {
       this.rebound = 0.75;
       this.landed = this.birthday;
       this.liveliness = 0.25 + Math.random();
+      hopEntity(this, 1 + Math.random() * 0.5);
     },
     update: function () {
       this.tile = this.falling ? 12 : 11;
       if (this.falling) 
         this.landed = GAME.clock();
+      else if (block(this).type === BLOCK_TYPES.weeds && this.age() > 2)
+        this.die();
       else if (this.landed + this.liveliness < GAME.clock())
         hopEntity(this, 1 + Math.random() * 0.5);
     },
@@ -1537,7 +1545,7 @@ Block.prototype.generateTerrain = function () {
     else if (this.y < HY / 2) this.type = BLOCK_TYPES['water'];
     else this.type = BLOCK_TYPES.air;
 
-    if (Math.pow(noise(this.x/10 + GAME.seed, this.y/10, this.z/10 + 1000), 3) < -0.12)
+    if (Math.pow(noise(this.x/10 + GAME.seed, this.y/10, this.z/10 + 1000), 3) < -0.2)
       this.type = BLOCK_TYPES.candy;
 
     // Caves
@@ -2375,7 +2383,7 @@ function onkeydown(event, count) {
       var f = PICKED.neighbor(PICKED_FACE);
       new Entity({type: 'chumpa',
                   x: f.x + 0.5, 
-                  y: f.y + 0.5,
+                  y: f.y,
                   z: f.z + 0.5});
     }
 
