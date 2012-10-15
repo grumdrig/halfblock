@@ -95,6 +95,7 @@ var UPDATE_PERIOD = 0.1;  // sec
 var SY = 0.5;      // vertical size of blocks
 var HY = NY * SY;  // vertical height of chunk in m
 
+var GEN_STAT = new Stat('Genchunk');
 var RENDER_STAT = new Stat('Render');
 var UPDATE_STAT = new Stat('Update');
 var FPS_STAT = new Stat('FPS');
@@ -854,6 +855,7 @@ function makeChunk(chunkx, chunkz) {
   var result;
   if (!chunk(chunkx, chunkz)) {
     // New chunk needed
+    GEN_STAT.start();
     result = new Chunk({chunkx:chunkx, chunkz:chunkz});
     result.generateTerrain();
 
@@ -875,6 +877,7 @@ function makeChunk(chunkx, chunkz) {
       for (var y = 0; y < NY; ++y)
         for (var x = 0; x < NX; ++x)
           block(chunkx + x, y*SY, chunkz + NZ).invalidateGeometry();
+    GEN_STAT.end();
   }
   return result;
 }
@@ -1400,6 +1403,7 @@ function tick() {
   }
 
   var feedback = 
+    GEN_STAT + '<br>' +
     RENDER_STAT + '<br>' + 
     FPS_STAT + '<br>' + 
     UPDATE_STAT + '<br>' +
