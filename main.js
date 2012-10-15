@@ -687,7 +687,8 @@ Chunk.prototype.tick = function (elapsed) {
         var d = distance(center(AVATAR), ntt);
         if (d < AVATAR.radius) {
           new Sound('pop');
-          AVATAR.gain(ntt.sourcetype ? ntt.sourcetype.name : ntt.type.name);
+          AVATAR.gain(ntt.type.name === 'block' ? 
+                      ntt.sourcetype.name : ntt.type.name);
           redisplayInventory(AVATAR);
           pickTool(AVATAR.slot);
           ntt.die();
@@ -1608,7 +1609,7 @@ Block.prototype.breakBlock = function () {
       x: this.x + 0.5, 
       y: this.y + (this.stack || this.height || SY)/2,
       z: this.z + 0.5,
-      sourcetype: type
+      sourcetype: type,
     }, this);
   }
   for (var i = 0; i < 20; ++i) {
