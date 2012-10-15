@@ -276,13 +276,8 @@ var BLOCK_TYPES = {
     opaque: true,
   },
 };
-var NBLOCKTYPES = 0;
-for (var i in BLOCK_TYPES) {
-  BLOCK_TYPES[i].index = NBLOCKTYPES++;
-  BLOCK_TYPES[i].name = i;
-}
 for (var i in BLOCK_TYPES)
-  BLOCK_TYPES[BLOCK_TYPES[i].index] = BLOCK_TYPES[i];
+  BLOCK_TYPES[i].name = i;
 
 
 var ENTITY_TYPES = {
@@ -345,13 +340,10 @@ var ENTITY_TYPES = {
     },
   },
 };
-var NENTITYTYPES = 0;
 for (var i in ENTITY_TYPES) {
-  ENTITY_TYPES[i].index = NENTITYTYPES++;
   ENTITY_TYPES[i].name = i;
+  ENTITY_TYPES[i].isEntity = true;
 }
-for (var i in ENTITY_TYPES)
-  ENTITY_TYPES[ENTITY_TYPES[i].index] = ENTITY_TYPES[i];
 
 
 function hopEntity(ntt, power) {
@@ -2017,7 +2009,6 @@ Skybox.prototype.render = function () {
 
 
 function Entity(init1, init2) {
-  this.isEntity = true;
   var that = this;
   init1 = init1 || {};
   init2 = init2 || {};
@@ -2360,6 +2351,17 @@ function onkeydown(event, count) {
       }
     }
 
+    if (c === '^I') {
+      // Cheat-in inventory
+      for (var t in BLOCK_TYPES)
+        if (BLOCK_TYPES[t].tile)
+          AVATAR.gain(t, 10);
+      for (var t in ENTITY_TYPES)
+        if (ENTITY_TYPES[t].tile)
+          AVATAR.gain(t, 10);
+      redisplayInventory(AVATAR);
+    }
+
     if (c === 'C' && PICKED) {
       // Spawn a chumpa
       var f = PICKED.neighbor(PICKED_FACE);
@@ -2504,7 +2506,13 @@ function onmousedown(event) {
       } else {
         var b = PICKED.neighbor(PICKED_FACE);
         if (!b.outofbounds && AVATAR.tool) {
-          b.placeBlock(AVATAR.tool);
+          if (AVATAR.tool.isEntity)
+            new Entity({type: AVATAR.tool,
+                        x: b.x + 0.5, 
+                        y: b.y,
+                        z: b.z + 0.5});
+          else
+            b.placeBlock(AVATAR.tool);
           if (--AVATAR.inventory[AVATAR.slot].qty <= 0)
             AVATAR.inventory[i] = null;
           redisplayInventory(AVATAR);
