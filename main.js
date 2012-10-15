@@ -2370,9 +2370,14 @@ function onkeydown(event, count) {
     }
 
     if (c === 'H') {
+      var _SPREADS = [0, 3, Math.floor(CHUNK_RADIUS * 2)];
       // Toggle chunk generation radiusness
-      SPREAD_OUT = 
-        (SPREAD_OUT < CHUNK_RADIUS) ? Math.floor(CHUNK_RADIUS * 2) : 3;
+      for (var i = 0; i < _SPREADS.length; ++i) {
+        if (SPREAD_OUT === _SPREADS[i]) {
+          SPREAD_OUT = _SPREADS[(i+1)%_SPREADS.length];
+          break;
+        }
+      }
       message('Chunk spread = ' + SPREAD_OUT);
     }
 
