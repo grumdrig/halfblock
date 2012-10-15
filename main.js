@@ -310,6 +310,8 @@ var ENTITY_TYPES = {
       this.height = SY * this.type.scale;
       this.radius = 0.5 * this.type.scale;
       this.rebound = 0.75;
+      if (this.sourcetype === BLOCK_TYPES.grass)
+        this.sourcetype = BLOCK_TYPES.dirt;
     },
     collectable: true,
     scale: 0.25,
