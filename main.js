@@ -330,12 +330,13 @@ var ENTITY_TYPES = {
     init: function () {
       this.rebound = 0.75;
       this.landed = this.birthday;
+      this.liveliness = 0.25 + Math.random();
     },
     update: function () {
       this.tile = this.falling ? 12 : 11;
       if (this.falling) 
         this.landed = GAME.clock();
-      else if (this.landed + 1 < GAME.clock())
+      else if (this.landed + this.liveliness < GAME.clock())
         hopEntity(this, 1 + Math.random() * 0.5);
     },
   },
