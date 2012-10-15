@@ -326,6 +326,23 @@ var ENTITY_TYPES = {
       hopEntity(this);
     },
     billboard: true,
+    bob: 1/8,
+  },
+  chumpa: {
+    tile: 11,
+    billboard: true,
+    scale: 0.1,
+    init: function () {
+      this.rebound = 0.75;
+      this.landed = this.birthday;
+    },
+    update: function () {
+      this.tile = this.falling ? 12 : 11;
+      if (this.falling) 
+        this.landed = GAME.clock();
+      else if (this.landed + 1 < GAME.clock())
+        hopEntity(this, 1.5);
+    },
   },
 };
 var NENTITYTYPES = 0;
@@ -337,10 +354,11 @@ for (var i in ENTITY_TYPES)
   ENTITY_TYPES[ENTITY_TYPES[i].index] = ENTITY_TYPES[i];
 
 
-function hopEntity(ntt) {
-  ntt.dx = 2 * tweak();
-  ntt.dz = 2 * tweak();
-  ntt.dy = 6;
+function hopEntity(ntt, power) {
+  power = power || 1;
+  ntt.dx = 2 * tweak() * power;
+  ntt.dz = 2 * tweak() * power;
+  ntt.dy = 6 * power;
   ntt.falling = true;
 }
 
@@ -1856,9 +1874,9 @@ function entityGeometryBillboard(b) {
   vec3.normalize(u);  // probably already unit though, eh?
   //var trans = mat3.create(r.concat(u, l));
 
-  var S = 0.25;
+  var S = b.type.scale || 0.25;
   var quad = [-S,-S, S,-S, S,S, -S,S];
-  var bob = (1 + Math.sin(2 * b.age())) / 16;
+  var bob = b.type.bob ? b.type.bob * (1 + Math.sin(2 * b.age())) / 2 : 0;
   var p = [b.x, b.y + S + bob, b.z];
   for (var i = 0; i < quad.length; i += 2) {
     var x = quad[i], y = quad[i+1], z = -0.5;
@@ -2340,6 +2358,15 @@ function onkeydown(event, count) {
         var p = gl.particles.spawn({x0: f.x+0.5, y0: f.y+0.5, z0: f.z+0.5});
         gl.particles.bounceParticle(p);
       }
+    }
+
+    if (c === 'C' && PICKED) {
+      // Spawn a chumpa
+      var f = PICKED.neighbor(PICKED_FACE);
+      new Entity({type: 'chumpa',
+                  x: f.x + 0.5, 
+                  y: f.y + 0.5,
+                  z: f.z + 0.5});
     }
 
     if (c === 'H') {
