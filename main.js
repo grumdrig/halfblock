@@ -341,7 +341,7 @@ var ENTITY_TYPES = {
       if (this.falling) 
         this.landed = GAME.clock();
       else if (this.landed + 1 < GAME.clock())
-        hopEntity(this, 1.5);
+        hopEntity(this, 1 + Math.random() * 0.5);
     },
   },
 };
