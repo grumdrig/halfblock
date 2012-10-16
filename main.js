@@ -107,6 +107,7 @@ var VJUMP = 7.7;   // m/s
 
 var LIGHT_SUN = 6;
 
+var DARKFACE = 0.5;
 
 var KEYS = {};
 
@@ -1847,11 +1848,17 @@ function blockGeometryBlock(b) {
       var f = _FACES[face];
       for (var i = 3; i >= 0; --i) {
         var coord = [b.x + f[i][0], b.y + f[i][1] * SY, b.z + f[i][2]];
-        v.aPos.push.apply(v.aPos, coord);
-        v.aLighting.push.apply(v.aLighting, n.light);
+        v.aPos = v.aPos.concat(coord);
+        if (face === FACE_LEFT || face === FACE_RIGHT)
+          v.aLighting.push(n.light[0] * DARKFACE,
+                           n.light[1] * DARKFACE,
+                           n.light[2] * DARKFACE,
+                           n.light[3] * DARKFACE);
+        else
+          v.aLighting = v.aLighting.concat(n.light);
         var color = b.type.color || [1,1,1];        
-        v.aColor.push.apply(v.aColor, 
-                            vclamp(vec3.add(color, tweaker(coord), [0,0,0])));
+        v.aColor = v.aColor.concat(vclamp(vec3.add(color, tweaker(coord), 
+                                                   [0,0,0])));
       }
        
       // Set textures per vertex: one ST pair for each vertex
