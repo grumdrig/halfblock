@@ -95,7 +95,7 @@ var UPDATE_PERIOD = 0.1;  // sec
 var SY = 0.5;      // vertical size of blocks
 var HY = NY * SY;  // vertical height of chunk in m
 
-var GEN_STAT = new Stat('Genchunk');
+var GEN_STAT = new Stat('Chunk-gen');
 var RENDER_STAT = new Stat('Render');
 var UPDATE_STAT = new Stat('Update');
 var FPS_STAT = new Stat('FPS');
@@ -1449,9 +1449,9 @@ function tick() {
 
 function feedback() {
   var result = 
-    GEN_STAT + '<br>' +
-    RENDER_STAT + '<br>' + 
     FPS_STAT + '<br>' + 
+    GEN_STAT + '<br>' +
+    //RENDER_STAT + '<br>' + 
     UPDATE_STAT + '<br>' +
     'Player: ' + AVATAR + '<br>' +
     'Time: ' + readableTime(GAME.timeOfDay) + ' &#9788;' + GAME.sunlight.toFixed(2);
@@ -2614,8 +2614,9 @@ Stat.prototype.toString = function () {
   var v = this.value, l = this.low, h = this.high;
   if (this.invert) {
     v = 1/v;
-    l = 1/h;
+    var t = 1/h;
     h = 1/l;
+    l = t;
   }
   return this.name + ': ' + v.toFixed(this.places) +  
     ' (' + l.toFixed(this.places) + ' ' + h.toFixed(this.places) + ')';
