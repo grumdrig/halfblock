@@ -193,6 +193,19 @@ var BLOCK_TYPES = {
     tile: [11,2],
     hashes: 3,
     update: updatePlant,
+    onstep: function (ntt) {
+      if (ntt.type === ENTITY_TYPES.player &&
+          (!this.lastSpawn || this.lastSpawn + 60 < GAME.clock())) {
+        // Spawn chumpa opposite ntt
+        new Entity({
+          type: 'chumpa', 
+          x: this.x + 1 - frac(ntt.x),
+          y: this.y, 
+          z: this.z + 1 - frac(ntt.z),
+        });
+        this.lastSpawn = GAME.clock();
+      }
+    }
   },
   lamp: {
     tile: 9,
@@ -580,14 +593,13 @@ Chunk.prototype.generateTerrain = function () {
     var x = xi + this.chunkx;
     for (var zi = 0; zi < NZ; ++zi) {
       var z = zi + this.chunkz;
-      if (noise(x/10,9938,z/10) < -0.2) {
+      if (noise(x/10,9938,z/10) < -0.3) {
         var t = topmost(x, z);
         if (t && t.type.plantable)
           t.neighbor(FACE_TOP).type = BLOCK_TYPES.soybeans;
       }
     }
   }
-
 
   // Plant some flowers
   for (var n = 0; n < 4; ++n) {
@@ -598,6 +610,17 @@ Chunk.prototype.generateTerrain = function () {
     var t = topmost(x, z);
     if (t && t.type.plantable)
       t.neighbor(FACE_TOP).type = BLOCK_TYPES.flower;
+  }
+
+  // Plant some weeds
+  for (var n = 0; n < 6; ++n) {
+    var x = this.chunkx + 
+      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n)) * NX);
+    var z = this.chunkz + 
+      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n + 23.4)) * NZ);
+    var t = topmost(x, z);
+    if (t && t.type.plantable)
+      t.neighbor(FACE_TOP).type = BLOCK_TYPES.weeds;
   }
 
   // Initial quick lighting update, some of which we can know accurately
@@ -1270,7 +1293,8 @@ function ballistics(e, elapsed) {
 
   e.y += e.dy * elapsed;
 
-  if (block(e).type.solid) {
+  var blocke = block(e);
+  if (blocke.type.solid) {
     if (e.flying || e.falling) {
       // Hit bottom
       if (e.rebound && e.falling && e.dy < 0) {
@@ -1307,6 +1331,9 @@ function ballistics(e, elapsed) {
     e.y = Math.min(e.y, SY * Math.floor((e.y + e.height)/SY) - e.height);
     e.dy = 0;
   }
+
+  if (blocke.type.onstep)
+    blocke.type.onstep.call(blocke, e);
 }
 
 
