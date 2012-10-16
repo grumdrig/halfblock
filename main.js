@@ -1402,45 +1402,52 @@ window.requestAnimationFrame =
 function tick() {
   requestAnimationFrame(tick);
 
+  // Monkey with the clock
+  var timeNow = wallClock();
+  var elapsed = timeNow - window.lastFrame;
+  FPS_STAT.add(elapsed);
+  window.lastFrame = timeNow;
+    
   if (!GAME || GAME.loading) {
     blurryIntro(1024, 512);
     return;
   }
-
-  if (window.mode === 'pause')
-    return;
+  
+  if (window.mode !== 'pause') {
     
-  if (gl.textures.terrain.loaded) {
-    if (KEYS.B) {
-      blur(AVATAR, 256, 256);
-    } else {
-      gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-      drawScene(AVATAR);
+    if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
+
+    if (gl.textures.terrain.loaded) {
+      if (KEYS.B) {
+        blur(AVATAR, 256, 256);
+      } else {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        drawScene(AVATAR);
+      }
+    }
+    
+    processInput(AVATAR, elapsed);
+    
+    for (var i in GAME.chunks) {
+      var c = GAME.chunks[i];
+      c.tick(elapsed);
+    }
+    
+    gl.particles.tick(elapsed);
+    
+    if (timeNow > GAME.lastUpdate + UPDATE_PERIOD) {
+      updateWorld();
+      GAME.lastUpdate = timeNow;
     }
   }
+ 
+  if (!$('stats').hide)
+    $('stats').innerHTML = feedback();
+}
 
-  // Monkey with the clock
-  var timeNow = GAME.clock();
-  var elapsed = timeNow - GAME.lastFrame;
-  FPS_STAT.add(elapsed);
-  if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
-  GAME.lastFrame = timeNow;
 
-  processInput(AVATAR, elapsed);
-
-  for (var i in GAME.chunks) {
-    var c = GAME.chunks[i];
-    c.tick(elapsed);
-  }
-  
-  gl.particles.tick(elapsed);
-
-  if (timeNow > GAME.lastUpdate + UPDATE_PERIOD) {
-    updateWorld();
-    GAME.lastUpdate = timeNow;
-  }
-
-  var feedback = 
+function feedback() {
+  var result = 
     GEN_STAT + '<br>' +
     RENDER_STAT + '<br>' + 
     FPS_STAT + '<br>' + 
@@ -1448,14 +1455,14 @@ function tick() {
     'Player: ' + AVATAR + '<br>' +
     'Time: ' + readableTime(GAME.timeOfDay) + ' &#9788;' + GAME.sunlight.toFixed(2);
   if (PICKED) {
-    feedback += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
+    result += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
     var pf = PICKED.neighbor(PICKED_FACE);
-    if (pf) feedback += ' &rarr; ' + pf;
+    if (pf) result += ' &rarr; ' + pf;
   }
   var keys = '';
   for (var k in KEYS) if (KEYS[k]) keys += ' ' + escape(k);
-  if (keys.length > 0) feedback += '<br>Keys: ' + keys;
-  $('stats').innerHTML = feedback;
+  if (keys.length > 0) result += '<br>Keys: ' + keys;
+  return result;
 }
 
 
@@ -2889,7 +2896,7 @@ function Game(data) {
     this.birthday = wallClock() - data.age;
   else
     this.birthday = wallClock();
-  this.lastFrame = this.lastUpdate = this.clock();
+  this.lastUpdate = this.clock();
 
   this.chunks = {};
   this.entities = {};
@@ -2916,6 +2923,7 @@ Game.prototype.calcSunlight = function () {
 function wallClock() {
   return +new Date()/1000;
 }
+window.lastFrame = wallClock();
 
 Game.prototype.clock = function () {
   return wallClock() - this.birthday;
