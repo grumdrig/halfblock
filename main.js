@@ -2355,7 +2355,27 @@ function onkeydown(event, count) {
 
   KEYS[k] = KEYS[c] = count;
 
-  if (count === 1 && window.mode !== 'pause') {
+  if (count === 1) {
+
+    if (c === '\t' || k === 27) { // tab or escape
+      if (GAME) GAME.showInventory = false;
+      togglePointerLock();
+      // Esc key to close inventory isn't a good idea, since it kills
+      // pointer lock / fullscreen, unavoidably
+    }
+
+    if (c === 'L' && cancan.requestFullscreen)
+      cancan.requestFullscreen();
+
+    if (c === 'F3') {
+      var stats = $('stats');
+      stats.hide = !stats.hide;
+      showAndHideUI();
+    }
+
+    if (window.mode === 'pause')
+      return;
+
     if (c === ' ') {
       if (GAME.clock() < AVATAR.lastHop + 0.25) {
         // Toggle flying
@@ -2378,16 +2398,6 @@ function onkeydown(event, count) {
         togglePointerLock();
       }
     }
-
-    if (c === '\t' || k === 27) { // tab or escape
-      if (GAME) GAME.showInventory = false;
-      togglePointerLock();
-      // Esc key to close inventory isn't a good idea, since it kills
-      // pointer lock / fullscreen, unavoidably
-    }
-
-    if (c === 'L' && cancan.requestFullscreen)
-      cancan.requestFullscreen();
 
     if (c === 'K' && PICKED) {
       for (var i = 0; i < 10; ++i) {
@@ -2459,12 +2469,6 @@ function onkeydown(event, count) {
     if (c === 'F1') {
       var hud = $('hud');
       hud.hide = !hud.hide;
-      showAndHideUI();
-    }
-
-    if (c === 'F3') {
-      var stats = $('stats');
-      stats.hide = !stats.hide;
       showAndHideUI();
     }
 
