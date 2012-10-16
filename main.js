@@ -2355,7 +2355,7 @@ function onkeydown(event, count) {
 
   KEYS[k] = KEYS[c] = count;
 
-  if (count === 1) {
+  if (count === 1 && window.mode !== 'pause') {
     if (c === ' ') {
       if (GAME.clock() < AVATAR.lastHop + 0.25) {
         // Toggle flying
