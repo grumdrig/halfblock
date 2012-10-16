@@ -1949,6 +1949,34 @@ function entityGeometryBillboard(b) {
 }
 
 
+/*
+function entityGeometrySteve(ntt) {
+  var v = ntt.vertices = {
+    aPos: [],
+    aLighting: [],
+    aColor: [],
+    aTexCoord: [],
+    indices: [],
+  };
+  var head = box();
+  scale(head, ntt.radius, ntt.height/4/2, ntt.radius);
+  translate(head, 0, ntt.height, 0);
+  rotate(head, ntt.pitch, ntt.yaw);
+  var torso = box();
+  translate(torso, 0, 1, 0);
+  scale(torso, ntt.radius, 3 * ntt.height/4/2, ntt.radius);
+  rotate(torso, 0, ntt.yaw);
+  
+
+  geoBox(v, 
+         ntt.x - ntt.radius, ntt.x + ntt.radius,
+         ntt.y + ntt.height * 4/5, ntt.y + ntt.height,
+         ntt.z - ntt.radius, ntt.z + ntt.radius);
+  geoBox
+         
+}
+*/
+
 
 function entityGeometryBlock(ntt) {
   var v = ntt.vertices = {
