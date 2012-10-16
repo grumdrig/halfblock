@@ -195,7 +195,7 @@ var BLOCK_TYPES = {
     update: updatePlant,
     onstep: function (ntt) {
       if (ntt.type === ENTITY_TYPES.player &&
-          (!this.lastSpawn || this.lastSpawn + 60 < GAME.clock())) {
+          (!this.lastSpawn || this.lastSpawn + 60 < GAME.clock)) {
         // Spawn chumpa opposite ntt
         new Entity({
           type: 'chumpa', 
@@ -203,7 +203,7 @@ var BLOCK_TYPES = {
           y: this.y, 
           z: this.z + 1 - frac(ntt.z),
         });
-        this.lastSpawn = GAME.clock();
+        this.lastSpawn = GAME.clock;
       }
     }
   },
@@ -357,10 +357,10 @@ var ENTITY_TYPES = {
     update: function () {
       this.tile = this.falling ? 12 : 11;
       if (this.falling) 
-        this.landed = GAME.clock();
+        this.landed = GAME.clock;
       else if (block(this).type === BLOCK_TYPES.weeds && this.age() > 2)
         this.die();
-      else if (this.landed + this.liveliness < GAME.clock())
+      else if (this.landed + this.liveliness < GAME.clock)
         hopEntity(this, 1 + Math.random() * 0.5);
     },
   },
@@ -749,7 +749,7 @@ Chunk.prototype.updatePeriod = function () {
 
 Chunk.prototype.update = function (force) {
   if (this.nDirty > 0 && 
-      (force || GAME.clock() > this.lastUpdate + this.updatePeriod())) {
+      (force || GAME.clock > this.lastUpdate + this.updatePeriod())) {
     this.nDirty = 0;
     var uplights = 0, upgeoms = 0;
     
@@ -772,7 +772,7 @@ Chunk.prototype.update = function (force) {
       }
     }
 
-    this.lastUpdate = GAME.clock();
+    this.lastUpdate = GAME.clock;
     this.generateBuffers(upgeoms === 0);
     //message('Update: ', this.chunkx, this.chunkz, ':', 
     //        uplights, upgeoms, '->', this.nDirty);
@@ -810,7 +810,7 @@ function distance(p, q) {
 }
 
 Entity.prototype.age = function () {
-  return GAME.clock() - this.birthday;
+  return GAME.clock - this.birthday;
 }
 
 function signedHDistanceFromLine(a, angle, p) {
@@ -1416,6 +1416,7 @@ function tick() {
   if (window.mode !== 'pause') {
     
     if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
+    GAME.clock += elapsed;
 
     if (gl.textures.terrain.loaded) {
       if (KEYS.B) {
@@ -2082,7 +2083,7 @@ function Entity(init1, init2) {
   init('dyaw', 0);
   init('dpitch', 0);
   //init('falling', false);
-  init('birthday', GAME.clock());
+  init('birthday', GAME.clock);
   init('id', function () { return GAME.nextEntityID++} );
   init('type');
   init('sourcetype', {});
@@ -2384,7 +2385,7 @@ function onkeydown(event, count) {
       return;
 
     if (c === ' ') {
-      if (GAME.clock() < AVATAR.lastHop + 0.25) {
+      if (GAME.clock < AVATAR.lastHop + 0.25) {
         // Toggle flying
         AVATAR.flying = !AVATAR.flying;
         if (AVATAR.flying) AVATAR.falling = false;
@@ -2394,7 +2395,7 @@ function onkeydown(event, count) {
         AVATAR.falling = true;
         //new Sound('jump');
       }
-      AVATAR.lastHop = GAME.clock();
+      AVATAR.lastHop = GAME.clock;
     }
 
     // E and I for inventory
@@ -2675,7 +2676,7 @@ ParticleSystem.prototype.spawn = function (init) {
     y0: 0,
     z0: 0,
     id: gl.particles.nextID++,
-    birthday: GAME.clock() - rewind,
+    birthday: GAME.clock - rewind,
     life: rewind + 0.5 + Math.random() / 2,
     tile: {s:10, t:0},
   };
@@ -2830,7 +2831,7 @@ ParticleSystem.prototype.render = function () {
     this.buffers.aTexCoord = makeBuffer(aTexCoord, 2);
   }
 
-  gl.uniform1f(this.shader.uniforms.uClock, parseFloat(GAME.clock()));
+  gl.uniform1f(this.shader.uniforms.uClock, parseFloat(GAME.clock));
   gl.uniform1f(this.shader.uniforms.uGravity, PARTICLE_GRAVITY);
   gl.uniformMatrix4fv(this.shader.uniforms.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(this.shader.uniforms.uMVMatrix, false, mvMatrix);
@@ -2882,22 +2883,16 @@ function sqr(x) { return x * x }
 
 
 function Game(data) {
+  data = data || {};
   var game = this;
   function init(key, defa) { 
-    if (data && data.hasOwnProperty(key))
-      game[key] = data[key];
-    else
-      game[key] = defa;
+    game[key] = (data.hasOwnProperty(key)) ? data[key] : defa;
   }
   init('seed', Math.random() * 9999999);
   init('timeOfDay', Math.PI);  // 0 is midnight, PI is noon
   init('nextEntityID', 1);
-  if (data && data.hasOwnProperty('age'))
-    this.birthday = wallClock() - data.age;
-  else
-    this.birthday = wallClock();
-  this.lastUpdate = this.clock();
-
+  init('clock', 0);
+  this.lastUpdate = this.clock;
   this.chunks = {};
   this.entities = {};
   this.calcSunlight();
@@ -2910,7 +2905,7 @@ Game.prototype.data = function () {
     seed: this.seed,
     timeOfDay: this.timeOfDay,
     nextEntityID: this.nextEntityID,
-    age: wallClock() - this.birthday,
+    clock: this.clock,
   };
 }
 
@@ -2924,10 +2919,6 @@ function wallClock() {
   return +new Date()/1000;
 }
 window.lastFrame = wallClock();
-
-Game.prototype.clock = function () {
-  return wallClock() - this.birthday;
-}
 
 
 Game.prototype.save = function (callback) {
