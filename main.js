@@ -1406,6 +1406,9 @@ function tick() {
     blurryIntro(1024, 512);
     return;
   }
+
+  if (window.mode === 'pause')
+    return;
     
   if (gl.textures.terrain.loaded) {
     if (KEYS.B) {
