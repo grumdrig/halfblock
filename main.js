@@ -54,6 +54,9 @@
 // Cube mapping
 // http://stackoverflow.com/questions/10079368/how-would-i-do-environment-reflection-in-webgl-without-using-a-library-like-thre
 
+// Noise
+// https://github.com/ashima/webgl-noise
+// http://www.pouet.net/topic.php?which=8294&page=2
 
 // TODO: race cars
 // TODO: flags
@@ -1406,11 +1409,10 @@ function tick() {
   window.lastFrame = timeNow;
     
   if (!GAME || GAME.loading) {
-    blurryIntro(1024, 512);
-    return;
-  }
-  
-  if (window.mode !== 'pause') {
+    blurryIntro.time = (blurryIntro.time||0) + elapsed * (KEYS.S ? 20 : 1);
+    blurryIntro(blurryIntro.time);
+
+  } else if (window.mode !== 'pause') {
     
     if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
     GAME.clock += elapsed;
@@ -1450,8 +1452,10 @@ function feedback() {
     GEN_STAT + '<br>' +
     //RENDER_STAT + '<br>' + 
     UPDATE_STAT + '<br>' +
-    'Player: ' + AVATAR + '<br>' +
-    'Time: ' + readableTime(GAME.timeOfDay) + ' &#9788;' + GAME.sunlight.toFixed(2);
+    'Player: ' + AVATAR + '<br>';
+  if (GAME)
+    result += 'Time: ' + readableTime(GAME.timeOfDay) + ' &#9788;' + 
+              GAME.sunlight.toFixed(2);
   if (PICKED) {
     result += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
     var pf = PICKED.neighbor(PICKED_FACE);
@@ -2683,7 +2687,7 @@ function showAndHideUI() {
   if (window.mode === 'inventory' || window.mode === 'hud')
     redisplayInventory(AVATAR);
 
-  show('stats', GAME && !$('stats').hide);
+  show('stats', !$('stats').hide);
 }
 
 
@@ -3163,19 +3167,12 @@ function blur(camera, w, h) {
   drawScreenAlignedQuad(BLURV, FB2);
 }
 
-function blurryIntro(w, h) {
+function blurryIntro(time) {
   if (!gl) return;
-  if (!FB1) {
-    FB1 = makeFramebuffer(w, h, true, false);
-    FB2 = makeFramebuffer(w, h, false, false);
-    BLURH = new Shader('blur', 'blur-horizontal');
-    BLURV = new Shader('blur', 'blur-vertical');
+  if (!SAQ)
     SAQ = makeBuffer([-1,-1, +1,-1, +1,+1, -1,+1], 2);
-  }
   gl.enable(gl.DEPTH_TEST);
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, FB1);
-  gl.viewport(0, 0, w, h);
+  gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
 
   // Set up the projection
   var aspectRatio = gl.viewportWidth / gl.viewportHeight;
@@ -3185,22 +3182,13 @@ function blurryIntro(w, h) {
                    10,  // far clipping plane
                    pMatrix);
 
-  var S = KEYS.S ? 1 : 20;
-
   // Position for camera
   mat4.identity(mvMatrix);
-  mat4.rotateX(mvMatrix, Math.cos(wallClock() / S)/10);
-  mat4.rotateY(mvMatrix, wallClock() / 4 / S);
+  mat4.rotateX(mvMatrix, Math.cos(time / 20) / 10);
+  mat4.rotateY(mvMatrix, time / 4 / 20);
 
   if (gl.textures.panorama.loaded)
     gl.panorama.render();
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-  gl.disable(gl.DEPTH_TEST);
-
-  drawScreenAlignedQuad(BLURH, 1/w, FB1, FB2);
-  drawScreenAlignedQuad(BLURV, 1/h, FB2);
 }
 
 
