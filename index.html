@@ -6,6 +6,7 @@
 <script type="text/javascript" src="gl-matrix.js"></script>
 <script type="text/javascript" src="perlin.js"></script>
 <script type="text/javascript" src="main.js"></script>
+
 <!-- Shaders for wireframe selection box -->
 <script id="wireframe-vs" type="x-shader/x-vertex">
   attribute vec3 aPos;
@@ -63,8 +64,8 @@
   }
 </script>
 
-<!-- Block shader -->
-<script id="shader-vs" type="x-shader/x-vertex">
+<!-- Primary geometry shader -->
+<script id="main-vs" type="x-shader/x-vertex">
   attribute vec3 aPos;
   attribute vec2 aTexCoord;
   attribute vec4 aLighting;
@@ -95,7 +96,7 @@
                  0.0, 1.0);
   }
 </script>
-<script id="shader-fs" type="x-shader/x-fragment">
+<script id="main-fs" type="x-shader/x-fragment">
   precision mediump float;
 
   varying vec2 vTexCoord;
@@ -105,13 +106,15 @@
   uniform sampler2D uSampler;
   uniform float uSunlight;
 
+  const vec4 kFogColor = vec4(0.5, 0.8, 0.98, 1.0);
+
   void main(void) {
     vec4 textureColor = texture2D(uSampler, vTexCoord);
     if (textureColor.a <= 0.5) {
       discard;
     } else {
       textureColor = vec4(textureColor.rgb * vLighting, textureColor.a);
-      textureColor = vFog * uSunlight * vec4(0.5,0.8,0.98,0) + (1.0 - vFog) * textureColor;
+      textureColor = vFog * uSunlight * kFogColor + (1.0 - vFog) * textureColor;
       gl_FragColor = textureColor;
     }
   }

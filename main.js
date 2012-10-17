@@ -407,15 +407,11 @@ function initGL(canvas, opts) {
 
   if (gl) {
     gl.panorama = new Skybox('skybox', 'panorama');
-    
     gl.sky = new Skybox('skybox', 'sky');
-    
-    gl.mainShader = new Shader('shader');
-    
+    gl.mainShader = new Shader('main');
     gl.wireframe = new Wireframe();
-    
     gl.particles = new ParticleSystem();
-    
+
     // Init textures
     gl.textures = {
       panorama: loadTexture('panorama.png', true),
@@ -1584,7 +1580,7 @@ Block.prototype.generateTerrain = function () {
     else if (this.y < HY / 2) this.type = BLOCK_TYPES['water'];
     else this.type = BLOCK_TYPES.air;
 
-    if (Math.pow(noise(this.x/10 + GAME.seed, this.y/10, this.z/10 + 1000), 3) < -0.2)
+    if (Math.pow(noise(this.x/20 + GAME.seed, this.y/20, this.z/20 + 1000), 3) < -0.2)
       this.type = BLOCK_TYPES.candy;
 
     // Caves
