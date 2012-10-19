@@ -58,6 +58,7 @@
 // https://github.com/ashima/webgl-noise
 // http://www.pouet.net/topic.php?which=8294&page=2
 
+// Kids' requests:
 // TODO: race cars
 // TODO: flags
 // TODO: tonkatsu
@@ -144,8 +145,8 @@ var BLOCK_TYPES = {
     plantable: true,
   },
   grass: {
-    tile: 1,
-    color: [0.25, 0.5, 0],
+    tile: [1,1],
+    color: [0.1, 0.6, 0],
     solid: true,
     opaque: true,
     plantable: true,
