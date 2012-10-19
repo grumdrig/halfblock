@@ -1,63 +1,3 @@
-// REFERENCES:
-
-// WebGL
-// http://www.khronos.org/registry/webgl/specs/latest/
-// http://learningwebgl.com/blog/?page_id=1217
-
-// GLSL
-// http://www.opengl.org/documentation/glsl/
-// http://www.khronos.org/registry/gles/specs/2.0/GLSL_ES_Specification_1.0.17.pdf
-
-// MC
-// http://codeflow.org/entries/2010/dec/09/minecraft-like-rendering-experiments-in-opengl-4/
-
-// Rendering to textures
-// http://stackoverflow.com/questions/9046643/webgl-create-texture
-// http://learningwebgl.com/blog/?p=1786
-
-// Indexed DB
-// http://www.html5rocks.com/en/tutorials/offline/storage/
-// http://www.w3.org/TR/IndexedDB/
-// https://developer.mozilla.org/en-US/docs/IndexedDB/Using_IndexedDB
-
-// Blur
-// http://www.gamerendering.com/2008/10/11/gaussian-blur-filter-shader/
-// http://www.geeks3d.com/20100909/shader-library-gaussian-blur-post-processing-filter-in-glsl/
-// http://encelo.netsons.org/2008/03/23/i-love-depth-of-field/
-// Real-Time Rendering p. 471
-
-// Sky
-// http://codeflow.org/entries/2011/apr/13/advanced-webgl-part-2-sky-rendering/
-// http://www.flipcode.com/archives/Sky_Domes.shtml
-// http://http.developer.nvidia.com/GPUGems2/gpugems2_chapter16.html
-
-// Gamma
-// http://http.developer.nvidia.com/GPUGems3/gpugems3_ch24.html
-// http://www.4p8.com/eric.brasseur/gamma.html
-// http://stackoverflow.com/questions/10843321/should-webgl-shader-output-be-adjusted-for-gamma
-
-// Pointer lock
-// http://www.html5rocks.com/en/tutorials/pointerlock/intro/
-// chrome://flags/
-
-// Fullscreen
-// https://developer.mozilla.org/en-US/docs/DOM/Using_full-screen_mode
-
-// Billboards
-// http://nehe.gamedev.net/article/billboarding_how_to/18011/
-
-// Web Audio API
-// https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html
-// http://0xfe.blogspot.com/2011/08/generating-tones-with-web-audio-api.html
-// https://wiki.mozilla.org/Audio_Data_API (need to shim to Web Audio)
-
-// Cube mapping
-// http://stackoverflow.com/questions/10079368/how-would-i-do-environment-reflection-in-webgl-without-using-a-library-like-thre
-
-// Noise
-// https://github.com/ashima/webgl-noise
-// http://www.pouet.net/topic.php?which=8294&page=2
-
 // Kids' requests:
 // TODO: race cars
 // TODO: flags
@@ -87,6 +27,9 @@ var PICKED = null;
 var PICKED_FACE = 0;
 var PICK_MAX = 8;
 
+var KEYS = {};
+
+
 // Map chunk dimensions
 var LOGNX = 4;
 var LOGNY = 5;
@@ -95,7 +38,6 @@ var NX = 1 << LOGNX;
 var NY = 1 << LOGNY;
 var NZ = 1 << LOGNZ;
 var CHUNK_RADIUS = Math.sqrt(NX * NX + NZ * NZ);
-var UPDATE_PERIOD = 0.1;  // sec
 var SY = 0.5;      // vertical size of blocks
 var HY = NY * SY;  // vertical height of chunk in m
 
@@ -112,8 +54,6 @@ var VJUMP = 7.7;   // m/s
 var LIGHT_SUN = 6;
 
 var DARKFACE = 0.5;
-
-var KEYS = {};
 
 var FACE_FRONT = 0;
 var FACE_BACK = 1;
@@ -750,7 +690,7 @@ Chunk.prototype.tick = function (elapsed) {
 
 
 Chunk.prototype.updatePeriod = function () {
-  return Math.max(UPDATE_PERIOD, 2 * this.hdistance / AVATAR.viewDistance);
+  return Math.max(GAME.UPDATE_PERIOD, 2 * this.hdistance / AVATAR.viewDistance);
 }
 
 Chunk.prototype.update = function (force) {
@@ -1416,7 +1356,7 @@ function tick() {
     blurryIntro.time = (blurryIntro.time||0) + elapsed * (KEYS.S ? 20 : 1);
     blurryIntro(blurryIntro.time);
 
-  } else if (window.mode !== 'pause') {
+  } else if (window.mode !== 'pause' || GAME.multiplayer) {
     
     if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
     GAME.clock += elapsed;
@@ -1439,7 +1379,7 @@ function tick() {
     
     gl.particles.tick(elapsed);
     
-    if (timeNow > GAME.lastUpdate + UPDATE_PERIOD) {
+    if (timeNow > GAME.lastUpdate + GAME.UPDATE_PERIOD) {
       updateWorld();
       GAME.lastUpdate = timeNow;
     }
@@ -1956,58 +1896,6 @@ function entityGeometryBillboard(b) {
 
 
 
-/*
-function box(tile, light, color) {
-  var tile = tileCoord(b);
-  v.aTexCoord = [tile.s + ZERO, tile.t + ONE, 
-                 tile.s + ONE,  tile.t + ONE, 
-                 tile.s + ONE,  tile.t + ZERO, 
-                 tile.s + ZERO, tile.t + ZERO];
-  var v = {
-    aPos: [],
-    aLighting: [],
-    aColor: [],
-    aTexCoord: [],
-    indices: [],
-  };
-  
-  light = light || [0,0,0,0];
-  color = color || [1,1,1];
-  var ff = Array(3);
-  for (var face = 0; face < 6; ++face) {
-    // Add vertices
-    var pindex = v.aPos.length / 3;
-    var f = _FACES[face];
-    for (var i = 3; i >= 0; --i) {
-      for (var j = 0; j < f[i].length; ++j) 
-        ff[j] = ntt.type.scale * (f[i][j] - (j === 1 ? 0 : 0.5));      
-      var cos = Math.cos(ntt.yaw), sin = Math.sin(ntt.yaw);
-      var dx = ff[0] * cos - ff[2] * sin;
-      var dy = ff[1] * h;
-      var dz = ff[0] * sin + ff[2] * cos;
-      v.aPos.push(ntt.x + dx, ntt.y + dy, ntt.z + dz);
-      v.aLighting.push.apply(v.aLighting, light);
-      v.aColor.push.apply(v.aColor, color);
-    }
-    
-    var tile = tileCoord(ntt);
-    if (h % 1 === 0) h -= ZERO;
-    v.aTexCoord.push(tile.s + ONE,  tile.t + ONE, 
-                     tile.s + ZERO, tile.t + ONE, 
-                     tile.s + ZERO, tile.t + 1 - h,
-                     tile.s + ONE,  tile.t + 1 - h);
-
-    // Describe triangles
-    v.indices.push(pindex, pindex + 1, pindex + 2,
-                   pindex, pindex + 2, pindex + 3);
-  }
-
-  return v;
-}
-
-}
-*/
-
 function entityGeometrySteve(ntt) {
   var v = ntt.vertices = {
     aPos: [],
@@ -2022,7 +1910,7 @@ function entityGeometrySteve(ntt) {
     light: block(ntt).light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
     h: ntt.height / 4,
-    scale: 0.2,
+    scale: ntt.type.scale,
     yaw: ntt.yaw,
     pitch: ntt.pitch,
     x: ntt.x,
@@ -2035,7 +1923,7 @@ function entityGeometrySteve(ntt) {
     light: block(ntt).light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
     h: 3 * ntt.height / 4,
-    scale: 0.3,
+    scale: ntt.type.scale,
     yaw: ntt.yaw,
     x: ntt.x,
     y: ntt.y + ntt.height / 4,
@@ -3019,6 +2907,7 @@ function Game(data) {
   this.entities = {};
   this.calcSunlight();
 
+  this.UPDATE_PERIOD = 0.1; // sec
 }
 
 
