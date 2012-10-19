@@ -329,6 +329,8 @@ var ENTITY_TYPES = {
   },
   steve: {
     tile: [5,5],
+    scale: 0.3,
+    geometry: entityGeometrySteve,
   },
   block: {
     init: function () {
@@ -1810,7 +1812,9 @@ Block.prototype.buildGeometry = function () {
 }
 
 Entity.prototype.buildGeometry = function () {
-  if (this.type.invisible) {
+  if (this.type.geometry) {
+    this.type.geometry(this);
+  } else if (this.type.invisible) {
     // do nothing
   } else if (this.type.billboard) {
     entityGeometryBillboard(this);
@@ -2017,11 +2021,24 @@ function entityGeometrySteve(ntt) {
   geometryBox(v, {
     light: block(ntt).light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    h: ntt.height,
-    scale: ntt.type.scale,
+    h: ntt.height / 4,
+    scale: 0.2,
+    yaw: ntt.yaw,
+    pitch: ntt.pitch,
+    x: ntt.x,
+    y: ntt.y + 3 * ntt.height / 4,
+    z: ntt.z,
+    tile: tileCoord(ntt),
+  });
+  // Body
+  geometryBox(v, {
+    light: block(ntt).light,
+    color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
+    h: 3 * ntt.height / 4,
+    scale: 0.3,
     yaw: ntt.yaw,
     x: ntt.x,
-    y: ntt.y + ntt.height,
+    y: ntt.y + ntt.height / 4,
     z: ntt.z,
     tile: tileCoord(ntt),
   });
@@ -2183,17 +2200,17 @@ function Entity(init1, init2) {
   init('id', function () { return GAME.nextEntityID++} );
   init('type');
   init('sourcetype', {});
-  if (typeof this.type === 'string') 
-    this.type = ENTITY_TYPES[this.type];
-  if (typeof this.sourcetype === 'string') 
-    this.sourcetype = BLOCK_TYPES[this.sourcetype];
-  this.flying = this.falling = false;
   this.radius = 0.3;
   this.height = 1.8;
   this.WALK_MAX = 4.3; // m/s
   this.FLY_MAX = 10.8; // m/s
   this.SPIN_RATE = 2;  // radians/s
   this.ACCELERATION = 20;  // m/s^2
+  if (typeof this.type === 'string') 
+    this.type = ENTITY_TYPES[this.type];
+  if (typeof this.sourcetype === 'string') 
+    this.sourcetype = BLOCK_TYPES[this.sourcetype];
+  this.flying = this.falling = false;
   this.chunk = chunk(0,0);  // for now - all entities in 1 chunk
   this.chunk.entities[this.id] = this;
   if (this.type.init) this.type.init.apply(this);
