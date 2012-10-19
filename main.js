@@ -2514,9 +2514,17 @@ function onkeydown(event, count) {
     // E and I for inventory
     if (c === 'E' || c === 'I') {
       if (GAME && !GAME.loading && AVATAR) {
-        redisplayInventory(AVATAR);
-        GAME.showInventory = !GAME.showInventory;
-        togglePointerLock();
+        if (event.shiftKey) {
+          // Rotate inventory
+          Array.prototype.push.apply(AVATAR.inventory, 
+                                     AVATAR.inventory.splice(0, 9));
+          redisplayInventory(AVATAR);
+        } else {
+          // Show/hide inventory screen
+          redisplayInventory(AVATAR);
+          GAME.showInventory = !GAME.showInventory;
+          togglePointerLock();
+        }
       }
     }
 
