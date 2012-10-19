@@ -2572,18 +2572,21 @@ function onmousedown(event) {
         //new Sound('hitHurt');
       } else {
         var b = PICKED.neighbor(PICKED_FACE);
-        if (!b.outofbounds && AVATAR.tool) {
-          if (AVATAR.tool.isEntity)
-            new Entity({type: AVATAR.tool,
+        var tool = AVATAR.inventory[AVATAR.slot] &&
+          AVATAR.inventory[AVATAR.slot].qty &&
+          AVATAR.inventory[AVATAR.slot].type;
+        if (tool) tool = BLOCK_TYPES[tool] || ENTITY_TYPES[tool];
+        if (!b.outofbounds && tool) {
+          if (tool.isEntity)
+            new Entity({type: tool,
                         x: b.x + 0.5, 
                         y: b.y,
                         z: b.z + 0.5});
           else
-            b.placeBlock(AVATAR.tool);
+            b.placeBlock(tool);
           if (--AVATAR.inventory[AVATAR.slot].qty <= 0)
             AVATAR.inventory[i] = null;
           redisplayInventory(AVATAR);
-          pickTool(AVATAR.slot);
         }
       }
     }
@@ -2878,11 +2881,7 @@ function resizeCanvas(w, h) {
 
 
 function pickTool(slot) {
-  var type = (AVATAR.inventory[slot]||{}).type;
-  if (type) type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
-  if (type && AVATAR.inventory[slot].qty <= 0) type = null;
   AVATAR.slot = slot;
-  AVATAR.tool = type;
   for (var i = 0; i < 9; ++i)
     $('hud'+i).parentNode.style.borderColor = 
       (i === slot) ? 'white' : 'rgb(128, 128, 128)';
