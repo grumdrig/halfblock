@@ -274,13 +274,13 @@ var BLOCK_TYPES = {
     },
   },
   mystery: {
-    tile: [2, 2],
+    tile: [2, 2, 2, 1],
     opaque: true,
     solid: true,
     stack: 1,
   },
   hal9000: {
-    tile: [3, 2],
+    tile: [3, 2, 3, 1],
     opaque: true,
     solid: true,
     stack: 1,
@@ -1697,12 +1697,14 @@ Block.prototype.placeBlock = function (newType, stackPos) {
   }
 }
 
-function tile(obj) {
+function tile(obj, face) {
   var t = obj.tile || obj.type.tile || obj.sourcetype.tile;
-  if (typeof t === 'number') 
-    return {s: t,    t: 0};
-  else // assume array
-    return {s: t[0], t:t[1]};
+  if (typeof t === 'number')
+    t = [t, 0];
+  var off = 0;
+  if (t.length > 2 && (face === FACE_TOP || face === FACE_BOTTOM))
+    off = 2;
+  return {s: t[off], t:t[off+1]};
 }
 
 Block.prototype.toString = function () {
@@ -1863,7 +1865,7 @@ function blockGeometryBlock(b) {
       }
        
       // Set textures per vertex: one ST pair for each vertex
-      var tyle = tile(b);
+      var tyle = tile(b, face);
       var bottom, top;
       if (face === FACE_TOP || face === FACE_BOTTOM) {
         bottom = 0;
