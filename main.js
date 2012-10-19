@@ -327,6 +327,9 @@ var ENTITY_TYPES = {
       pickTool(0);
     },
   },
+  steve: {
+    tile: [5,5],
+  },
   block: {
     init: function () {
       this.dyaw = 1;
@@ -1088,10 +1091,8 @@ Chunk.prototype.renderEntities = function () {
         continue;
       nttSet.aColor.push.apply(nttSet.aColor, geo.aColor);
       var pindex = nttSet.aPos.length / 3;
-      nttSet.aPos.push.apply(nttSet.aPos, 
-                                        geo.aPos);
-      nttSet.aTexCoord.push.apply(nttSet.aTexCoord, 
-                                      geo.aTexCoord);
+      nttSet.aPos.push.apply(nttSet.aPos, geo.aPos);
+      nttSet.aTexCoord.push.apply(nttSet.aTexCoord, geo.aTexCoord);
       for (var j = 0; j < geo.indices.length; ++j)
         nttSet.indices.push(pindex + geo.indices[j]);
     }
@@ -1653,7 +1654,7 @@ Block.prototype.breakBlock = function () {
   if (this.type.empty) return;
   var type = this.type;
   var pos = this.stackPos;
-  var tyle = tile(this);
+  var tile = tileCoord(this);
   this.type = BLOCK_TYPES.air;
   delete this.stackPos;
   this.invalidateGeometry(true);
@@ -1671,7 +1672,7 @@ Block.prototype.breakBlock = function () {
       x0: this.x + 0.5, 
       y0: this.y + 0.5, 
       z0: this.z + 0.5,
-      tile: tyle,
+      tile: tile,
     });
     //gl.particles.bounceParticle(p);
   }
@@ -1697,7 +1698,7 @@ Block.prototype.placeBlock = function (newType, stackPos) {
   }
 }
 
-function tile(obj, face) {
+function tileCoord(obj, face) {
   var t = obj.tile || obj.type.tile || obj.sourcetype.tile;
   if (typeof t === 'number')
     t = [t, 0];
@@ -1747,7 +1748,7 @@ function blockGeometryHash(b) {
     v.indices.push(n+0, n+1, n+2,  n+0, n+2, n+3,
                    n+4, n+5, n+6,  n+4, n+6, n+7);
 
-    var tyle = tile(b);
+    var tile = tileCoord(b);
     var bottom = 1;
     var top = bottom - 1;
 
@@ -1756,10 +1757,10 @@ function blockGeometryHash(b) {
     if (top % 1 === 0) top += ZERO;
 
     for (var j = 0; j < 2; ++j)
-      v.aTexCoord.push(tyle.s + ZERO, tyle.t + bottom, 
-                       tyle.s + ONE,  tyle.t + bottom, 
-                       tyle.s + ONE,  tyle.t + top, 
-                       tyle.s + ZERO, tyle.t + top);
+      v.aTexCoord.push(tile.s + ZERO, tile.t + bottom, 
+                       tile.s + ONE,  tile.t + bottom, 
+                       tile.s + ONE,  tile.t + top, 
+                       tile.s + ZERO, tile.t + top);
   }
   for (var i = 0; i < v.aPos.length/3; ++i) {
     v.aLighting.push.apply(v.aLighting, b.light || block(b).light);
@@ -1865,7 +1866,7 @@ function blockGeometryBlock(b) {
       }
        
       // Set textures per vertex: one ST pair for each vertex
-      var tyle = tile(b, face);
+      var tile = tileCoord(b, face);
       var bottom, top;
       if (face === FACE_TOP || face === FACE_BOTTOM) {
         bottom = 0;
@@ -1881,10 +1882,10 @@ function blockGeometryBlock(b) {
       if (bottom % 1 === 0) bottom += ZERO;
       if (top % 1 === 0) top -= ZERO;
 
-      v.aTexCoord.push(tyle.s + ONE,  tyle.t + bottom, 
-                       tyle.s + ZERO, tyle.t + bottom, 
-                       tyle.s + ZERO, tyle.t + top, 
-                       tyle.s + ONE,  tyle.t + top);
+      v.aTexCoord.push(tile.s + ONE,  tile.t + bottom, 
+                       tile.s + ZERO, tile.t + bottom, 
+                       tile.s + ZERO, tile.t + top, 
+                       tile.s + ONE,  tile.t + top);
 
       // Describe triangles
       v.indices.push(pindex, pindex + 1, pindex + 2,
@@ -1941,82 +1942,56 @@ function entityGeometryBillboard(b) {
     v.aLighting.push.apply(v.aLighting, light);
   }
     
-  var tyle = tile(b);
-  var bottom = 1 - ZERO;
-  var top = ZERO;
-  v.aTexCoord = [tyle.s + ZERO, tyle.t + ONE, 
-                 tyle.s + ONE,  tyle.t + ONE, 
-                 tyle.s + ONE,  tyle.t + ZERO, 
-                 tyle.s + ZERO, tyle.t + ZERO];
+  var tile = tileCoord(b);
+  v.aTexCoord = [tile.s + ZERO, tile.t + ONE, 
+                 tile.s + ONE,  tile.t + ONE, 
+                 tile.s + ONE,  tile.t + ZERO, 
+                 tile.s + ZERO, tile.t + ZERO];
   return v;
 }
 
 
+
 /*
-function entityGeometrySteve(ntt) {
-  var v = ntt.vertices = {
+function box(tile, light, color) {
+  var tile = tileCoord(b);
+  v.aTexCoord = [tile.s + ZERO, tile.t + ONE, 
+                 tile.s + ONE,  tile.t + ONE, 
+                 tile.s + ONE,  tile.t + ZERO, 
+                 tile.s + ZERO, tile.t + ZERO];
+  var v = {
     aPos: [],
     aLighting: [],
     aColor: [],
     aTexCoord: [],
     indices: [],
   };
-  var head = box();
-  scale(head, ntt.radius, ntt.height/4/2, ntt.radius);
-  translate(head, 0, ntt.height, 0);
-  rotate(head, ntt.pitch, ntt.yaw);
-  var torso = box();
-  translate(torso, 0, 1, 0);
-  scale(torso, ntt.radius, 3 * ntt.height/4/2, ntt.radius);
-  rotate(torso, 0, ntt.yaw);
   
-
-  geoBox(v, 
-         ntt.x - ntt.radius, ntt.x + ntt.radius,
-         ntt.y + ntt.height * 4/5, ntt.y + ntt.height,
-         ntt.z - ntt.radius, ntt.z + ntt.radius);
-  geoBox
-         
-}
-*/
-
-
-function entityGeometryBlock(ntt) {
-  var v = ntt.vertices = {
-    aPos: [],
-    aLighting: [],
-    aColor: [],
-    aTexCoord: [],
-    indices: [],
-  };
-
-  var light = block(ntt).light;
-  var color = ntt.type.color || ntt.sourcetype.color || [1,1,1];
-  var h = ntt.type.stack || ntt.sourcetype.stack || SY;
+  light = light || [0,0,0,0];
+  color = color || [1,1,1];
+  var ff = Array(3);
   for (var face = 0; face < 6; ++face) {
     // Add vertices
     var pindex = v.aPos.length / 3;
     var f = _FACES[face];
-    var bob = (1 + Math.sin(2 * ntt.age())) / 16;
     for (var i = 3; i >= 0; --i) {
-      var ff = Array(3);
       for (var j = 0; j < f[i].length; ++j) 
         ff[j] = ntt.type.scale * (f[i][j] - (j === 1 ? 0 : 0.5));      
       var cos = Math.cos(ntt.yaw), sin = Math.sin(ntt.yaw);
       var dx = ff[0] * cos - ff[2] * sin;
-      var dy = ff[1] * h + bob;
+      var dy = ff[1] * h;
       var dz = ff[0] * sin + ff[2] * cos;
       v.aPos.push(ntt.x + dx, ntt.y + dy, ntt.z + dz);
       v.aLighting.push.apply(v.aLighting, light);
       v.aColor.push.apply(v.aColor, color);
     }
     
-    var tyle = tile(ntt);
+    var tile = tileCoord(ntt);
     if (h % 1 === 0) h -= ZERO;
-    v.aTexCoord.push(tyle.s + ONE,  tyle.t + ONE, 
-                     tyle.s + ZERO, tyle.t + ONE, 
-                     tyle.s + ZERO, tyle.t + 1 - h,
-                     tyle.s + ONE,  tyle.t + 1 - h);
+    v.aTexCoord.push(tile.s + ONE,  tile.t + ONE, 
+                     tile.s + ZERO, tile.t + ONE, 
+                     tile.s + ZERO, tile.t + 1 - h,
+                     tile.s + ONE,  tile.t + 1 - h);
 
     // Describe triangles
     v.indices.push(pindex, pindex + 1, pindex + 2,
@@ -2025,6 +2000,89 @@ function entityGeometryBlock(ntt) {
 
   return v;
 }
+
+}
+*/
+
+function entityGeometrySteve(ntt) {
+  var v = ntt.vertices = {
+    aPos: [],
+    aLighting: [],
+    aColor: [],
+    aTexCoord: [],
+    indices: [],
+  };
+
+  // Head
+  geometryBox(v, {
+    light: block(ntt).light,
+    color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
+    h: ntt.height,
+    scale: ntt.type.scale,
+    yaw: ntt.yaw,
+    x: ntt.x,
+    y: ntt.y + ntt.height,
+    z: ntt.z,
+    tile: tileCoord(ntt),
+  });
+         
+}
+
+
+function geometryBox(v, p) {
+  var ff = Array(3);
+  for (var face = 0; face < 6; ++face) {
+    // Add vertices
+    var pindex = v.aPos.length / 3;
+    var f = _FACES[face];
+    for (var i = 0; i < 4; ++i) {
+      for (var j = 0; j < f[i].length; ++j) 
+        ff[j] = p.scale * (f[i][j] - (j === 1 ? 0 : 0.5));      
+      var cos = Math.cos(p.yaw), sin = Math.sin(p.yaw);
+      var dx = ff[0] * cos - ff[2] * sin;
+      var dy = ff[1] * p.h;
+      var dz = ff[0] * sin + ff[2] * cos;
+      v.aPos.push(p.x + dx, p.y + dy, p.z + dz);
+      v.aLighting = v.aLighting.concat(p.light);
+      v.aColor = v.aColor.concat(p.color);
+    }
+    
+    var h = (face === FACE_BOTTOM || face === FACE_TOP) ? 1 :
+      (p.h % 1 === 0) ? p.h - ZERO : p.h;
+    v.aTexCoord.push(p.tile.s + ONE, p.tile.t + ONE, 
+                     p.tile.s + ZERO,  p.tile.t + ONE, 
+                     p.tile.s + ZERO,  p.tile.t + 1 - h,
+                     p.tile.s + ONE, p.tile.t + 1 - h);
+
+    // Describe triangles
+    v.indices.push(pindex, pindex + 1, pindex + 2,
+                   pindex, pindex + 2, pindex + 3);
+  }
+
+  return v;
+}
+
+
+function entityGeometryBlock(ntt) {
+  ntt.vertices = {
+    aPos: [],
+    aLighting: [],
+    aColor: [],
+    aTexCoord: [],
+    indices: [],
+  };
+  geometryBox(ntt.vertices, {
+    light: block(ntt).light,
+    color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
+    h: ntt.type.stack || ntt.sourcetype.stack || SY,
+    scale: ntt.type.scale,
+    yaw: ntt.yaw,
+    x: ntt.x,
+    y: ntt.y + 1/8 * (1 + Math.sin(2 * ntt.age())) / 2,
+    z: ntt.z,
+    tile: tileCoord(ntt),
+  });
+}                    
 
 
 function Wireframe() {
@@ -2538,9 +2596,9 @@ function renderInventoryItem(can, item) {
   var type = qty && item.type;
   if (type) {
     type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
-    var tyle = tile(type);
+    var tile = tileCoord(type);
     ctx.drawImage($('terrain'), 
-                  16 * tyle.s, 16 * tyle.t,  16, 16,
+                  16 * tile.s, 16 * tile.t,  16, 16,
                   0, 0,                      can.width, can.height);
     if (type.color) {
       var im = ctx.getImageData(0,0,can.width,can.height);
@@ -3796,17 +3854,19 @@ var THROBBERS = [
   'Throbber!',
   'Lots of candy!',
   'Halfsize blocks!',
-  '!DOCTYPE html!',
+  '<!DOCTYPE html>!',
   'Some mining, but no crafting!',
-  '3D!',
+  'Mostly 3D!',
   'Worse than wolves!',
   'Japanese food!',
   'Open source!',
   'No IE support!',
   'Halfbaked!',
   'Not by Notch!',
-  'No QA dept here either!',
+  'No QA deptartment!',
   'Child-driven design!',
   'Herobrine removed!',
   'No multiplayer!',
+  'WebGL!',
+  'Custom shaders!',
 ];
