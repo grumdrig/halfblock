@@ -1942,8 +1942,9 @@ function entityGeometrySteve(ntt) {
   };
 
   // Head
+  var light = block(ntt.x, ntt.y + ntt.height/2, ntt.z).light;
   geometryBox(v, {
-    light: block(ntt).light,
+    light: light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
     height: ntt.height / 4,
     scale: 1,
@@ -1957,7 +1958,7 @@ function entityGeometrySteve(ntt) {
   });
   // Body
   geometryBox(v, {
-    light: block(ntt).light,
+    light: light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
     height: 3 * ntt.height / 4 - 0.01,
     texheight: 1.5,
