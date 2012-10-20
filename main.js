@@ -247,9 +247,35 @@ var ENTITY_TYPES = {
     },
   },
   steve: {
-    tile: [5,1],
+    tile: [1,4],
     scale: 1,
     geometry: entityGeometrySteve,
+    init: function () {
+      this.nextThink = 0;
+      this.plan = 'stand';
+    },
+    update: function () {
+      if (this.nextThink < GAME.clock) {
+        this.nextThink = GAME.clock + Math.random() * 2;
+        if (Math.random() < 0.4)
+          this.ddz = -this.ACCELERATION;
+        else
+          this.ddz = 0;
+        var spin = Math.random() * 4 >> 0;
+        if (spin === 0)
+          this.dyaw = this.SPIN_RATE;
+        else if (spin === 1)
+          this.dyaw = -this.SPIN_RATE;
+        else
+          this.dyaw = 0;
+        if (Math.random() < 0.25) {
+          this.ddy = GRAVITY * 1.1
+          this.falling = true;
+        } else {
+          this.ddy = 0;
+        }
+      }
+    },
   },
   block: {
     init: function () {
@@ -316,6 +342,8 @@ function reload() {
     message('Reloaded');
   }
   head.appendChild(script);
+  gl.textures.panorama = loadTexture('panorama.png', true);
+  gl.textures.terrain  = loadTexture('terrain.png');
 }
 
 
@@ -1096,7 +1124,6 @@ function processInput(avatar, elapsed) {
   avatar.ddy = 0;
   if (avatar.flying || avatar.swimming) {
     // Fly up and down
-    var ddp = avatar.ACCELERATION * elapsed;
     if (KEYS[' '])
       avatar.ddy += avatar.ACCELERATION;
     else if (KEYS[16]) // shift
@@ -1230,7 +1257,7 @@ function ballistics(e, elapsed) {
   }
 
   // Fall
-  if (e.falling && !(e.swimming && (KEYS[' '] || KEYS[16])))
+  if (e.falling && !(e.swimming && e.ddy))
     e.dy -= GRAVITY * elapsed;
 
   e.y += e.dy * elapsed;
@@ -1922,13 +1949,14 @@ function entityGeometrySteve(ntt) {
     light: block(ntt).light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
     height: 3 * ntt.height / 4 - 0.01,
+    texheight: 1.5,
     scale: ntt.type.scale,
     radius: 0.7,
     yaw: ntt.yaw,
     x: ntt.x,
     y: ntt.y,
     z: ntt.z,
-    tile: {s:3,t:1.5},
+    tile: {s:1,t:4},
   });
          
 }
@@ -2138,6 +2166,9 @@ function Entity(init1, init2) {
   init('dx', 0);
   init('dy', 0);
   init('dz', 0);
+  init('ddx', 0);
+  init('ddy', 0);
+  init('ddz', 0);
   init('yaw', 0);
   init('pitch', 0);
   init('dyaw', 0);
