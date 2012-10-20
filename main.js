@@ -247,7 +247,7 @@ var ENTITY_TYPES = {
     },
   },
   steve: {
-    tile: [1,4],
+    tile: [3,2, 1,3, 3,1, 3,1, 1,3, 1,3],
     scale: 1,
     geometry: entityGeometrySteve,
     init: function () {
@@ -1681,8 +1681,10 @@ function tileCoord(obj, face) {
   if (typeof t === 'number')
     t = [t, 0];
   var off = 0;
-  if (t.length > 2 && (face === FACE_TOP || face === FACE_BOTTOM))
+  if (t.length === 2 * 2 && (face === FACE_TOP || face === FACE_BOTTOM))
     off = 2;
+  else if (t.length === 2 * 6)
+    off = 2 * face;
   return {s: t[off], t:t[off+1]};
 }
 
@@ -1946,29 +1948,29 @@ function entityGeometrySteve(ntt) {
   geometryBox(v, {
     light: light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    height: ntt.height / 4,
+    height: ntt.height / 2,
     scale: 1,
-    yaw: ntt.yaw + GAME.clock,
+    yaw: ntt.yaw,
     pitch: ntt.pitch,
     x: ntt.x,
-    y: ntt.y + 3 * ntt.height / 4,
+    y: ntt.y + ntt.height / 2,
     z: ntt.z,
-    tile: {s:3,t:2},
+    tile: ntt,
     texheight: 1,
   });
   // Body
   geometryBox(v, {
     light: light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    height: 3 * ntt.height / 4 - 0.01,
-    texheight: 1.5,
+    height: ntt.height / 2 - 0.01,
+    texheight: 1,
     scale: ntt.type.scale,
     radius: 0.7,
-    yaw: ntt.yaw,
+    yaw: 0,
     x: ntt.x,
     y: ntt.y,
     z: ntt.z,
-    tile: {s:1,t:4},
+    tile: {tile:[1,4]},
   });
          
 }
@@ -2051,13 +2053,14 @@ function geometryBox(v, p) {
       v.aColor = v.aColor.concat(p.color);
     }
 
+    var tile = tileCoord(p.tile, face);
     var top = (face === FACE_BOTTOM || face === FACE_TOP) ? 0 :
       1 - (p.texheight || p.height);
     if (top % 1 === 0) top += ZERO;
-    v.aTexCoord.push(p.tile.s + ONE,  p.tile.t + ONE, 
-                     p.tile.s + ZERO, p.tile.t + ONE, 
-                     p.tile.s + ZERO, p.tile.t + top,
-                     p.tile.s + ONE,  p.tile.t + top);
+    v.aTexCoord.push(tile.s + ONE,  tile.t + ONE, 
+                     tile.s + ZERO, tile.t + ONE, 
+                     tile.s + ZERO, tile.t + top,
+                     tile.s + ONE,  tile.t + top);
 
     // Describe triangles
     v.indices.push(pindex, pindex + 1, pindex + 2,
@@ -2084,7 +2087,7 @@ function entityGeometryBlock(ntt) {
     x: ntt.x,
     y: ntt.y + 1/8 * (1 + Math.sin(2 * ntt.age())) / 2,
     z: ntt.z,
-    tile: tileCoord(ntt),
+    tile: ntt,
   });
 }                    
 
