@@ -305,6 +305,16 @@ function reload() {
   var script = document.createElement('script');
   script.type = 'text/javascript';
   script.src = 'main.js?' + new Date();
+  script.onload = function() {
+    for (var ic in GAME.chunks) {
+      var c = GAME.chunks[ic];
+      for (var ie in c.entities) {
+        var e = c.entities[ie];
+        e.type = ENTITY_TYPES[e.type.name];
+      }
+    }
+    message('Reloaded');
+  }
   head.appendChild(script);
 }
 
@@ -2483,6 +2493,9 @@ function onkeydown(event, count) {
           AVATAR.gain(t, 10);
       redisplayInventory(AVATAR);
     }
+
+    if (c === '^R')
+      reload();
 
     if (c === 'C' && PICKED) {
       // Spawn a chumpa
