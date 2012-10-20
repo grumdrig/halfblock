@@ -6,29 +6,8 @@
 // TODO: edamame
 // TODO: miso soup
 
-// OpenGL rendering things!
 
-var gl;
-
-var mvMatrix = mat4.create();  // model-view matrix
-var mvMatrixStack = [];
-var pMatrix = mat4.create();   // projection matrix
-
-var DB;
 var DB_VERSION = '8';
-
-var GAME;
-var AVATAR;  // hack-o alias for GAME.avatar because we use it so much
-
-var GRASSY = false;       // true to use decal-style grass
-var SPREAD_OUT = 3;       // create nearby chunks at this radius
-
-var PICKED = null;
-var PICKED_FACE = 0;
-var PICK_MAX = 8;
-
-var KEYS = {};
-
 
 // Map chunk dimensions
 var LOGNX = 4;
@@ -268,8 +247,8 @@ var ENTITY_TYPES = {
     },
   },
   steve: {
-    tile: [5,5],
-    scale: 0.3,
+    tile: [5,1],
+    scale: 1,
     geometry: entityGeometrySteve,
   },
   block: {
@@ -318,6 +297,15 @@ var ENTITY_TYPES = {
 for (var i in ENTITY_TYPES) {
   ENTITY_TYPES[i].name = i;
   ENTITY_TYPES[i].isEntity = true;
+}
+
+
+function reload() {
+  var head = document.getElementsByTagName('head')[0];
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src = 'main.js?' + new Date();
+  head.appendChild(script);
 }
 
 
@@ -1909,33 +1897,55 @@ function entityGeometrySteve(ntt) {
   geometryBox(v, {
     light: block(ntt).light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    h: ntt.height / 4,
-    scale: ntt.type.scale,
-    yaw: ntt.yaw,
+    height: ntt.height / 4,
+    scale: 1,
+    yaw: ntt.yaw + GAME.clock,
     pitch: ntt.pitch,
     x: ntt.x,
     y: ntt.y + 3 * ntt.height / 4,
     z: ntt.z,
-    tile: tileCoord(ntt),
+    tile: {s:3,t:2},
+    texheight: 1,
   });
   // Body
   geometryBox(v, {
     light: block(ntt).light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    h: 3 * ntt.height / 4,
+    height: 3 * ntt.height / 4 - 0.01,
     scale: ntt.type.scale,
+    radius: 0.7,
     yaw: ntt.yaw,
     x: ntt.x,
-    y: ntt.y + ntt.height / 4,
+    y: ntt.y,
     z: ntt.z,
-    tile: tileCoord(ntt),
+    tile: {s:3,t:1.5},
   });
          
 }
 
 
-function geometryBox(v, p) {
+/*
+function geometryCylinder(v, p) {
+  var cos0 = p.radius, sin0 = 0;
+  var i0 = v.aPos.length / 3;
+  var southpole = v.aPos.length / 3;
+  var northpole = southpole + 1;
+  v.aPos.push(p.x, p.y, p.z,  p.x, p.y + p.h, p.z);
+  for (var n = 0, i = v.aPos.length / 3; n < p.sides; n += 1, i += 2) {
+    var cos = p.radius * Math.cos(n * Math.PI * 2 / p.sides);
+    var sin = p.radius * Math.sin(n * Math.PI * 2 / p.sides);
+    v.aPos.push(p.x + cos, p.y,       p.z + sin,
+                p.x + cos, p.y + p.h, p.z + sin);
+    var i2 = i0 + 2 * ((n + 1) % p.sides);
+    v.indices.push(i, i2+1, i+1,      // bl br tr
+                   i,       i+1, i2); // bl    tr tl
+  }
+    v.indices.push(southpole, pi + 2*n,     pi + 2 * ((n + 1) % p.sides));
+    v.indices.push(northpole, pi + 2*n + 1, pi + 2 * ((n + 1) % p.sides) + 1);
+    
+  }
   var ff = Array(3);
+  
   for (var face = 0; face < 6; ++face) {
     // Add vertices
     var pindex = v.aPos.length / 3;
@@ -1966,7 +1976,46 @@ function geometryBox(v, p) {
 
   return v;
 }
+*/
 
+
+function geometryBox(v, p) {
+  var ff = Array(3);
+  var scales = [(p.scale || 1) * (p.radius || 1),
+                (p.scale || 1),
+                (p.scale || 1) * (p.radius || 1)];
+  var offsets = [-0.5, 0, -0.5];
+  for (var face = 0; face < 6; ++face) {
+    // Add vertices
+    var pindex = v.aPos.length / 3;
+    var f = _FACES[face];
+    for (var i = 0; i < 4; ++i) {
+      for (var j = 0; j < 3; ++j) 
+        ff[j] = scales[j] * (f[i][j] + offsets[j]);
+      var cos = Math.cos(p.yaw), sin = Math.sin(p.yaw);
+      var dx = ff[0] * cos - ff[2] * sin;
+      var dy = ff[1] * p.height;
+      var dz = ff[0] * sin + ff[2] * cos;
+      v.aPos.push(p.x + dx, p.y + dy, p.z + dz);
+      v.aLighting = v.aLighting.concat(p.light);
+      v.aColor = v.aColor.concat(p.color);
+    }
+
+    var top = (face === FACE_BOTTOM || face === FACE_TOP) ? 0 :
+      1 - (p.texheight || p.height);
+    if (top % 1 === 0) top += ZERO;
+    v.aTexCoord.push(p.tile.s + ONE,  p.tile.t + ONE, 
+                     p.tile.s + ZERO, p.tile.t + ONE, 
+                     p.tile.s + ZERO, p.tile.t + top,
+                     p.tile.s + ONE,  p.tile.t + top);
+
+    // Describe triangles
+    v.indices.push(pindex, pindex + 1, pindex + 2,
+                   pindex, pindex + 2, pindex + 3);
+  }
+
+  return v;
+}
 
 function entityGeometryBlock(ntt) {
   ntt.vertices = {
@@ -1979,7 +2028,7 @@ function entityGeometryBlock(ntt) {
   geometryBox(ntt.vertices, {
     light: block(ntt).light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    h: ntt.type.stack || ntt.sourcetype.stack || SY,
+    height: ntt.type.stack || ntt.sourcetype.stack || SY,
     scale: ntt.type.scale,
     yaw: ntt.yaw,
     x: ntt.x,
