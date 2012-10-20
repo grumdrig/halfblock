@@ -252,7 +252,6 @@ var ENTITY_TYPES = {
     geometry: entityGeometrySteve,
     init: function () {
       this.nextThink = 0;
-      this.plan = 'stand';
     },
     update: function () {
       if (this.nextThink < GAME.clock) {
@@ -273,6 +272,18 @@ var ENTITY_TYPES = {
           this.falling = true;
         } else {
           this.ddy = 0;
+        }
+      }
+      if (this.ddy) {
+        // Need to do some of this every tick, not every update
+        for (var i = 0; i < 10; ++i) {
+          gl.particles.spawn({
+            x0: this.x, 
+            y0: this.y, 
+            z0: this.z,
+            dy: this.dy - 1,
+            tile: {s: 2, t: 3},
+          });
         }
       }
     },
