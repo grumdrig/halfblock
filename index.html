@@ -65,6 +65,7 @@ var KEYS = {};
 
   void main(void) {
     vTexCoord = aTexCoord;
+    vTexCoord.t = 256.0 - vTexCoord.t;
     if (aBirthday > uClock /*|| uClock > aDeathday*/) {
       gl_Position = vec4(-9999.0, -9999.0, -9999.0, 1.0);
     } else {
@@ -109,6 +110,7 @@ var KEYS = {};
   void main(void) {
     gl_Position = uPMatrix * uMVMatrix * vec4(aPos, 1.0);
     vTexCoord = aTexCoord / 16.0;
+    vTexCoord.t = 1.0 - vTexCoord.t;
     vLighting = minLight +
       aColor * max(aLighting.xyz,
                    uSunlight * vec3(aLighting.w, 

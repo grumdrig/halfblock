@@ -262,6 +262,7 @@ var ENTITY_TYPES = {
     thrust: GRAVITY * 1.05, // m/s^2
     init: function () {
       this.nextThink = 0;
+      this.eyeHeight = 0.75;
     },
 
     _HEAD: faces(scale(ppiped(-0.5, 0.5, 1, 2, -0.5, 0.5), 0.5)),
@@ -328,6 +329,12 @@ var ENTITY_TYPES = {
           });
         }
       }
+
+      if (!this.horizontalFieldOfView)
+        initCamera(this);
+      if (!this.framebuffer)
+        this.framebuffer = makeFramebufferForTile(gl.textures.terrain, 2, 2);
+      renderToFramebuffer(this, this.framebuffer);
     },
   },
   block: {
@@ -994,7 +1001,7 @@ Block.prototype.eachNeighbor = function (callback) {
 
 
 
-function drawScene(camera) {
+function drawScene(camera, showWireframe) {
 
   RENDER_STAT.start();
 
@@ -1066,7 +1073,7 @@ function drawScene(camera) {
     var c = GAME.chunks[i];
     if (c.visible) {
       c.opaqueBuffers.render(gl.mainShader);
-      c.renderEntities();
+      c.renderEntities(camera);
     }
   }
 
@@ -1090,14 +1097,14 @@ function drawScene(camera) {
   gl.mainShader.disuse();
 
   // Render block selection indicator
-  if (PICKED)
+  if (PICKED && showWireframe)
     gl.wireframe.render();
 
   RENDER_STAT.end();
 }
 
 
-Chunk.prototype.renderEntities = function () {
+Chunk.prototype.renderEntities = function (camera) {
   // For now, generate all the info each time
   var nttSet = {
     aPos: [],
@@ -1106,8 +1113,11 @@ Chunk.prototype.renderEntities = function () {
     aColor: [],
     indices: [],
   };
-  for (var i in this.entities)
-    this.entities[i].buildGeometry(nttSet);
+  for (var i in this.entities) {
+    var e = this.entities[i];
+    if (e !== camera)
+      e.buildGeometry(nttSet);
+  }
   var nttBuffers = new BufferSet(nttSet);
   nttBuffers.render(gl.mainShader);
 }
@@ -1437,7 +1447,7 @@ function tick() {
         blur(AVATAR, 256, 256);
       } else {
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        drawScene(AVATAR);
+        drawScene(AVATAR, true);
       }
     }
     
@@ -1502,7 +1512,7 @@ function loadTexture(filename, cubemap) {
   texture.image = new Image();
   texture.image.onload = function() {
     gl.bindTexture(target, texture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);//!!cubemap);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, !cubemap);
     gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -3198,10 +3208,9 @@ function makeFramebufferForTile(texture, s, t) {
   var fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   fb.left = s * 16 + 2;  // stash dimensions for later
-  fb.top = t * 16 + 2;
+  fb.top = (15-t) * 16 + 2;
   fb.width = 16 - 4;
   fb.height = 16 - 4;
-
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
                           gl.TEXTURE_2D, texture, 0);
 
