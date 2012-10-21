@@ -226,6 +226,7 @@ for (var i in BLOCK_TYPES)
 var ENTITY_TYPES = {
   player: {
     invisible: true,
+    radius: 0.3,
     walk_max: 4.3, // m/s
     fly_max: 10.8, // m/s
     acceleration: 20,  // m/s^2
@@ -251,12 +252,12 @@ var ENTITY_TYPES = {
   },
   drone: {
     tile: [3,2, 1,3, 3,1, 3,1, 1,3, 1,3],
+    radius: 0.5,
     walk_max: 4.3, // m/s
     fly_max: 10.8, // m/s
     spin_rate: 2,  // radians/s
     acceleration: 20,  // m/s^2
     thrust: GRAVITY * 1.05, // m/s^2
-    scale: 1,
     geometry: entityGeometryDrone,
     init: function () {
       this.nextThink = 0;
@@ -300,14 +301,13 @@ var ENTITY_TYPES = {
     init: function () {
       this.dyaw = 1;
       hopEntity(this);
-      this.height = SY * this.type.scale;
-      this.radius = 0.5 * this.type.scale;
+      this.height = SY * 2 * this.type.radius;
       this.rebound = 0.75;
       if (this.sourcetype === BLOCK_TYPES.grass)
         this.sourcetype = BLOCK_TYPES.dirt;
     },
     collectable: true,
-    scale: 0.25,
+    radius: 0.25 / 2,
   },
   soybean: {
     tile: [9,2],
@@ -702,7 +702,7 @@ Chunk.prototype.tick = function (elapsed) {
     if (ntt.type.collectable) {
       if (ntt.age() > 1) {
         var d = distance(center(AVATAR), ntt);
-        if (d < AVATAR.radius) {
+        if (d < AVATAR.type.radius) {
           new Sound('pop');
           AVATAR.gain(ntt.type.name === 'block' ? 
                       ntt.sourcetype.name : ntt.type.name);
@@ -1203,50 +1203,51 @@ function ballistics(e, elapsed) {
     }
 
     // Check NSEW collisions
-    if (e.dx < 0 && blocked(e.x - e.radius, e.y, e.z)) {
-      e.x = Math.max(e.x, Math.floor(e.x) + e.radius);
+    var radius = e.type.radius;
+    if (e.dx < 0 && blocked(e.x - radius, e.y, e.z)) {
+      e.x = Math.max(e.x, Math.floor(e.x) + radius);
       e.dx = (e.rebound || 0) * -e.dx;
-    } else if (e.dx > 0 && blocked(e.x + e.radius, e.y, e.z)) {
-      e.x = Math.min(e.x, Math.ceil(e.x) - e.radius);
+    } else if (e.dx > 0 && blocked(e.x + radius, e.y, e.z)) {
+      e.x = Math.min(e.x, Math.ceil(e.x) - radius);
       e.dx = (e.rebound || 0) * -e.dx;
     }
-    if (e.dz < 0 && blocked(e.x, e.y, e.z - e.radius)) {
-      e.z = Math.max(e.z, Math.floor(e.z) + e.radius);
+    if (e.dz < 0 && blocked(e.x, e.y, e.z - radius)) {
+      e.z = Math.max(e.z, Math.floor(e.z) + radius);
       e.dz = (e.rebound || 0) * -e.dz;
-    } else if (e.dz > 0 && blocked(e.x, e.y, e.z + e.radius)) {
-      e.z = Math.min(e.z, Math.ceil(e.z) - e.radius);
+    } else if (e.dz > 0 && blocked(e.x, e.y, e.z + radius)) {
+      e.z = Math.min(e.z, Math.ceil(e.z) - radius);
       e.dz = (e.rebound || 0) * -e.dz;
     }
     
     // Check corner collisions
-    var cw = (e.dx < 0 && frac(e.x) < e.radius);
-    var ce = (e.dx > 0 && carf(e.x) > e.radius);
-    var cs = (e.dz < 0 && frac(e.z) < e.radius);
-    var cn = (e.dz > 0 && carf(e.z) > e.radius);
-    if (cw && cs && blocked(e.x - e.radius, e.y, e.z - e.radius)) {
+    var cw = (e.dx < 0 && frac(e.x) < radius);
+    var ce = (e.dx > 0 && carf(e.x) > radius);
+    var cs = (e.dz < 0 && frac(e.z) < radius);
+    var cn = (e.dz > 0 && carf(e.z) > radius);
+    if (cw && cs && blocked(e.x - radius, e.y, e.z - radius)) {
       // sw corner collision
       if (frac(e.x) > frac(e.z))
-        e.x = Math.max(e.x, Math.floor(e.x) + e.radius);
+        e.x = Math.max(e.x, Math.floor(e.x) + radius);
       else
-        e.z = Math.max(e.z, Math.floor(e.z) + e.radius);
-    } else if (cw && cn && blocked(e.x - e.radius, e.y, e.z + e.radius)) {
+        e.z = Math.max(e.z, Math.floor(e.z) + radius);
+    } else if (cw && cn && blocked(e.x - radius, e.y, e.z + radius)) {
       // nw corner collision
       if (frac(e.x) > carf(e.z))
-        e.x = Math.max(e.x, Math.floor(e.x) + e.radius);
+        e.x = Math.max(e.x, Math.floor(e.x) + radius);
       else
-        e.z = Math.min(e.z, Math.ceil(e.z) - e.radius);
-    } else if (ce && cn && blocked(e.x + e.radius, e.y, e.z + e.radius)) {
+        e.z = Math.min(e.z, Math.ceil(e.z) - radius);
+    } else if (ce && cn && blocked(e.x + radius, e.y, e.z + radius)) {
       // ne corner collision
       if (carf(e.x) > carf(e.z))
-        e.x = Math.min(e.x, Math.ceil(e.x) - e.radius);
+        e.x = Math.min(e.x, Math.ceil(e.x) - radius);
       else
-        e.z = Math.min(e.z, Math.ceil(e.z) - e.radius);
-    } else if (ce && cs && blocked(e.x + e.radius, e.y, e.z - e.radius)) {
+        e.z = Math.min(e.z, Math.ceil(e.z) - radius);
+    } else if (ce && cs && blocked(e.x + radius, e.y, e.z - radius)) {
       // se corner collision
       if (carf(e.x) > frac(e.z))
-        e.x = Math.min(e.x, Math.ceil(e.x) - e.radius);
+        e.x = Math.min(e.x, Math.ceil(e.x) - radius);
       else
-        e.z = Math.max(e.z, Math.floor(e.z) + e.radius);
+        e.z = Math.max(e.z, Math.floor(e.z) + radius);
     }
   }
 
@@ -2058,9 +2059,9 @@ function geometryBox(v, p) {
 function entityGeometryBlock(ntt, v) {
   var height = ntt.type.stack || ntt.sourcetype.stack || SY;
   if (!ntt.sourcetype.faces)
-    ntt.sourcetype.faces = faces(ppiped(-ntt.type.scale/2, ntt.type.scale/2,
-                                        0, height * ntt.type.scale,
-                                        -ntt.type.scale/2, ntt.type.scale/2));
+    ntt.sourcetype.faces = faces(ppiped(-ntt.type.radius, ntt.type.radius,
+                                        0, height * ntt.type.radius * 2,
+                                        -ntt.type.radius, ntt.type.radius));
   geometryBox(v, {
     light: block(ntt).light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
@@ -2176,7 +2177,6 @@ function Entity(init1, init2) {
   init('id', function () { return GAME.nextEntityID++} );
   init('type');
   init('sourcetype', {});
-  this.radius = 0.3;
   this.height = 1.8;
   if (typeof this.type === 'string') 
     this.type = ENTITY_TYPES[this.type];
