@@ -1359,6 +1359,9 @@ function ballistics(e, elapsed) {
 
   if (blocke.type.onstep)
     blocke.type.onstep.call(blocke, e);
+
+  if (e.y < -555)
+    e.die();
 }
 
 
@@ -2232,7 +2235,10 @@ Entity.prototype.data = function () {
 }
 
 Entity.prototype.die = function () {
+  this.dead = true;
   delete this.chunk.entities[this.id];
+  if (this.type === ENTITY_TYPES.player)
+    togglePointerLock();
 }
 
 Entity.prototype.toString = function () {
@@ -2408,6 +2414,21 @@ function onLoad() {
     togglePointerLock();
   }
 
+  $('respawn').onclick = function () {
+    AVATAR.dead = false;
+    AVATAR.dx = AVATAR.dy = AVATAR.dz = 0;
+    AVATAR.x = AVATAR.z = 0.5;
+    AVATAR.y = HY;
+    var b = topmost(AVATAR.x, AVATAR.z);
+    if (b)
+      AVATAR.y = b.y + 1;
+    else 
+      AVATAR.flying = true;
+    AVATAR.yaw = AVATAR.pitch = 0;
+    chunk(0,0).entities[AVATAR.id] = AVATAR;
+    togglePointerLock();
+  }
+
   $('savegame').onclick = function () {
     GAME.save(function () { 
       message('Saved.');
@@ -2417,7 +2438,7 @@ function onLoad() {
     });
   }
 
-  $('quitgame').onclick = function () {
+  $('quitgame').onclick = $('quitgame2').onclick = function () {
     GAME = null;
     AVATAR = null;
     showAndHideUI();
@@ -2765,7 +2786,7 @@ function pointerLockChange() {
   showAndHideUI();
 }
 
-var _MODES = 'title,loading,hud,inventory,pause'.split(',');
+var _MODES = 'title,loading,dead,hud,inventory,pause'.split(',');
 function showAndHideUI() {
   if (!GAME) {
     window.mode = 'title';
@@ -2773,6 +2794,8 @@ function showAndHideUI() {
     window.mode = 'loading';
   } else if (window.pointerLocked) {
     window.mode = 'hud';
+  } else if (AVATAR.dead) {
+    window.mode = 'dead';
   } else if (GAME.showInventory) {
     window.mode = 'inventory';
   } else {

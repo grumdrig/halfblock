@@ -305,7 +305,7 @@ body {
 }
 
 
-#cancan, #hud, #stats, #title, #pause, #loading, #inventory, #options {
+#cancan, #hud, #stats, #title, #pause, #loading, #dead, #inventory, #options {
   width: 854px;
   height: 480px;
 }
@@ -319,7 +319,7 @@ body {
   height: 100%;
 }
 
-#hud, #pause, #loading, #inventory, #title, #options {
+#hud, #pause, #loading, #dead, #inventory, #title, #options {
   display: none;
 }
 
@@ -327,7 +327,7 @@ body {
   font-family: Helvetica, sans-serif;
 }
 
-#hud, #stats, #title, #pause, #loading, #inventory, #options {
+#hud, #stats, #title, #pause, #loading, #dead, #inventory, #options {
   font-size: 18px;
   position: absolute;
   top: 0;
@@ -335,7 +335,7 @@ body {
   color: white;
 }
 
-#loading div {
+#loading div, #dead div {
   text-align: center;
   font-size: 24px;
   position: absolute;
@@ -359,10 +359,10 @@ button {
 #resumegame {
   top: 190px;
 }
-#newgame, #savegame {
+#newgame, #savegame, #respawn {
   top: 250px;
 }
-#loadgame, #quitgame {
+#loadgame, #quitgame, #quitgame2 {
   top: 310px;
 }
 
@@ -507,6 +507,11 @@ button {
       <button id="quitgame">Quit Game</button>
     </div>
     <div id="loading"><div>Loading...</div></div>
+    <div id="dead">
+      <div>You died.</div>
+      <button id="respawn">Respawn</button>
+      <button id="quitgame2">Quit Game</button>
+    </div>
     <div id="inventory">
       <canvas id="held" class="tool" width="48" height="48"></canvas>
     </div>
