@@ -282,7 +282,7 @@ body {
 }
 
 
-#cancan, #hud, #stats, #title, #pause, #loading, #dead, #inventory, #options {
+#cancan, div.page {
   width: 854px;
   height: 480px;
 }
@@ -296,20 +296,17 @@ body {
   height: 100%;
 }
 
-#hud, #pause, #loading, #dead, #inventory, #title, #options {
+div.page { 
   display: none;
-}
-
-* {
-  font-family: Helvetica, sans-serif;
-}
-
-#hud, #stats, #title, #pause, #loading, #dead, #inventory, #options {
   font-size: 18px;
   position: absolute;
   top: 0;
   left: 0;
   color: white;
+}
+
+* {
+  font-family: Helvetica, sans-serif;
 }
 
 #loading div, #dead div {
@@ -458,18 +455,18 @@ button {
 <body onload="onLoad()">
   <div id="cancan">
     <canvas id="canvas" width="854" height="480"></canvas>
-    <div id="hud">
+    <div id="hud" class="page">
       <div id="reticule">
         <img src="reticule.png" height="24" width="24"> 
       </div>
       <div id="chat"><div id="clog">&nbsp;</div></div>
     </div>
-    <div id="stats"></div>
-    <div id="options">
+    <div id="stats" class="page"></div>
+    <div id="options" class="page">
       <input id="anisotropic" type="checkbox">
       <label for="anisotropic">Anisotropic filtering</label>
     </div>
-    <div id="title">
+    <div id="title" class="page">
       <div class="logo"><img src="logo.png"></div>
       <div id="throbber"></div>
       <button id="newgame">New Game</button>
@@ -478,18 +475,20 @@ button {
         pointer locking, so Halfblock won't run here. Try the latest
         version of Chrome or Firefox.</div>
     </div>
-    <div id="pause">
+    <div id="pause" class="page">
       <button id="resumegame">Return to Game</button>
       <button id="savegame">Save Game &amp; Quit</button>
       <button id="quitgame">Quit Game</button>
     </div>
-    <div id="loading"><div>Loading...</div></div>
-    <div id="dead">
+    <div id="loading" class="page">
+      <div>Loading...</div>
+    </div>
+    <div id="dead" class="page">
       <div>You died.</div>
       <button id="respawn">Respawn</button>
       <button id="quitgame2">Quit Game</button>
     </div>
-    <div id="inventory">
+    <div id="inventory" class="page">
       <canvas id="held" class="tool" width="48" height="48"></canvas>
     </div>
   </div>
