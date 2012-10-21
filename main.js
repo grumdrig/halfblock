@@ -254,8 +254,8 @@ var ENTITY_TYPES = {
   },
   drone: {
     tile: [3,2, 1,3, 3,1, 3,1, 1,3, 1,3],
-    radius: 0.5,
-    height: 2,
+    radius: 0.35,
+    height: 1,
     walk_max: 4.3, // m/s
     spin_rate: 2,  // radians/s
     acceleration: 20,  // m/s^2
@@ -264,8 +264,8 @@ var ENTITY_TYPES = {
       this.nextThink = 0;
     },
 
-    _HEAD: faces(scale(ppiped(-0.5, 0.5, 1, 2, -0.5, 0.5),4/7)),
-    _BODY: faces(scale(vfrustum(0.7, 0.6, 0, 0.99),4/7)),
+    _HEAD: faces(scale(ppiped(-0.5, 0.5, 1, 2, -0.5, 0.5), 0.5)),
+    _BODY: faces(scale(vfrustum(0.7, 0.6, 0, 0.99), 0.5)),
     geometry: function (ntt, v) {
       // Head
       var light = block(ntt.x, ntt.y + ntt.height/2, ntt.z).light;
