@@ -28,6 +28,7 @@ FPS_STAT.invert = true;
 
 var GRAVITY = 23;  // m/s/s
 var PARTICLE_GRAVITY = 6.4; // m/s/s
+var DRAG = 20;  // m/s/s
 var VJUMP = 7.7;   // m/s
 
 var LIGHT_SUN = 6;
@@ -227,6 +228,7 @@ var ENTITY_TYPES = {
   player: {
     invisible: true,
     radius: 0.3,
+    height: 1.8,
     walk_max: 4.3, // m/s
     fly_max: 10.8, // m/s
     acceleration: 20,  // m/s^2
@@ -253,8 +255,9 @@ var ENTITY_TYPES = {
   drone: {
     tile: [3,2, 1,3, 3,1, 3,1, 1,3, 1,3],
     radius: 0.5,
+    height: 2,
     walk_max: 4.3, // m/s
-    fly_max: 10.8, // m/s
+    //fly_max: 10.8, // m/s
     spin_rate: 2,  // radians/s
     acceleration: 20,  // m/s^2
     thrust: GRAVITY * 1.05, // m/s^2
@@ -298,6 +301,7 @@ var ENTITY_TYPES = {
     },
   },
   block: {
+    fly_max: 20, // m/s
     init: function () {
       this.dyaw = 1;
       hopEntity(this);
@@ -305,12 +309,16 @@ var ENTITY_TYPES = {
       this.rebound = 0.75;
       if (this.sourcetype === BLOCK_TYPES.grass)
         this.sourcetype = BLOCK_TYPES.dirt;
+      this.height = (this.type.stack || this.sourcetype.stack || SY) *
+        2 * this.type.radius;
     },
     collectable: true,
     radius: 0.25 / 2,
   },
   soybean: {
     tile: [9,2],
+    scale: 0.25,
+    fly_max: 20, // m/s
     collectable: true,
     init: function () {
       hopEntity(this);
@@ -1150,7 +1158,7 @@ function ballistics(e, elapsed) {
     e.dz += elapsed * (e.ddx * sin + e.ddz * cos);
   } else if (!e.falling) {
     // Drag. Not quite correct - needs to be applied in opp of dir of travel
-    var ddp = e.type.acceleration * elapsed;
+    var ddp = (e.type.acceleration||DRAG) * elapsed;
     if (e.dx > 0) e.dx = Math.max(0, e.dx - ddp);
     if (e.dx < 0) e.dx = Math.min(0, e.dx + ddp);
     if (e.dz > 0) e.dz = Math.max(0, e.dz - ddp);
@@ -1162,9 +1170,9 @@ function ballistics(e, elapsed) {
   } else if (e.flying || e.swimming) {
     // Drag
     if (e.dy > 0) 
-      e.dy = Math.max(0, e.dy - elapsed * e.type.acceleration);
+      e.dy = Math.max(0, e.dy - elapsed * (e.type.acceleration||DRAG));
     else
-      e.dy = Math.min(0, e.dy + elapsed * e.type.acceleration);
+      e.dy = Math.min(0, e.dy + elapsed * (e.type.acceleration||DRAG));
   }
 
   // Limit speed
@@ -1172,13 +1180,15 @@ function ballistics(e, elapsed) {
   if (e.flying || e.swimming) h += sqr(e.dy);
   h = Math.sqrt(h);
   
-  var vmax = (e.flying ? e.type.fly_max : e.type.walk_max) *
-    (1 - (block(e).type.viscosity||0));
-  var f = h / vmax;
-  if (f > 1) {
-    e.dx /= f;
-    e.dz /= f;
-    if (e.flying || e.swimming) e.dy /= f;
+  var vmax = e.flying ? e.type.fly_max : e.type.walk_max;
+  if (typeof vmax !== 'undefined') {
+    vmax *= 1 - (block(e).type.viscosity||0);
+    var f = h / vmax;
+    if (f > 1) {
+      e.dx /= f;
+      e.dz /= f;
+      if (e.flying || e.swimming) e.dy /= f;
+    }
   }
 
   if (e.dyaw) e.yaw += elapsed * e.dyaw;
@@ -1203,7 +1213,7 @@ function ballistics(e, elapsed) {
     }
 
     // Check NSEW collisions
-    var radius = e.type.radius;
+    var radius = e.type.radius || e.type.scale/2;
     if (e.dx < 0 && blocked(e.x - radius, e.y, e.z)) {
       e.x = Math.max(e.x, Math.floor(e.x) + radius);
       e.dx = (e.rebound || 0) * -e.dx;
@@ -2177,11 +2187,11 @@ function Entity(init1, init2) {
   init('id', function () { return GAME.nextEntityID++} );
   init('type');
   init('sourcetype', {});
-  this.height = 1.8;
   if (typeof this.type === 'string') 
     this.type = ENTITY_TYPES[this.type];
   if (typeof this.sourcetype === 'string') 
     this.sourcetype = BLOCK_TYPES[this.sourcetype];
+  this.height = this.type.height || this.type.scale;
   this.flying = this.falling = false;
   this.chunk = chunk(0,0);  // for now - all entities in 1 chunk
   this.chunk.entities[this.id] = this;
