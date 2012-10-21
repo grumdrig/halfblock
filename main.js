@@ -2403,6 +2403,8 @@ function onLoad() {
     showAndHideUI();
   }
 
+  $('stats').hide = true;
+
   showAndHideUI();
 
   tick();
