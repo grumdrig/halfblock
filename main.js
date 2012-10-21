@@ -6,6 +6,27 @@
 // TODO: edamame
 // TODO: miso soup
 
+// OpenGL rendering things!
+
+var gl;
+
+var mvMatrix = mat4.create();  // model-view matrix
+var mvMatrixStack = [];
+var pMatrix = mat4.create();   // projection matrix
+
+var DB;
+
+var GAME;
+var AVATAR;  // hack-o alias for GAME.avatar because we use it so much
+
+var GRASSY = false;       // true to use decal-style grass
+var SPREAD_OUT = 3;       // create nearby chunks at this radius
+
+var PICKED = null;
+var PICKED_FACE = 0;
+var PICK_MAX = 8;
+
+var KEYS = {};
 
 var DB_VERSION = '8';
 
