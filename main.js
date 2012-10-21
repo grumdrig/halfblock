@@ -662,15 +662,7 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
         dest.aColor = [];
         dest.indices = [];
       }
-      dest.aLighting.push.apply(dest.aLighting, b.vertices.aLighting);
-      if (justUpdateLight)
-        continue;
-      dest.aColor.push.apply(dest.aColor, b.vertices.aColor);
-      var pindex = dest.aPos.length / 3;
-      dest.aPos.push.apply(dest.aPos, b.vertices.aPos);
-      dest.aTexCoord.push.apply(dest.aTexCoord, b.vertices.aTexCoord);
-      for (var j = 0; j < b.vertices.indices.length; ++j)
-        dest.indices.push(pindex + b.vertices.indices[j]);
+      appendGeometry(dest, b.vertices, justUpdateLight);
     }
   }
   
@@ -1057,25 +1049,8 @@ Chunk.prototype.renderEntities = function () {
     aColor: [],
     indices: [],
   };
-  var justUpdateLight = false;
-  for (var i in this.entities) {
-    var ntt = this.entities[i];
-    //if (!ntt.vertices)
-    ntt.buildGeometry();
-    if (ntt.vertices) {
-      var geo = ntt.vertices;
-      var color = ntt.type.color || [1,1,1];
-      nttSet.aLighting.push.apply(nttSet.aLighting, geo.aLighting);
-      if (justUpdateLight)
-        continue;
-      nttSet.aColor.push.apply(nttSet.aColor, geo.aColor);
-      var pindex = nttSet.aPos.length / 3;
-      nttSet.aPos.push.apply(nttSet.aPos, geo.aPos);
-      nttSet.aTexCoord.push.apply(nttSet.aTexCoord, geo.aTexCoord);
-      for (var j = 0; j < geo.indices.length; ++j)
-        nttSet.indices.push(pindex + geo.indices[j]);
-    }
-  }
+  for (var i in this.entities)
+    this.entities[i].buildGeometry(nttSet);
   var nttBuffers = new BufferSet(nttSet);
   nttBuffers.render(gl.mainShader);
 }
@@ -1801,17 +1776,17 @@ Block.prototype.buildGeometry = function () {
   }
 }
 
-Entity.prototype.buildGeometry = function () {
+Entity.prototype.buildGeometry = function (vertices) {
   if (this.type.geometry) {
-    this.type.geometry(this);
+    this.type.geometry(this, vertices);
   } else if (this.type.invisible) {
     // do nothing
   } else if (this.type.billboard) {
-    entityGeometryBillboard(this);
+    entityGeometryBillboard(this, vertices);
   } else if (this.sourcetype.hashes) {
-    entityGeometryHash(this);
+    entityGeometryHash(this, vertices);
   } else {
-    entityGeometryBlock(this);
+    entityGeometryBlock(this, vertices);
   }
 }
 
@@ -1888,24 +1863,39 @@ function blockGeometryBlock(b) {
   }
 }
 
-function entityGeometryHash(ntt) {
+function entityGeometryHash(ntt, vertices) {
   blockGeometryHash(ntt);
   for (var i = 0; i < ntt.vertices.aPos.length; i += 3) {
     ntt.vertices.aPos[i] -= 0.5;
     ntt.vertices.aPos[i+2] -= 0.5;
   }
-  return ntt.vertices;
+  appendGeometry(vertices, ntt.vertices);
 }
 
 
-function entityGeometryBillboard(b) {
-  var v = b.vertices = {
-    aPos: [],
-    aLighting: [],
-    aColor: [1,1,1, 1,1,1, 1,1,1, 1,1,1],
-    //aTexCoord: [],
-    indices: [0, 1, 2, 0, 2, 3],
-  };
+Array.prototype.append = function (tail) {
+  this.push.apply(this, tail);
+}
+
+
+function appendGeometry(v, w, justLighting) {
+  v.aLighting.append(w.aLighting);
+  if (!justLighting) {
+    var pindex = v.aPos.length / 3;
+    v.aPos.append(w.aPos);
+    v.aColor.append(w.aColor);
+    v.aTexCoord.append(w.aTexCoord);
+    for (var i = 0; i < w.indices.length; ++i)
+      v.indices.push(pindex + w.indices[i]);
+  }
+}
+
+
+function entityGeometryBillboard(b, v) {
+  var pindex = v.aPos.length / 3;
+  v.aColor.push(1,1,1, 1,1,1, 1,1,1, 1,1,1);
+  v.indices.push(pindex + 0, pindex + 1, pindex + 2, 
+                 pindex + 0, pindex + 2, pindex + 3);
 
   var light = block(b).light;
 
@@ -1933,15 +1923,14 @@ function entityGeometryBillboard(b) {
     var x = quad[i], y = quad[i+1], z = -0.5;
     for (var t = 0; t < 3; ++t)
       v.aPos.push(x * r[t] + y * u[t] + p[t]);
-    v.aLighting.push.apply(v.aLighting, light);
+    v.aLighting.append(light);
   }
     
   var tile = tileCoord(b);
-  v.aTexCoord = [tile.s + ZERO, tile.t + ONE, 
-                 tile.s + ONE,  tile.t + ONE, 
-                 tile.s + ONE,  tile.t + ZERO, 
-                 tile.s + ZERO, tile.t + ZERO];
-  return v;
+  v.aTexCoord.push(tile.s + ZERO, tile.t + ONE, 
+                   tile.s + ONE,  tile.t + ONE, 
+                   tile.s + ONE,  tile.t + ZERO, 
+                   tile.s + ZERO, tile.t + ZERO);
 }
 
 
@@ -1970,14 +1959,7 @@ function vfrustum(rbottom, rtop, ybottom, ytop) {
 var _DRONE_HEAD = faces(ppiped(-0.5, 0.5, 1, 2, -0.5, 0.5));
 var _DRONE_BOD = faces(vfrustum(0.7, 0.6, 0, 0.99));
 
-function entityGeometryDrone(ntt) {
-  var v = ntt.vertices = {
-    aPos: [],
-    aLighting: [],
-    aColor: [],
-    aTexCoord: [],
-    indices: [],
-  };
+function entityGeometryDrone(ntt, v) {
   // Head
   var light = block(ntt.x, ntt.y + ntt.height/2, ntt.z).light;
   geometryBox(v, {
@@ -2002,7 +1984,6 @@ function entityGeometryDrone(ntt) {
     tile: {tile:[1,4, 1,4, 2,4, 1,4, 1,4, 1,4]},
     faces: _DRONE_BOD,
   });
-         
 }
 
 
@@ -2064,20 +2045,13 @@ function geometryBox(v, p) {
   return v;
 }
 
-function entityGeometryBlock(ntt) {
-  ntt.vertices = {
-    aPos: [],
-    aLighting: [],
-    aColor: [],
-    aTexCoord: [],
-    indices: [],
-  };
+function entityGeometryBlock(ntt, v) {
   var height = ntt.type.stack || ntt.sourcetype.stack || SY;
   if (!ntt.sourcetype.faces)
     ntt.sourcetype.faces = faces(ppiped(-ntt.type.scale/2, ntt.type.scale/2,
                                         0, height * ntt.type.scale,
                                         -ntt.type.scale/2, ntt.type.scale/2));
-  geometryBox(ntt.vertices, {
+  geometryBox(v, {
     light: block(ntt).light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
     texheight: height,
@@ -2543,9 +2517,9 @@ function onkeydown(event, count) {
       reload();
 
     if (c === 'C' && PICKED) {
-      // Spawn a chumpa
+      // Spawn a drone
       var f = PICKED.neighbor(PICKED_FACE);
-      new Entity({type: 'chumpa',
+      new Entity({type: 'drone',
                   x: f.x + 0.5, 
                   y: f.y,
                   z: f.z + 0.5});
