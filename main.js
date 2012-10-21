@@ -1683,7 +1683,7 @@ function tileCoord(obj, face) {
   var off = 0;
   if (t.length === 2 * 2 && (face === FACE_TOP || face === FACE_BOTTOM))
     off = 2;
-  else if (t.length === 2 * 6)
+  else if (t.length === 2 * 6 && typeof face !== 'undefined')
     off = 2 * face;
   return {s: t[off], t:t[off+1]};
 }
@@ -1770,13 +1770,25 @@ function tweaker(pos) {
     ];
 }
 
-var _FACES = [
-  [[0,0,0], [1,0,0], [1,1,0], [0,1,0]],  // front
-  [[1,0,1], [0,0,1], [0,1,1], [1,1,1]],  // back
-  [[0,0,1], [1,0,1], [1,0,0], [0,0,0]],  // bottom
-  [[0,1,0], [1,1,0], [1,1,1], [0,1,1]],  // top
-  [[0,0,1], [0,0,0], [0,1,0], [0,1,1]],  // right
-  [[1,0,0], [1,0,1], [1,1,1], [1,1,0]]]; // left
+var _CORNERS = [[0,0,0],
+                [1,0,0],
+                [1,0,1],
+                [0,0,1],
+                [0,1,0],
+                [1,1,0],
+                [1,1,1],
+                [0,1,1]];
+
+function faces(corners) {
+  return [[corners[0], corners[1], corners[5], corners[4]],  // front
+          [corners[2], corners[3], corners[7], corners[6]],  // back
+          [corners[3], corners[2], corners[1], corners[0]],  // bottom
+          [corners[4], corners[5], corners[6], corners[7]],  // top
+          [corners[3], corners[0], corners[4], corners[7]],  // right
+          [corners[1], corners[2], corners[6], corners[5]]]; // left
+}
+
+var _FACES = faces(_CORNERS);
 
 
 Block.prototype.buildGeometry = function () {
@@ -1933,6 +1945,30 @@ function entityGeometryBillboard(b) {
 }
 
 
+function ppiped(x0, x1, y0, y1, z0, z1) {
+  return [[x0, y0, z0],
+          [x1, y0, z0],
+          [x1, y0, z1],
+          [x0, y0, z1],
+          [x0, y1, z0],
+          [x1, y1, z0],
+          [x1, y1, z1],
+          [x0, y1, z1]];
+}
+
+function vfrustum(rbottom, rtop, ybottom, ytop) {
+  return [[-rbottom, ybottom, -rbottom],
+          [+rbottom, ybottom, -rbottom],
+          [+rbottom, ybottom, +rbottom],
+          [-rbottom, ybottom, +rbottom],
+          [-rtop,    ytop,    -rtop],
+          [+rtop,    ytop,    -rtop],
+          [+rtop,    ytop,    +rtop],
+          [-rtop,    ytop,    +rtop]];
+}
+
+var _STEVE_HEAD = faces(ppiped(-0.5, 0.5, 0, 1, -0.5, 0.5));
+var _STEVE_BOD = faces(vfrustum(0.7, 0.6, 0, 0.9));
 
 function entityGeometrySteve(ntt) {
   var v = ntt.vertices = {
@@ -1942,7 +1978,6 @@ function entityGeometrySteve(ntt) {
     aTexCoord: [],
     indices: [],
   };
-
   // Head
   var light = block(ntt.x, ntt.y + ntt.height/2, ntt.z).light;
   geometryBox(v, {
@@ -1957,6 +1992,7 @@ function entityGeometrySteve(ntt) {
     z: ntt.z,
     tile: ntt,
     texheight: 1,
+    faces: _STEVE_HEAD,
   });
   // Body
   geometryBox(v, {
@@ -1966,11 +2002,13 @@ function entityGeometrySteve(ntt) {
     texheight: 1,
     scale: ntt.type.scale,
     radius: 0.7,
+    bottom: 0.1,
     yaw: 0,
     x: ntt.x,
     y: ntt.y,
     z: ntt.z,
     tile: {tile:[1,4]},
+    faces: _STEVE_BOD,
   });
          
 }
@@ -1996,57 +2034,21 @@ function geometryCylinder(v, p) {
     v.indices.push(northpole, pi + 2*n + 1, pi + 2 * ((n + 1) % p.sides) + 1);
     
   }
-  var ff = Array(3);
-  
-  for (var face = 0; face < 6; ++face) {
-    // Add vertices
-    var pindex = v.aPos.length / 3;
-    var f = _FACES[face];
-    for (var i = 0; i < 4; ++i) {
-      for (var j = 0; j < f[i].length; ++j) 
-        ff[j] = p.scale * (f[i][j] - (j === 1 ? 0 : 0.5));      
-      var cos = Math.cos(p.yaw), sin = Math.sin(p.yaw);
-      var dx = ff[0] * cos - ff[2] * sin;
-      var dy = ff[1] * p.h;
-      var dz = ff[0] * sin + ff[2] * cos;
-      v.aPos.push(p.x + dx, p.y + dy, p.z + dz);
-      v.aLighting = v.aLighting.concat(p.light);
-      v.aColor = v.aColor.concat(p.color);
-    }
-    
-    var h = (face === FACE_BOTTOM || face === FACE_TOP) ? 1 :
-      (p.h % 1 === 0) ? p.h - ZERO : p.h;
-    v.aTexCoord.push(p.tile.s + ONE, p.tile.t + ONE, 
-                     p.tile.s + ZERO,  p.tile.t + ONE, 
-                     p.tile.s + ZERO,  p.tile.t + 1 - h,
-                     p.tile.s + ONE, p.tile.t + 1 - h);
-
-    // Describe triangles
-    v.indices.push(pindex, pindex + 1, pindex + 2,
-                   pindex, pindex + 2, pindex + 3);
-  }
-
-  return v;
 }
 */
 
 
+
 function geometryBox(v, p) {
-  var ff = Array(3);
-  var scales = [(p.scale || 1) * (p.radius || 1),
-                (p.scale || 1),
-                (p.scale || 1) * (p.radius || 1)];
-  var offsets = [-0.5, 0, -0.5];
   for (var face = 0; face < 6; ++face) {
     // Add vertices
     var pindex = v.aPos.length / 3;
-    var f = _FACES[face];
+    var f = p.faces[face];
     for (var i = 0; i < 4; ++i) {
-      for (var j = 0; j < 3; ++j) 
-        ff[j] = scales[j] * (f[i][j] + offsets[j]);
+      var ff = f[i];
       var cos = Math.cos(p.yaw), sin = Math.sin(p.yaw);
       var dx = ff[0] * cos - ff[2] * sin;
-      var dy = ff[1] * p.height;
+      var dy = ff[1];
       var dz = ff[0] * sin + ff[2] * cos;
       v.aPos.push(p.x + dx, p.y + dy, p.z + dz);
       v.aLighting = v.aLighting.concat(p.light);
@@ -2078,11 +2080,16 @@ function entityGeometryBlock(ntt) {
     aTexCoord: [],
     indices: [],
   };
+  var height = ntt.type.stack || ntt.sourcetype.stack || SY;
+  if (!ntt.sourcetype.faces)
+    ntt.sourcetype.faces = faces(ppiped(-ntt.type.scale/2, ntt.type.scale/2,
+                                        0, height * ntt.type.scale,
+                                        -ntt.type.scale/2, ntt.type.scale/2));
   geometryBox(ntt.vertices, {
     light: block(ntt).light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    height: ntt.type.stack || ntt.sourcetype.stack || SY,
-    scale: ntt.type.scale,
+    height: height,
+    faces: ntt.sourcetype.faces,
     yaw: ntt.yaw,
     x: ntt.x,
     y: ntt.y + 1/8 * (1 + Math.sin(2 * ntt.age())) / 2,
@@ -2632,7 +2639,7 @@ function renderInventoryItem(can, item) {
     }
     if (qty > 1) {
       ctx.fillStyle = 'white';
-      ctx.font = '12pt Chivo';
+      ctx.font = '12pt Helvetica';
       ctx.textAlign = 'right';
       ctx.fillText(qty, can.width-2, can.height-3);
     }
