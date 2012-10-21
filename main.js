@@ -2000,14 +2000,11 @@ function entityGeometrySteve(ntt) {
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
     height: ntt.height / 2 - 0.01,
     texheight: 1,
-    scale: ntt.type.scale,
-    radius: 0.7,
-    bottom: 0.1,
     yaw: 0,
     x: ntt.x,
     y: ntt.y,
     z: ntt.z,
-    tile: {tile:[1,4]},
+    tile: {tile:[1,4, 1,4, 2,4, 1,4, 1,4, 1,4]},
     faces: _STEVE_BOD,
   });
          
