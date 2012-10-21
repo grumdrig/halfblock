@@ -246,10 +246,10 @@ var ENTITY_TYPES = {
       pickTool(0);
     },
   },
-  steve: {
+  drone: {
     tile: [3,2, 1,3, 3,1, 3,1, 1,3, 1,3],
     scale: 1,
-    geometry: entityGeometrySteve,
+    geometry: entityGeometryDrone,
     init: function () {
       this.nextThink = 0;
     },
@@ -1967,10 +1967,10 @@ function vfrustum(rbottom, rtop, ybottom, ytop) {
           [-rtop,    ytop,    +rtop]];
 }
 
-var _STEVE_HEAD = faces(ppiped(-0.5, 0.5, 0, 1, -0.5, 0.5));
-var _STEVE_BOD = faces(vfrustum(0.7, 0.6, 0, 0.9));
+var _DRONE_HEAD = faces(ppiped(-0.5, 0.5, 0, 1, -0.5, 0.5));
+var _DRONE_BOD = faces(vfrustum(0.7, 0.6, 0, 0.9));
 
-function entityGeometrySteve(ntt) {
+function entityGeometryDrone(ntt) {
   var v = ntt.vertices = {
     aPos: [],
     aLighting: [],
@@ -1992,7 +1992,7 @@ function entityGeometrySteve(ntt) {
     z: ntt.z,
     tile: ntt,
     texheight: 1,
-    faces: _STEVE_HEAD,
+    faces: _DRONE_HEAD,
   });
   // Body
   geometryBox(v, {
@@ -2005,7 +2005,7 @@ function entityGeometrySteve(ntt) {
     y: ntt.y,
     z: ntt.z,
     tile: {tile:[1,4, 1,4, 2,4, 1,4, 1,4, 1,4]},
-    faces: _STEVE_BOD,
+    faces: _DRONE_BOD,
   });
          
 }
