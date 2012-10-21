@@ -257,14 +257,44 @@ var ENTITY_TYPES = {
     radius: 0.5,
     height: 2,
     walk_max: 4.3, // m/s
-    //fly_max: 10.8, // m/s
     spin_rate: 2,  // radians/s
     acceleration: 20,  // m/s^2
     thrust: GRAVITY * 1.05, // m/s^2
-    geometry: entityGeometryDrone,
     init: function () {
       this.nextThink = 0;
     },
+
+    _HEAD: faces(scale(ppiped(-0.5, 0.5, 1, 2, -0.5, 0.5),4/7)),
+    _BODY: faces(scale(vfrustum(0.7, 0.6, 0, 0.99),4/7)),
+    geometry: function (ntt, v) {
+      // Head
+      var light = block(ntt.x, ntt.y + ntt.height/2, ntt.z).light;
+      geometryBox(v, {
+        light: light,
+        color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
+        yaw: ntt.yaw,
+        pitch: ntt.pitch,
+        x: ntt.x,
+        y: ntt.y,
+        z: ntt.z,
+        tile: ntt,
+        faces: ntt.type._HEAD,
+      });
+      // Body
+      var bodytex = {tile:[1,4, 1,4, 2,4, 1,4, 1,4, 1,4]};
+      bodytex.tile[4] = ntt.ddy ? 2 : 3;
+      geometryBox(v, {
+        light: light,
+        color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
+        yaw: 0,
+        x: ntt.x,
+        y: ntt.y,
+        z: ntt.z,
+        tile: bodytex,
+        faces: ntt.type._BODY,
+      });
+    },
+
     update: function () {
       if (this.nextThink < GAME.clock) {
         this.nextThink = GAME.clock + Math.random() * 2;
@@ -371,6 +401,17 @@ function reload() {
   head.appendChild(script);
   gl.textures.panorama = loadTexture('panorama.png', true);
   gl.textures.terrain  = loadTexture('terrain.png');
+}
+
+
+function scale(aa, factor) {
+  for (var i = 0; i < aa.length; ++i) {
+    if (typeof aa[i] === 'number')
+      aa[i] *= factor;
+    else
+      scale(aa[i], factor);
+  }
+  return aa;
 }
 
 
@@ -1975,37 +2016,6 @@ function vfrustum(rbottom, rtop, ybottom, ytop) {
           [-rtop,    ytop,    +rtop]];
 }
 
-var _DRONE_HEAD = faces(ppiped(-0.5, 0.5, 1, 2, -0.5, 0.5));
-var _DRONE_BOD = faces(vfrustum(0.7, 0.6, 0, 0.99));
-
-function entityGeometryDrone(ntt, v) {
-  // Head
-  var light = block(ntt.x, ntt.y + ntt.height/2, ntt.z).light;
-  geometryBox(v, {
-    light: light,
-    color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    yaw: ntt.yaw,
-    pitch: ntt.pitch,
-    x: ntt.x,
-    y: ntt.y,
-    z: ntt.z,
-    tile: ntt,
-    faces: _DRONE_HEAD,
-  });
-  // Body
-  var bodytex = {tile:[1,4, 1,4, 2,4, 1,4, 1,4, 1,4]};
-  bodytex.tile[4] = ntt.ddy ? 2 : 3;
-  geometryBox(v, {
-    light: light,
-    color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    yaw: 0,
-    x: ntt.x,
-    y: ntt.y,
-    z: ntt.z,
-    tile: bodytex,
-    faces: _DRONE_BOD,
-  });
-}
 
 
 /*
