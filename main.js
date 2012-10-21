@@ -1967,8 +1967,8 @@ function vfrustum(rbottom, rtop, ybottom, ytop) {
           [-rtop,    ytop,    +rtop]];
 }
 
-var _DRONE_HEAD = faces(ppiped(-0.5, 0.5, 0, 1, -0.5, 0.5));
-var _DRONE_BOD = faces(vfrustum(0.7, 0.6, 0, 0.9));
+var _DRONE_HEAD = faces(ppiped(-0.5, 0.5, 1, 2, -0.5, 0.5));
+var _DRONE_BOD = faces(vfrustum(0.7, 0.6, 0, 0.99));
 
 function entityGeometryDrone(ntt) {
   var v = ntt.vertices = {
@@ -1983,23 +1983,18 @@ function entityGeometryDrone(ntt) {
   geometryBox(v, {
     light: light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    height: ntt.height / 2,
-    scale: 1,
     yaw: ntt.yaw,
     pitch: ntt.pitch,
     x: ntt.x,
-    y: ntt.y + ntt.height / 2,
+    y: ntt.y,
     z: ntt.z,
     tile: ntt,
-    texheight: 1,
     faces: _DRONE_HEAD,
   });
   // Body
   geometryBox(v, {
     light: light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    height: ntt.height / 2 - 0.01,
-    texheight: 1,
     yaw: 0,
     x: ntt.x,
     y: ntt.y,
@@ -2054,7 +2049,7 @@ function geometryBox(v, p) {
 
     var tile = tileCoord(p.tile, face);
     var top = (face === FACE_BOTTOM || face === FACE_TOP) ? 0 :
-      1 - (p.texheight || p.height);
+      1 - (p.texheight || 1);
     if (top % 1 === 0) top += ZERO;
     v.aTexCoord.push(tile.s + ONE,  tile.t + ONE, 
                      tile.s + ZERO, tile.t + ONE, 
@@ -2085,7 +2080,7 @@ function entityGeometryBlock(ntt) {
   geometryBox(ntt.vertices, {
     light: block(ntt).light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
-    height: height,
+    texheight: height,
     faces: ntt.sourcetype.faces,
     yaw: ntt.yaw,
     x: ntt.x,
