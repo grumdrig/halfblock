@@ -226,6 +226,9 @@ for (var i in BLOCK_TYPES)
 var ENTITY_TYPES = {
   player: {
     invisible: true,
+    walk_max: 4.3, // m/s
+    fly_max: 10.8, // m/s
+    acceleration: 20,  // m/s^2
     init: function () {
       AVATAR = GAME.avatar = this;
       initCamera(this);
@@ -248,6 +251,11 @@ var ENTITY_TYPES = {
   },
   drone: {
     tile: [3,2, 1,3, 3,1, 3,1, 1,3, 1,3],
+    walk_max: 4.3, // m/s
+    fly_max: 10.8, // m/s
+    spin_rate: 2,  // radians/s
+    acceleration: 20,  // m/s^2
+    thrust: GRAVITY * 1.05, // m/s^2
     scale: 1,
     geometry: entityGeometryDrone,
     init: function () {
@@ -257,18 +265,18 @@ var ENTITY_TYPES = {
       if (this.nextThink < GAME.clock) {
         this.nextThink = GAME.clock + Math.random() * 2;
         if (Math.random() < 0.4)
-          this.ddz = -this.ACCELERATION;
+          this.ddz = -this.type.acceleration;
         else
           this.ddz = 0;
         var spin = Math.random() * 4 >> 0;
         if (spin === 0)
-          this.dyaw = this.SPIN_RATE;
+          this.dyaw = this.type.spin_rate;
         else if (spin === 1)
-          this.dyaw = -this.SPIN_RATE;
+          this.dyaw = -this.type.spin_rate;
         else
           this.dyaw = 0;
         if (Math.random() < 0.25) {
-          this.ddy = GRAVITY * 1.1
+          this.ddy = GRAVITY * 1.1;
           this.falling = true;
         } else {
           this.ddy = 0;
@@ -281,7 +289,7 @@ var ENTITY_TYPES = {
             x0: this.x, 
             y0: this.y, 
             z0: this.z,
-            dy: this.dy - 1,
+            dy: this.dy - 2,
             tile: {s: 2, t: 3},
           });
         }
@@ -706,9 +714,9 @@ Chunk.prototype.tick = function (elapsed) {
           ntt.dx = AVATAR.x - ntt.x;
           ntt.dy = AVATAR.y + 1 - ntt.y;
           ntt.dz = AVATAR.z - ntt.z;
-          ntt.dx *= ntt.FLY_MAX / d;
-          ntt.dy *= ntt.FLY_MAX / d;
-          ntt.dz *= ntt.FLY_MAX / d;
+          ntt.dx *= ntt.type.fly_max / d;
+          ntt.dy *= ntt.type.fly_max / d;
+          ntt.dz *= ntt.type.fly_max / d;
         }
       }
     }
@@ -1102,18 +1110,18 @@ function processInput(avatar, elapsed) {
 
   // Movement keys
   avatar.ddx = avatar.ddz = 0;
-  if (KEYS.W) avatar.ddz -= avatar.ACCELERATION;
-  if (KEYS.A) avatar.ddx -= avatar.ACCELERATION;
-  if (KEYS.S) avatar.ddz += avatar.ACCELERATION;
-  if (KEYS.D) avatar.ddx += avatar.ACCELERATION;
+  if (KEYS.W) avatar.ddz -= avatar.type.acceleration;
+  if (KEYS.A) avatar.ddx -= avatar.type.acceleration;
+  if (KEYS.S) avatar.ddz += avatar.type.acceleration;
+  if (KEYS.D) avatar.ddx += avatar.type.acceleration;
   
   avatar.ddy = 0;
   if (avatar.flying || avatar.swimming) {
     // Fly up and down
     if (KEYS[' '])
-      avatar.ddy += avatar.ACCELERATION;
+      avatar.ddy += avatar.type.acceleration;
     else if (KEYS[16]) // shift
-      avatar.ddy -= avatar.ACCELERATION;
+      avatar.ddy -= avatar.type.acceleration;
   }
 }
 
@@ -1135,14 +1143,14 @@ function ballistics(e, elapsed) {
 
   if (e.ddx || e.ddz) {
     // Accelerate in the XZ plane
-    var ddp = e.ACCELERATION * elapsed;
+    var ddp = e.type.acceleration * elapsed;
     var cos = Math.cos(e.yaw);
     var sin = Math.sin(e.yaw);
     e.dx += elapsed * (e.ddx * cos - e.ddz * sin);
     e.dz += elapsed * (e.ddx * sin + e.ddz * cos);
   } else if (!e.falling) {
     // Drag. Not quite correct - needs to be applied in opp of dir of travel
-    var ddp = e.ACCELERATION * elapsed;
+    var ddp = e.type.acceleration * elapsed;
     if (e.dx > 0) e.dx = Math.max(0, e.dx - ddp);
     if (e.dx < 0) e.dx = Math.min(0, e.dx + ddp);
     if (e.dz > 0) e.dz = Math.max(0, e.dz - ddp);
@@ -1154,9 +1162,9 @@ function ballistics(e, elapsed) {
   } else if (e.flying || e.swimming) {
     // Drag
     if (e.dy > 0) 
-      e.dy = Math.max(0, e.dy - elapsed * e.ACCELERATION);
+      e.dy = Math.max(0, e.dy - elapsed * e.type.acceleration);
     else
-      e.dy = Math.min(0, e.dy + elapsed * e.ACCELERATION);
+      e.dy = Math.min(0, e.dy + elapsed * e.type.acceleration);
   }
 
   // Limit speed
@@ -1164,7 +1172,7 @@ function ballistics(e, elapsed) {
   if (e.flying || e.swimming) h += sqr(e.dy);
   h = Math.sqrt(h);
   
-  var vmax = (e.flying ? e.FLY_MAX : e.WALK_MAX) *
+  var vmax = (e.flying ? e.type.fly_max : e.type.walk_max) *
     (1 - (block(e).type.viscosity||0));
   var f = h / vmax;
   if (f > 1) {
@@ -1974,6 +1982,8 @@ function entityGeometryDrone(ntt, v) {
     faces: _DRONE_HEAD,
   });
   // Body
+  var bodytex = {tile:[1,4, 1,4, 2,4, 1,4, 1,4, 1,4]};
+  bodytex.tile[4] = ntt.ddy ? 2 : 3;
   geometryBox(v, {
     light: light,
     color: ntt.type.color || ntt.sourcetype.color || [1,1,1],
@@ -1981,7 +1991,7 @@ function entityGeometryDrone(ntt, v) {
     x: ntt.x,
     y: ntt.y,
     z: ntt.z,
-    tile: {tile:[1,4, 1,4, 2,4, 1,4, 1,4, 1,4]},
+    tile: bodytex,
     faces: _DRONE_BOD,
   });
 }
@@ -2168,10 +2178,6 @@ function Entity(init1, init2) {
   init('sourcetype', {});
   this.radius = 0.3;
   this.height = 1.8;
-  this.WALK_MAX = 4.3; // m/s
-  this.FLY_MAX = 10.8; // m/s
-  this.SPIN_RATE = 2;  // radians/s
-  this.ACCELERATION = 20;  // m/s^2
   if (typeof this.type === 'string') 
     this.type = ENTITY_TYPES[this.type];
   if (typeof this.sourcetype === 'string') 
