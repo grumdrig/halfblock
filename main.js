@@ -2365,6 +2365,7 @@ function onLoad() {
   window.addEventListener('keyup',   onkeyup,   true);
   window.addEventListener('mousemove', onmousemove, true);
   window.addEventListener('mousedown', onmousedown, true);
+  window.addEventListener('focus', onfocus, true);
   document.oncontextmenu = function () { return false };
 
   document.addEventListener('fullscreenchange', fullscreenChange, false);
@@ -2501,6 +2502,10 @@ function makeInventorySlot(parent, i) {
   div.appendChild(can);
 }
 
+function onfocus(event) {
+  if (GAME && AVATAR)
+    drawScene(AVATAR);
+}
 
 function onkeyup(event) { onkeydown(event, 0); }
 
