@@ -2431,7 +2431,7 @@ function onLoad() {
     show('loadgame', false);
   }
 
-  $('resumegame').onclick = function () {
+  $('resumegame2').onclick = $('resumegame').onclick = function () {
     togglePointerLock();
   }
 
@@ -2605,23 +2605,19 @@ function onkeydown(event, count) {
                   z: f.z + 0.5});
     }
 
-    if (c === 'H') {
-      var _SPREADS = [0, 3, Math.floor(CHUNK_RADIUS * 2)];
-      // Toggle chunk generation radiusness
-      for (var i = 0; i < _SPREADS.length; ++i) {
-        if (SPREAD_OUT === _SPREADS[i]) {
-          SPREAD_OUT = _SPREADS[(i+1)%_SPREADS.length];
-          break;
-        }
-      }
-      message('Chunk spread = ' + SPREAD_OUT);
-    }
-
     if (c === 'T') {
       // Toggle options page
-      window.showOptions = !window.showOptions;
-      show('options', window.showOptions);
-      show('hud', !window.showOptions);
+      if (GAME) {
+        if (window.showOptions) {
+          togglePointerLock();
+        } else {
+          window.showOptions = true;
+          if (window.pointerLocked)
+            togglePointerLock();
+          else
+            showAndHideUI();
+        }
+      }
     }
 
     // right paren/brace/bracket means select next tool
@@ -2804,10 +2800,17 @@ function fullscreenChange() {
 function pointerLockChange() {
   window.pointerLocked = (document.mozPointerLockElement ||
                           document.webkitPointerLockElement) === cancan;
+  if (window.pointerLocked && window.showOptions) {
+    window.showOptions = false;
+    var rdist = document.getElementsByName("rdist");
+    for (var i = 0; i < rdist.length; i++)
+      if (rdist[i].checked) 
+        SPREAD_OUT = parseInt(rdist[i].value);
+  }
   showAndHideUI();
 }
 
-var _MODES = 'title,loading,dead,hud,inventory,pause'.split(',');
+var _MODES = 'title,loading,dead,hud,options,inventory,pause'.split(',');
 function showAndHideUI() {
   if (!GAME) {
     window.mode = 'title';
@@ -2819,6 +2822,8 @@ function showAndHideUI() {
     window.mode = 'dead';
   } else if (GAME.showInventory) {
     window.mode = 'inventory';
+  } else if (window.showOptions) {
+    window.mode = 'options';
   } else {
     window.mode = 'pause';
   }

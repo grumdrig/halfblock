@@ -309,7 +309,7 @@ div.page {
   font-family: Helvetica, sans-serif;
 }
 
-#loading div, #dead div {
+.msg {
   text-align: center;
   font-size: 24px;
   position: absolute;
@@ -319,6 +319,10 @@ div.page {
   width: 100%;
   height: 40px;
   left: 0;
+}
+
+#pause .msg {
+  top: 25%;
 }
 
 button {
@@ -448,6 +452,11 @@ button {
 }
 
 
+#options div {
+  margin-top: 1em;
+  margin-left: 1em;
+}
+
 </style>
 </head>
 
@@ -463,8 +472,19 @@ button {
     </div>
     <div id="stats" class="page"></div>
     <div id="options" class="page">
-      <input id="anisotropic" type="checkbox">
-      <label for="anisotropic">Anisotropic filtering</label>
+      <div style='font-size:24px'>Options</div>
+      <div>
+        <input id="anisotropic" type="checkbox">
+        <label for="anisotropic">Anisotropic filtering</label>
+      </div>
+      <div>
+        Chunk generation distance:<br>
+        <input type="radio" name="rdist" value="0">Off<br>
+        <input type="radio" name="rdist" value="3" checked>Near<br>
+        <input type="radio" name="rdist" value="12">Medium<br>
+        <input type="radio" name="rdist" value="50">Far
+      </div>
+      <div><button id="resumegame2">Done</button></div>
     </div>
     <div id="title" class="page">
       <div class="logo"><img src="logo.png"></div>
@@ -476,15 +496,16 @@ button {
         version of Chrome or Firefox.</div>
     </div>
     <div id="pause" class="page">
+      <div class="msg">Paused</div>
       <button id="resumegame">Return to Game</button>
       <button id="savegame">Save Game &amp; Quit</button>
       <button id="quitgame">Quit Game</button>
     </div>
     <div id="loading" class="page">
-      <div>Loading...</div>
+      <div class="msg">Loading...</div>
     </div>
     <div id="dead" class="page">
-      <div>You died.</div>
+      <div class="msg">You died.</div>
       <button id="respawn">Respawn</button>
       <button id="quitgame2">Quit Game</button>
     </div>
