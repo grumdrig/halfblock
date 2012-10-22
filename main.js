@@ -38,7 +38,7 @@ var NX = 1 << LOGNX;
 var NY = 1 << LOGNY;
 var NZ = 1 << LOGNZ;
 var CHUNK_RADIUS = Math.sqrt(NX * NX + NZ * NZ);
-var SY = 0.5;      // vertical size of blocks
+var SY = 1;        // vertical size of blocks
 var HY = NY * SY;  // vertical height of chunk in m
 
 var GEN_STAT = new Stat('Chunk-gen');
@@ -106,7 +106,6 @@ var BLOCK_TYPES = {
     tile: 5,
     solid: true,
     opaque: true,
-    stack: 1,
   },
   bedrock: {
     tile:6,
@@ -235,7 +234,7 @@ var BLOCK_TYPES = {
     }
   },
   obelisk: {
-    tile: [5, 2],
+    tile: [5, 1],
     stack: 2,
     solid: true,
     opaque: true,
@@ -1934,10 +1933,14 @@ function blockGeometryBlock(b) {
       if (face === FACE_TOP || face === FACE_BOTTOM) {
         bottom = 0;
         top = 1;
+      } else if  (typeof b.stackPos !== 'undefined') {
+        bottom = b.type.stack - b.stackPos - SY;
+        top = bottom + SY;
+      } else if (SY % 1 === 0) {
+        bottom = 0;
+        top = bottom + SY;
       } else {
-        var pos = (typeof b.stackPos === 'undefined') ? frac(b.y) : b.stackPos;
-        pos = SY - pos;
-        bottom = pos;
+        bottom = SY - frac(b.y);
         top = bottom + SY;
       }
       
@@ -2094,8 +2097,7 @@ function geometryBox(v, p) {
     }
 
     var tile = tileCoord(p.tile, face);
-    var top = (face === FACE_BOTTOM || face === FACE_TOP) ? 0 :
-      1 - (p.texheight || 1);
+    var top = 0;
     if (top % 1 === 0) top += ZERO;
     v.aTexCoord.push(tile.s + ONE,  tile.t + ONE, 
                      tile.s + ZERO, tile.t + ONE, 
