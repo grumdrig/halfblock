@@ -1078,10 +1078,11 @@ function drawScene(camera, showWireframe) {
   var headblock = block(camera.x, camera.y + camera.eyeHeight, camera.z);
   if (headblock.type.translucent) {
     var rgba = headblock.type.translucent;
-    $('stats').style.backgroundColor = 'rgba(' + rgba.join(',') + ')';
+    $('hud').style.backgroundColor = 'rgba(' + rgba.join(',') + ')';
   } else {
-    $('stats').style.backgroundColor = '';
+    $('hud').style.backgroundColor = '';
   }
+  $('pause').style.backgroundColor = $('hud').style.backgroundColor;
   
   // Set matrix uniforms
   gl.uniformMatrix4fv(gl.mainShader.uniforms.uPMatrix,  false,  pMatrix);
