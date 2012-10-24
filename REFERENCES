@@ -37,6 +37,7 @@ http://www.4p8.com/eric.brasseur/gamma.html
 http://stackoverflow.com/questions/10843321/should-webgl-shader-output-be-adjusted-for-gamma
 
 Pointer lock
+https://developer.mozilla.org/en-US/docs/API/Pointer_Lock_API
 http://www.html5rocks.com/en/tutorials/pointerlock/intro/
 chrome://flags/
 
