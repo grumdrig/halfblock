@@ -1468,12 +1468,8 @@ function tick() {
     GAME.clock += elapsed;
 
     if (gl.textures.terrain.loaded) {
-      if (KEYS.B) {
-        blur(AVATAR, 256, 256);
-      } else {
-        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        drawScene(AVATAR, true);
-      }
+      gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+      drawScene(AVATAR, true);
     }
     
     processInput(AVATAR, elapsed);
@@ -3385,28 +3381,7 @@ function renderToFramebuffer(camera, fb) {
 }
 
 
-var FB1, FB2, BLURH, BLURV, SAQ;
-var BLIT;
-function blur(camera, w, h) {
-  if (!FB1) {
-    FB1 = makeFramebuffer(w, h, true, false);
-    FB2 = makeFramebuffer(w, h, false, false);
-    BLURH = new Shader('blur', 'blur-horizontal');
-    BLURV = new Shader('blur', 'blur-vertical');
-    SAQ = makeBuffer([-1,-1, +1,-1, +1,+1, -1,+1], 2);
-    //BLIT = new Shader('blit');
-  }
-  
-  gl.enable(gl.DEPTH_TEST);
-
-  renderToFramebuffer(camera, FB1);
-  
-  gl.disable(gl.DEPTH_TEST);
-  
-  drawScreenAlignedQuad(BLURH, FB1, FB2);
-  drawScreenAlignedQuad(BLURV, FB2);
-}
-
+var SAQ;
 function blurryIntro(time) {
   if (!gl) return;
   if (!SAQ)
@@ -3429,25 +3404,6 @@ function blurryIntro(time) {
 
   if (gl.textures.panorama.loaded)
     gl.panorama.render();
-}
-
-
-function drawScreenAlignedQuad(shader, step, sourceFB, destFB) {
-  shader.use();
-  
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, sourceFB.texture);
-  gl.uniform1i(shader.uniforms.uSrc, 0);
-  gl.uniform1f(shader.uniforms.uStep, step);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, destFB);  // destFB may be null
-  gl.viewport(0, 0, 
-              destFB ? destFB.width : gl.viewportWidth, 
-              destFB ? destFB.height : gl.viewportHeight);
-
-  pointToAttribute(shader, {aPos: SAQ}, 'aPos');
-  gl.drawArrays(gl.TRIANGLE_FAN, 0, SAQ.numItems);
-
-  shader.disuse();
 }
 
 
