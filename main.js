@@ -6,6 +6,8 @@
 // TODO: edamame
 // TODO: miso soup
 
+document.addEventListener('DOMContentLoaded', onLoad, false);
+
 // OpenGL rendering things!
 
 var gl;
@@ -2342,8 +2344,7 @@ function onLoad() {
   }
 
   if (!initGL(canvas, glopts)) {
-    $('incompatible').innerHTML = '<b>Error! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
-    show('incompatible', true);
+    $('failinit').innerHTML = '<b>Error! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
     show('newgame', false);
     show('loadgame', false);
   }
@@ -2394,6 +2395,7 @@ function onLoad() {
     if (i < 9) makeInventorySlot('hud', i);
   }
 
+if ($('newgame'))
   $('newgame').onclick = function () {
     // Create game
     GAME = new Game();
@@ -2424,13 +2426,14 @@ function onLoad() {
     forceUpdate();
   }
 
+if ($('newgame'))
   $('loadgame').onclick = function () {
     loadGame(1);
     togglePointerLock();
   }
 
   if (!cancan.requestPointerLock) {
-    show('incompatible', true);
+    $('failinit').innerHTML = "<b>Error! Can't lock the pointer.</b><br><br>This browser does not support mouse pointer locking, so Halfblock won't run here. Try the latest version of Chrome or Firefox.</b>";
     show('newgame', false);
     show('loadgame', false);
   }
@@ -3958,3 +3961,4 @@ var THROBBERS = [
   'WebGL!',
   'Custom shaders!',
 ];
+
