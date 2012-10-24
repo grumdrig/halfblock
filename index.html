@@ -311,58 +311,38 @@ div.page {
 
 .msg {
   text-align: center;
-  font-size: 24px;
-  position: relative;
-  margin-top: -20px;
-  top: 40%;
-  text-align: center;
-  width: 100%;
+  font-size: 32px;
   height: 40px;
   left: 0;
-}
-
-#pause .msg {
-  top: 25%;
+  margin-top: 15%;
+  margin-bottom: 5%;
 }
 
 button {
   font-size: 18px;
-  position: absolute;
-  left: 50%;
   width: 220px;
   height: 40px;
-  margin-left: -110px;
   color: black;
-}
-#resumegame {
-  top: 190px;
-}
-#savegame, #respawn {
-  top: 250px;
-}
-#quitgame, #quitgame2 {
-  top: 310px;
+  display: block;
+  margin-bottom: 20px;
 }
 
-#butbox {
+#failinit {
   position: absolute;
   left: 50%;
-  top: 60%;
-  width: 80%;
-  margin-left: -40%;
+  top: 55%;
+  width: 70%;
+  margin-left: -35%;
   margin-top: -24px;
   height: 48px;
-}
-#failinit {
   font-size: 20px;
   color: red;
   text-align: center;
+  display: none;
 }
-#butbox button {
-  display: block;
-  position: static;
-  margin: 0;
-  margin-bottom: 22px;
+
+#newgame {
+  margin-top: 30%;
 }
 
 #reticule {
@@ -496,25 +476,27 @@ button {
       <div class="logo"><img src="logo.png"></div>
       <div id="throbber"></div>
 
-      <div id="butbox"><center>
-        <div id="failinit"></div>
+      <div id="failinit"></div>
+      <center>
         <button id="newgame">New Game</button>
         <button id="loadgame">Load Game</button>
-      </center></div>
+      </center>
     </div>
-    <div id="pause" class="page">
+    <div id="pause" class="page"><center>
       <div class="msg">Paused</div>
       <button id="resumegame">Return to Game</button>
       <button id="savegame">Save Game &amp; Quit</button>
       <button id="quitgame">Quit Game</button>
-    </div>
+    </center></div>
     <div id="loading" class="page">
       <div class="msg">Loading...</div>
     </div>
     <div id="dead" class="page">
+      <center>
       <div class="msg">You died.</div>
       <button id="respawn">Respawn</button>
       <button id="quitgame2">Quit Game</button>
+      </center>
     </div>
     <div id="inventory" class="page">
       <canvas id="held" class="tool" width="48" height="48"></canvas>

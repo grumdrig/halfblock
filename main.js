@@ -2345,6 +2345,7 @@ function onLoad() {
 
   if (!initGL(canvas, glopts)) {
     $('failinit').innerHTML = '<b>Error! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
+    show('failinit', true);
     show('newgame', false);
     show('loadgame', false);
   }
@@ -2434,6 +2435,7 @@ if ($('newgame'))
 
   if (!cancan.requestPointerLock) {
     $('failinit').innerHTML = "<b>Error! Can't lock the pointer.</b><br><br>This browser does not support mouse pointer locking, so Halfblock won't run here. Try the latest version of Chrome or Firefox.</b>";
+    show('failinit', true);
     show('newgame', false);
     show('loadgame', false);
   }
