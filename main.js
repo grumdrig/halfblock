@@ -2277,6 +2277,27 @@ Entity.prototype.toString = function () {
   return result;
 }
 
+Entity.prototype.facing = function () {
+  var dh = Math.cos(this.pitch);
+  return {
+    dy: -Math.sin(this.pitch),
+    dx: dh * Math.sin(this.yaw),
+    dz: -dh * Math.cos(this.yaw)
+  }
+}
+
+Entity.prototype.toss = function (ntt) {
+  var UMPH = 10 * (1 + tweak() / 4);
+  var facing = this.facing();
+  ntt.x = this.x;
+  ntt.y = this.y + this.eyeHeight;
+  ntt.z = this.z;
+  ntt.dx = this.dx + (1 + tweak() / 2) * facing.dx * UMPH;
+  ntt.dy = this.dy + (1 + tweak() / 2) * facing.dy * UMPH;
+  ntt.dz = this.dz + (1 + tweak() / 2) * facing.dz * UMPH;
+  ntt.yaw = Math.random() * Math.PI * 2;
+}
+
 
 function initCamera(cam) {
   // Initialize parameters neccessary for cameras
@@ -2693,24 +2714,31 @@ function closeInventory() {
       var qty = AVATAR.held.qty;
       var type = AVATAR.held.type;
       type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
+      var sourcetype;
+      if (!type.isEntity) {
+        sourcetype = type;
+        type = 'block';
+      }
       for (; qty; --qty) {
-        if (type.isEntity)
-          new Entity({type: type,
-                      x: AVATAR.x,
-                      y: AVATAR.y + 2 * AVATAR.height / 3,
-                      z: AVATAR.z,
-                     });
-        else
-          new Entity({type: 'block',
-                      x: AVATAR.x,
-                      y: AVATAR.y + 2 * AVATAR.height / 3,
-                      z: AVATAR.z,
-                      sourcetype: type});
+        AVATAR.toss(new Entity({type: type,
+                                sourcetype: sourcetype }));
       }
       AVATAR.held = null;
     }
   }
 }
+
+function killall() {
+  for (var ic in GAME.chunks) {
+    var c = GAME.chunks[ic];
+    for (var ie in c.entities) {
+      var e = c.entities[ie];
+      if (e.type.name !== 'player')
+        e.die();
+    }
+  }
+}
+
 
 function renderInventoryItem(can, item) {
   var ctx = can.getContext('2d');
