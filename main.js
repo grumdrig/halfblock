@@ -2394,35 +2394,8 @@ function onLoad() {
     if (i < 9) makeInventorySlot('hud', i);
   }
 
-  $('newgame').onclick = function () {
-    // Create game
-    GAME = new Game();
-    GAME.loading = true;
-    showAndHideUI();
-    var updates = 10;
-    var c;
-    function forceUpdate() {
-      if (c = loadNearbyChunks({x:0, z:0}, SPREAD_OUT, 1)) {
-        setTimeout(forceUpdate, 0);
-      } else if (updates) {
-        for (var i in GAME.chunks) {
-          var c = GAME.chunks[i];
-          c.update(true);
-        }
-        updates--;
-        setTimeout(forceUpdate, 0);
-      } else {
-        // Create player
-        new Entity({type:'player', x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
-        GAME.loading = false; 
-        showAndHideUI();
-      }
-    }
-
-    togglePointerLock();
-    makeChunk(0,0);
-    forceUpdate();
-  }
+  $('newgame').onclick =     function () { newGame(1);  }
+  $('newhalfgame').onclick = function () { newGame(0.5); }
 
   $('loadgame').onclick = function () {
     loadGame(1);
@@ -2472,6 +2445,40 @@ function onLoad() {
   showAndHideUI();
 
   tick();
+}
+
+
+function newGame(sy) {
+  SY = sy;
+  HY = NY * SY;
+
+  // Create game
+  GAME = new Game();
+  GAME.loading = true;
+  showAndHideUI();
+  var updates = 10;
+  var c;
+  function forceUpdate() {
+    if (c = loadNearbyChunks({x:0, z:0}, SPREAD_OUT, 1)) {
+      setTimeout(forceUpdate, 0);
+    } else if (updates) {
+      for (var i in GAME.chunks) {
+        var c = GAME.chunks[i];
+        c.update(true);
+      }
+      updates--;
+      setTimeout(forceUpdate, 0);
+    } else {
+      // Create player
+      new Entity({type:'player', x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
+      GAME.loading = false; 
+      showAndHideUI();
+    }
+  }
+  
+  togglePointerLock();
+  makeChunk(0,0);
+  forceUpdate();
 }
 
 
