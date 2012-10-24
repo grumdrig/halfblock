@@ -2547,7 +2547,7 @@ function onkeydown(event, count) {
   if (count === 1) {
 
     if (c === '\t' || k === 27) { // tab or escape
-      if (GAME) GAME.showInventory = false;
+      closeInventory();
       togglePointerLock();
       // Esc key to close inventory isn't a good idea, since it kills
       // pointer lock / fullscreen, unavoidably
@@ -2589,8 +2589,12 @@ function onkeydown(event, count) {
           redisplayInventory(AVATAR);
         } else {
           // Show/hide inventory screen
-          redisplayInventory(AVATAR);
-          GAME.showInventory = !GAME.showInventory;
+          if (GAME.showInventory) {
+            closeInventory();
+          } else {
+            redisplayInventory(AVATAR);
+            GAME.showInventory = true;
+          }
           togglePointerLock();
         }
       }
@@ -2680,6 +2684,33 @@ function onkeydown(event, count) {
   }
 }
 
+
+function closeInventory() {
+  if (GAME && GAME.showInventory) {
+    GAME.showInventory = false;
+    if (AVATAR.held && AVATAR.held.type) {
+      // Toss away what's held
+      var qty = AVATAR.held.qty;
+      var type = AVATAR.held.type;
+      type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
+      for (; qty; --qty) {
+        if (type.isEntity)
+          new Entity({type: type,
+                      x: AVATAR.x,
+                      y: AVATAR.y + 2 * AVATAR.height / 3,
+                      z: AVATAR.z,
+                     });
+        else
+          new Entity({type: 'block',
+                      x: AVATAR.x,
+                      y: AVATAR.y + 2 * AVATAR.height / 3,
+                      z: AVATAR.z,
+                      sourcetype: type});
+      }
+      AVATAR.held = null;
+    }
+  }
+}
 
 function renderInventoryItem(can, item) {
   var ctx = can.getContext('2d');
