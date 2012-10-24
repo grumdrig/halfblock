@@ -2621,6 +2621,24 @@ function onkeydown(event, count) {
       }
     }
 
+    if (c === 'T' && GAME && AVATAR && !GAME.loading) {
+      var type = AVATAR.inventory[AVATAR.slot] &&
+        AVATAR.inventory[AVATAR.slot].qty &&
+        AVATAR.inventory[AVATAR.slot].type;
+      if (type) {
+        type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
+        var sourcetype;
+        if (!type.isEntity) {
+          sourcetype = type;
+          type = 'block';
+        }
+        AVATAR.toss(new Entity({type: type,
+                                sourcetype: sourcetype }));
+        --AVATAR.inventory[AVATAR.slot].qty;
+        redisplayInventory(AVATAR);
+      }
+    }
+
     if (c === 'K' && PICKED) {
       for (var i = 0; i < 10; ++i) {
         var f = PICKED.neighbor(PICKED_FACE);
@@ -2652,7 +2670,7 @@ function onkeydown(event, count) {
                   z: f.z + 0.5});
     }
 
-    if (c === 'T') {
+    if (c === 'Y') {
       // Toggle options page
       if (GAME) {
         if (window.showOptions) {
