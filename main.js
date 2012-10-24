@@ -481,7 +481,6 @@ function initGL(canvas, opts) {
     gl.panorama = new Skybox('skybox', 'panorama');
     gl.sky = new Skybox('skybox', 'sky');
     gl.mainShader = new Shader('main');
-    gl.wireframe = new Wireframe();
     gl.particles = new ParticleSystem();
 
     // Init textures
@@ -2451,6 +2450,8 @@ function onLoad() {
 function newGame(sy) {
   SY = sy;
   HY = NY * SY;
+
+  gl.wireframe = new Wireframe();
 
   // Create game
   GAME = new Game();
