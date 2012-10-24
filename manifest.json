@@ -5,9 +5,11 @@
   "version": "0.1.1",
   "app": {
    "launch": { "local_path": "index.html" }
+// The following can replace the "launch" key stuff once Chrome 23 hits:
 //    "background": {
 //      "scripts": ["background.js"]
 //    }
+// q.v. http://stackoverflow.com/questions/12645069/google-chrome-onlaunched-error-in-plugin
   },
   "icons": { "16": "icon16x16.png", "128": "icon128x128.png" }
 }
