@@ -2344,10 +2344,8 @@ function onLoad() {
   }
 
   if (!initGL(canvas, glopts)) {
-    $('failinit').innerHTML = '<b>Error! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.';
-    show('failinit', true);
-    show('newgame', false);
-    show('loadgame', false);
+    failinit('<b>Error! Unable to initialize WebGL!</b><br><br><br>Perhaps your browser is hopelessly backwards and out of date. Try the latest Chrome or Firefox.<br><br>If that\'s not the problem, you might try restarting your browser.');
+    return;
   }
 
   // Polyfills
@@ -2396,7 +2394,6 @@ function onLoad() {
     if (i < 9) makeInventorySlot('hud', i);
   }
 
-if ($('newgame'))
   $('newgame').onclick = function () {
     // Create game
     GAME = new Game();
@@ -2427,17 +2424,13 @@ if ($('newgame'))
     forceUpdate();
   }
 
-if ($('newgame'))
   $('loadgame').onclick = function () {
     loadGame(1);
     togglePointerLock();
   }
 
   if (!cancan.requestPointerLock) {
-    $('failinit').innerHTML = "<b>Error! Can't lock the pointer.</b><br><br>This browser does not support mouse pointer locking, so Halfblock won't run here. Try the latest version of Chrome or Firefox.</b>";
-    show('failinit', true);
-    show('newgame', false);
-    show('loadgame', false);
+    failinit("<b>Error! Can't lock the pointer.</b><br><br>This browser does not support mouse pointer locking, so Halfblock won't run here. Try the latest version of Chrome or Firefox.");
   }
 
   $('resumegame2').onclick = $('resumegame').onclick = function () {
@@ -2481,6 +2474,14 @@ if ($('newgame'))
   tick();
 }
 
+
+function failinit(problem) {
+  $('failinit').innerHTML = problem;
+  show('failinit', true);
+  var bs = document.getElementsByTagName('button');
+  for (var i = 0; i < bs.length; ++i) bs[i].style.display = 'none';
+  show('title', true);
+}
 
 
 function makeInventorySlot(parent, i) {
