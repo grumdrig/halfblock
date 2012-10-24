@@ -303,6 +303,7 @@ div.page {
   top: 0;
   left: 0;
   color: white;
+  text-align: center;
 }
 
 * {
@@ -324,7 +325,7 @@ button {
   height: 40px;
   color: black;
   display: block;
-  margin-bottom: 20px;
+  margin: 20px auto;
 }
 
 #failinit {
@@ -441,6 +442,7 @@ button {
 #options div {
   margin-top: 1em;
   margin-left: 1em;
+  text-align: left;x
 }
 
 </style>
@@ -477,26 +479,22 @@ button {
       <div id="throbber"></div>
 
       <div id="failinit"></div>
-      <center>
-        <button id="newgame">New Game</button>
-        <button id="loadgame">Load Game</button>
-      </center>
+      <button id="newgame">New Game</button>
+      <button id="loadgame">Load Game</button>
     </div>
-    <div id="pause" class="page"><center>
+    <div id="pause" class="page">
       <div class="msg">Paused</div>
       <button id="resumegame">Return to Game</button>
       <button id="savegame">Save Game &amp; Quit</button>
       <button id="quitgame">Quit Game</button>
-    </center></div>
+    </div>
     <div id="loading" class="page">
       <div class="msg">Loading...</div>
     </div>
     <div id="dead" class="page">
-      <center>
       <div class="msg">You died.</div>
       <button id="respawn">Respawn</button>
       <button id="quitgame2">Quit Game</button>
-      </center>
     </div>
     <div id="inventory" class="page">
       <canvas id="held" class="tool" width="48" height="48"></canvas>
