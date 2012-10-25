@@ -28,6 +28,10 @@ var PICKED = null;
 var PICKED_FACE = 0;
 var PICK_MAX = 8;
 
+var HELD;
+var CRAFT = Array(9);
+var CRAFTABLE;
+
 var KEYS = {};
 
 var DB_VERSION = '8';
@@ -2397,18 +2401,7 @@ function onLoad() {
   document.addEventListener('mozpointerlockerror', pointerLockError, false);
   document.addEventListener('webkitpointerlockerror', pointerLockError,false);
 
-  $('inventory').addEventListener('mousemove', function (e) {
-    var rect = $('inventory').getBoundingClientRect();
-    var mouseX = e.clientX - rect.left;
-    var mouseY = e.clientY - rect.top;
-    var held = $('held');
-    held.style.left = (mouseX - held.width/2) + 'px';
-    held.style.top = (mouseY - held.height/2) + 'px';
-  }, false);
-  for (var i = 0; i < 9 * 4; ++i) {
-    makeInventorySlot('inventory', i);
-    if (i < 9) makeInventorySlot('hud', i);
-  }
+  createInventoryUI();
 
   $('newgame').onclick =     function () { newGame(1);  }
   $('newhalfgame').onclick = function () { newGame(0.5); }
@@ -2509,32 +2502,103 @@ function failinit(problem) {
 }
 
 
-function makeInventorySlot(parent, i) {
-  var row = 356 - 64 * Math.floor(i / 9);
-  var col = 140 + 64 * (i % 9);
-  if (i < 9) row += 30;
+function makeItemSlot(id) {
   var div = document.createElement('div');
   div.className = 'toolbox';
+  var can = document.createElement('canvas');
+  can.className = 'tool';
+  can.id = id;
+  can.width = can.height = 48;
+  div.appendChild(can);
+  return div;
+}
+
+
+function makeInventorySlot(parent, i) {
+  var row = 380 - 58 * Math.floor(i / 9);
+  var col = 152 + 58 * (i % 9);
+  if (i < 9) row += 16;
+  var div = makeItemSlot(parent + i);
   div.style.left = col + 'px';
   div.style.top = row + 'px';
   div.position = i;
   if (parent === 'inventory') {
     div.addEventListener('mousedown', function () { 
       var slotted = AVATAR.inventory[this.position];
-      AVATAR.inventory[this.position] = AVATAR.held;
-      AVATAR.held = slotted;
+      AVATAR.inventory[this.position] = HELD;
+      HELD = slotted;
       redisplayInventory(AVATAR);
     }, false);
   }
   $(parent).appendChild(div);
-  var can = document.createElement('canvas');
-  can.className = 'tool';
-  can.id = parent + i;
-  can.width = can.height = 48;
-  div.appendChild(can);
 }
 
+
+function makeCraftingSlot(i) {
+  var x = i % 3;
+  var y = (i / 3) >> 0;
+  var col = 240 + 58 * x;
+  var row = 16 + 58 * y;
+  var div = makeItemSlot('craft' + i);
+  div.style.left = col + 'px';
+  div.style.top = row + 'px';
+  div.position = i;
+  div.addEventListener('mousedown', function () {
+    var slotted = CRAFT[this.position];
+    CRAFT[this.position] = HELD;
+    HELD = slotted;
+    redisplayInventory(AVATAR);
+  }, false);
+  $('inventory').appendChild(div);
+}
+
+
+function createInventoryUI() {
+  $('inventory').addEventListener('mousemove', function (e) {
+    var rect = $('inventory').getBoundingClientRect();
+    var mouseX = e.clientX - rect.left;
+    var mouseY = e.clientY - rect.top;
+    var held = $('held');
+    held.style.left = (mouseX - held.width/2) + 'px';
+    held.style.top = (mouseY - held.height/2) + 'px';
+  }, false);
+  for (var i = 0; i < 9 * 4; ++i) {
+    makeInventorySlot('inventory', i);
+    if (i < 9) makeInventorySlot('hud', i);
+  }
+
+  for (var i = 0; i < 9; ++i)
+    makeCraftingSlot(i);
+
+  var rarr = document.createElement('div');
+  rarr.innerHTML = '&rarr;';
+  rarr.style.position = 'absolute';
+  rarr.style.left = 240 + 58 * 3 + 'px';
+  rarr.style.top = 16 + 58 * 1 + 'px';
+  rarr.style.fontSize = '48px';
+  $('inventory').appendChild(rarr);
+  
+  var crafted = makeItemSlot('crafted');
+  crafted.style.left = 240 + 58 * 4 + 'px';
+  crafted.style.top = 16 + 58 * 1 + 'px';
+  crafted.addEventListener('mousedown', function () {
+    if (!CRAFTABLE) return;
+    for (var i = 0; i < 9; ++i)
+      if (CRAFT[i] && CRAFT[i].qty) 
+        if (--CRAFT[i].qty < 1)
+          CRAFT[i] = null;
+    if (!HELD)
+      HELD = {type: CRAFTABLE, qty: 0};
+    ++HELD.qty;
+    redisplayInventory(AVATAR);
+  }, false);
+  $('inventory').appendChild(crafted);
+}
+
+
 function onfocus(event) {
+  // Sleeping laptop wakes up to a corruped canvas image - this tries to
+  // fix that
   if (GAME && AVATAR)
     drawScene(AVATAR);
 }
@@ -2720,27 +2784,35 @@ function onkeydown(event, count) {
 }
 
 
-function closeInventory() {
-  if (GAME && GAME.showInventory) {
-    GAME.showInventory = false;
-    if (AVATAR.held && AVATAR.held.type) {
-      // Toss away what's held
-      var qty = AVATAR.held.qty;
-      var type = AVATAR.held.type;
-      type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
-      var sourcetype;
-      if (!type.isEntity) {
-        sourcetype = type;
-        type = 'block';
-      }
-      for (; qty; --qty) {
-        AVATAR.toss(new Entity({type: type,
-                                sourcetype: sourcetype }));
-      }
-      AVATAR.held = null;
+function tossAll(held) {
+  if (held && held.type) {
+    var qty = held.qty;
+    var type = held.type;
+    type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
+    var sourcetype;
+    if (!type.isEntity) {
+      sourcetype = type;
+      type = 'block';
+    }
+    for (; qty; --qty) {
+      AVATAR.toss(new Entity({type: type, sourcetype: sourcetype}));
     }
   }
 }
+
+function closeInventory() {
+  if (GAME && GAME.showInventory) {
+    GAME.showInventory = false;
+    // Toss away what's held
+    tossAll(HELD);
+    HELD = null;
+    for (var i = 0; i < 9; ++i) {
+      tossAll(CRAFT[i]);
+      CRAFT[i] = null;
+    }
+  }
+}
+
 
 function killall() {
   for (var ic in GAME.chunks) {
@@ -2789,12 +2861,22 @@ function renderInventoryItem(can, item) {
  
 function redisplayInventory(whom) {
   if (window.mode === 'inventory')
-    renderInventoryItem($('held'), whom.held);
+    renderInventoryItem($('held'), HELD);
   for (var i = 0; i < whom.inventory.length; ++i) {
     var can = $(window.mode + i);
     if (!can) break;
     renderInventoryItem(can, whom.inventory[i]);
   }
+  if (window.mode === 'inventory') {
+    for (var i = 0; i < CRAFT.length; ++i) {
+      var can = $('craft' + i);
+      renderInventoryItem(can, CRAFT[i]);
+    }
+  }
+  CRAFTABLE = null;
+  for (var i = 0; i < CRAFT.length; ++i)
+    if (CRAFT[i]) CRAFTABLE = 'rock';
+  renderInventoryItem($('crafted'), CRAFTABLE && {type: CRAFTABLE, qty: 1});
 }
 
 
