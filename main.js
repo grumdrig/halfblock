@@ -415,6 +415,21 @@ for (var i in ENTITY_TYPES) {
   ENTITY_TYPES[i].isEntity = true;
 }
 
+var RECIPIES = [
+  {nine: 'soybean', product: 'miso soup'}
+];
+
+function matchRecipie() {
+  var types = {};
+  for (var i = 0; i < CRAFT.length; ++i)
+    if (CRAFT[i])
+      types[CRAFT[i].type] = (types[CRAFT[i].type] || 0) + 1;
+  for (var i = 0; i < RECIPIES.length; ++i) {
+    var r = RECIPIES[i];
+    if (types[r.nine] === 9) return r.product;
+  }
+}
+
 
 function reload() {
   var head = document.getElementsByTagName('head')[0];
@@ -2874,9 +2889,7 @@ function redisplayInventory(whom) {
       renderInventoryItem(can, CRAFT[i]);
     }
   }
-  CRAFTABLE = null;
-  for (var i = 0; i < CRAFT.length; ++i)
-    if (CRAFT[i]) CRAFTABLE = 'rock';
+  CRAFTABLE = matchRecipie();
   renderInventoryItem($('crafted'), CRAFTABLE && {type: CRAFTABLE, qty: 1});
 }
 
