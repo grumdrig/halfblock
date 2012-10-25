@@ -2581,7 +2581,8 @@ function createInventoryUI() {
   var crafted = makeItemSlot('crafted');
   crafted.style.left = 240 + 58 * 4 + 'px';
   crafted.style.top = 16 + 58 * 1 + 'px';
-  crafted.addEventListener('mousedown', function () {
+  crafted.addEventListener('mousedown', function (e) {
+    e.preventDefault();
     if (!CRAFTABLE) return;
     for (var i = 0; i < 9; ++i)
       if (CRAFT[i] && CRAFT[i].qty) 
