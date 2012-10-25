@@ -2528,6 +2528,36 @@ function makeItemSlot(id) {
   return div;
 }
 
+function slotClick(event) {
+  event.preventDefault();
+  var slot = event.currentTarget;
+  if (event.ctrlKey && HELD) {
+    // Place one of stack into empty slot
+    if (!slot.get())
+      slot.set({type: HELD.type, qty: 0});
+    if (slot.get().type === HELD.type) {
+      ++slot.get().qty;
+      if (--HELD.qty < 1) HELD = null;
+    }
+  } else if (event.ctrlKey && slot.get()) {
+    // Pick up half of stack
+    HELD = {type: slot.get().type, qty: Math.ceil(slot.get().qty/2)};
+    if (slot.get().qty > HELD.qty)
+      slot.get().qty -= HELD.qty;
+    else
+      slot.set(null);
+  } else if (HELD && slot.get() && HELD.type === slot.get().type) {
+    // Combine stacks
+    slot.get().qty += HELD.qty;
+    HELD = null;
+  } else {
+    // Swap held with slot
+    var slotted = slot.get();
+    slot.set(HELD);
+    HELD = slotted;
+  }
+  redisplayInventory(AVATAR);
+}
 
 function makeInventorySlot(parent, i) {
   var row = 380 - 58 * Math.floor(i / 9);
@@ -2536,34 +2566,23 @@ function makeInventorySlot(parent, i) {
   var div = makeItemSlot(parent + i);
   div.style.left = col + 'px';
   div.style.top = row + 'px';
+  div.get = function () { return AVATAR.inventory[i]; };
+  div.set = function (v) { AVATAR.inventory[i] = v; };
   div.position = i;
-  if (parent === 'inventory') {
-    div.addEventListener('mousedown', function () { 
-      var slotted = AVATAR.inventory[this.position];
-      AVATAR.inventory[this.position] = HELD;
-      HELD = slotted;
-      redisplayInventory(AVATAR);
-    }, false);
-  }
+  if (parent === 'inventory')
+    div.addEventListener('mousedown', slotClick, false);
   $(parent).appendChild(div);
 }
 
 
 function makeCraftingSlot(i) {
-  var x = i % 3;
-  var y = (i / 3) >> 0;
-  var col = 240 + 58 * x;
-  var row = 16 + 58 * y;
   var div = makeItemSlot('craft' + i);
-  div.style.left = col + 'px';
-  div.style.top = row + 'px';
+  div.style.left = 240 + 58 * (i % 3) + 'px';
+  div.style.top = 16 + 58 * ((i / 3) >> 0) + 'px';
+  div.get = function () { return CRAFT[i]; };
+  div.set = function (v) { CRAFT[i] = v; };
   div.position = i;
-  div.addEventListener('mousedown', function () {
-    var slotted = CRAFT[this.position];
-    CRAFT[this.position] = HELD;
-    HELD = slotted;
-    redisplayInventory(AVATAR);
-  }, false);
+  div.addEventListener('mousedown', slotClick, false);
   $('inventory').appendChild(div);
 }
 
