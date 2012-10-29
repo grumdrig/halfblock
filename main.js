@@ -2024,6 +2024,7 @@ function buildTree(base) {
           if (f === FACE_RIGHT || f === FACE_FRONT)
             n.reverse = true;
           if (i === 2) n.tip = true;
+          n.sag = i - 1;
         }
       }
     }
@@ -2057,8 +2058,8 @@ function blockGeometryFrond(b) {
       dx = 1 - dx;
       dz = 1 - dz;
     }
-    var dy = corners[i][1] / 16;
-    v.aPos.push(b.x + dx, b.y + 0.5 - dy, b.z + dz);
+    var sag = (corners[i][1] + 2 * sqr(b.sag + corners[i][2]/16)) / 16;
+    v.aPos.push(b.x + dx, b.y + 1 - sag, b.z + dz);
     v.aTexCoord.push(c.s + 0.01 + 0.98 * corners[i][0] / 16, 
                      c.t + 0.01 + 0.98 * corners[i][2] / 16);
     v.aLighting = v.aLighting.concat(b.light);
