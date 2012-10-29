@@ -2002,6 +2002,8 @@ function buildTree(base) {
     base.topSize = r0 + (r1 - r0) * (i + 1) / h;
     base.topOffset = [Math.random() * (1-base.topSize),
                       Math.random() * (1-base.topSize)];
+    base.radius0 = base.bottomSize / 2;
+    base.radius1 = base.topSize / 2;
     below = base;
     base = base.neighbor(FACE_TOP);
   }
@@ -2016,30 +2018,22 @@ function blockGeometryLog(b) {
     aTexCoord: [],
     indices: [],
   };
-  /*
-  var r0 = b.radius0, r1 = b.radius1;
+
   var cx0 = noise(b.x, 234.567 +  b.y   /5, b.z) % (0.5 - b.radius0) + 0.5;
   var cx1 = noise(b.x, 234.567 + (b.y+1)/5, b.z) % (0.5 - b.radius1) + 0.5;
   var cz0 = noise(b.x, 123.456 +  b.y   /5, b.z) % (0.5 - b.radius0) + 0.5;
   var cz1 = noise(b.x, 123.456 + (b.y+1)/5, b.z) % (0.5 - b.radius1) + 0.5;
-*/
-  function corns(x, y, z, s) {
-    return [[x,   y, z  ],
-            [x+s, y, z  ],
-            [x+s, y, z+s],
-            [x,   y, z+s]];
-  }
-  /*
+
   function sq(cx, y, cz, r) {
     return [[cx - r, y, cz - r],
             [cx + r, y, cz - r],
             [cx + r, y, cz + r],
             [cx - r, y, cz + r]];
   }
-*/
-  var fs = faces(corns(
-    b.bottomOffset[0], 0, b.bottomOffset[1], b.bottomSize).concat(
-      corns(b.topOffset[0], 1, b.topOffset[1], b.topSize)));
+
+  var fs = faces(sq(cx0, 0, cz0, b.radius0).concat( 
+                 sq(cx1, 1, cz1, b.radius1)));
+
   geometryBox(b.vertices, {
     light: b.light,
     color: [1,1,1],
