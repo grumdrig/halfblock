@@ -1488,7 +1488,7 @@ function tick() {
 
     if (gl.textures.terrain.loaded) {
       gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-      drawScene(AVATAR, true);
+      drawScene(AVATAR, !$('hud').hide);
     }
     
     processInput(AVATAR, elapsed);
@@ -2635,7 +2635,7 @@ function onfocus(event) {
   // Sleeping laptop wakes up to a corruped canvas image - this tries to
   // fix that
   if (GAME && AVATAR)
-    drawScene(AVATAR);
+    drawScene(AVATAR, true);
 }
 
 function onkeyup(event) { onkeydown(event, 0); }
@@ -3074,8 +3074,10 @@ ParticleSystem.prototype.spawn = function (init) {
   for (var i in p)
     if (typeof init[i] !== 'undefined')
       p[i] = init[i];
-  p.tile = [p.tile.s * 16 + 1 + Math.floor(Math.random() * 14),
-            p.tile.t * 16 + 1 + Math.floor(Math.random() * 14)],
+  var TEXDIM = 4;
+  p.tile = [p.tile.s * 16 + Math.floor(Math.random() * (15-TEXDIM)),
+            p.tile.t * 16 + Math.floor(Math.random() * (15-TEXDIM))],
+  console.log(p.tile);
   this.add(p);
   return p;
 }

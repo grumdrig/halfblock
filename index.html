@@ -42,7 +42,6 @@
 
   void main(void) {
     vTexCoord = aTexCoord;
-    vTexCoord.t = 256.0 - vTexCoord.t;
     if (aBirthday > uClock /*|| uClock > aDeathday*/) {
       gl_Position = vec4(-9999.0, -9999.0, -9999.0, 1.0);
     } else {
@@ -51,7 +50,7 @@
       pos.y -= 0.5 * uGravity * age * age;  // reduced gravity
       if (uClock == aBirthday) pos.y += 3.0;
       gl_Position = uPMatrix * uMVMatrix * vec4(pos, 1.0);
-      gl_PointSize = clamp(50.0 / gl_Position.z, 1.0, 50.0);
+      gl_PointSize = 70.0 / gl_Position.z;
     }
   }
 </script>
@@ -60,8 +59,11 @@
   uniform sampler2D uSampler;
   varying vec2 vTexCoord;
   void main(void) {
-    gl_FragColor = texture2D(uSampler, 
-                             (vTexCoord + 2.0 * gl_PointCoord) / 256.0);
+    vec2 coord = (vTexCoord + 4.0 * gl_PointCoord) / 256.0;
+    coord.t = 1.0 - coord.t;
+    gl_FragColor = texture2D(uSampler, coord);
+    if (gl_FragColor.a <= 0.5)
+      discard;
   }
 </script>
 
