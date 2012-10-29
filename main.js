@@ -2042,13 +2042,13 @@ function blockGeometryFrond(b) {
     indices: [],
   };
   
-  var I0 = b.rotate ? 1 : 0;
-  var I1 = b.rotate ? 0 : 1;
+  var I0 = b.rotate ? 2 : 0;
+  var I1 = b.rotate ? 0 : 2;
   var c = tileCoord(b);
-  var corners = [[9,8], [16,7], [16,0], [7,0], [0,1], [0,15], [7,16], 
-    [16,16], [16,9]];
-  var tipcorners = [[7,0], [0,1], [0,3], [2,11], [7,16], [9,16], [14,11], 
-    [16,3], [16,0]];
+  var corners = [[9,0,8], [16,3,7], [16,2,0], [7,0,0], [0,3,1], 
+    [0,3,15], [7,0,16], [16,2,16], [16,3,9]];
+  var tipcorners = [[7,0,0], [0,3,1], [0,2,3], [2,1,11], [7,1,16], 
+    [9,1,16], [14,1,11], [16,2,3], [16,2,0]];
   if (b.tip) corners = tipcorners;
   for (var i = 0; i < corners.length; ++i) {
     var dx = corners[i][I0] / 16;
@@ -2057,9 +2057,10 @@ function blockGeometryFrond(b) {
       dx = 1 - dx;
       dz = 1 - dz;
     }
-    v.aPos.push(b.x + dx, b.y + 0.5, b.z + dz);
+    var dy = corners[i][1] / 16;
+    v.aPos.push(b.x + dx, b.y + 0.5 - dy, b.z + dz);
     v.aTexCoord.push(c.s + 0.01 + 0.98 * corners[i][0] / 16, 
-                     c.t + 0.01 + 0.98 * corners[i][1] / 16);
+                     c.t + 0.01 + 0.98 * corners[i][2] / 16);
     v.aLighting = v.aLighting.concat(b.light);
     v.aColor = v.aColor.concat(b.color || b.type.color || [1,1,1]);
   }
