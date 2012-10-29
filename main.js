@@ -2019,10 +2019,10 @@ function blockGeometryLog(b) {
     indices: [],
   };
 
-  var cx0 = noise(b.x, 234.567 +  b.y   /5, b.z) % (0.5 - b.radius0) + 0.5;
-  var cx1 = noise(b.x, 234.567 + (b.y+1)/5, b.z) % (0.5 - b.radius1) + 0.5;
-  var cz0 = noise(b.x, 123.456 +  b.y   /5, b.z) % (0.5 - b.radius0) + 0.5;
-  var cz1 = noise(b.x, 123.456 + (b.y+1)/5, b.z) % (0.5 - b.radius1) + 0.5;
+  var cx0 = noise(b.x, 234.567 +  b.y   /10, b.z) % (0.5 - b.radius0) + 0.5;
+  var cx1 = noise(b.x, 234.567 + (b.y+1)/10, b.z) % (0.5 - b.radius1) + 0.5;
+  var cz0 = noise(b.x, 123.456 +  b.y   /10, b.z) % (0.5 - b.radius0) + 0.5;
+  var cz1 = noise(b.x, 123.456 + (b.y+1)/10, b.z) % (0.5 - b.radius1) + 0.5;
 
   function sq(cx, y, cz, r) {
     return [[cx - r, y, cz - r],
