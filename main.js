@@ -220,13 +220,13 @@ var BLOCK_TYPES = {
     },
   },
   mystery: {
-    tile: [2, 2, 2, 1],
+    tile: [2,2, 2,1],
     opaque: true,
     solid: true,
     stack: 1,
   },
   hal9000: {
-    tile: [3, 2, 3, 1],
+    tile: [3,2, 3,1],
     opaque: true,
     solid: true,
     stack: 1,
@@ -244,6 +244,11 @@ var BLOCK_TYPES = {
     stack: 2,
     solid: true,
     opaque: true,
+  },
+  log: {
+    tile: [4,3, 4,4],
+    solid: true,
+    geometry: blockGeometryLog,
   },
 };
 for (var i in BLOCK_TYPES)
@@ -1879,6 +1884,8 @@ var _FACES = faces(_CORNERS);
 Block.prototype.buildGeometry = function () {
   if (this.type.empty) {
     // do nothing
+  } else if (this.type.geometry) {
+    this.type.geometry(this);
   } else if (this.type.hashes) {
     blockGeometryHash(this);
   } else {
@@ -1976,6 +1983,64 @@ function blockGeometryBlock(b) {
     }
   }
 }
+
+
+function buildTree(base) {
+  base.placeBlock(BLOCK_TYPES.log);
+  base.bottomSize = Math.random(),
+  base.bottomOffset = [Math.random() * (1-base.bottomSize),
+                       Math.random() * (1-base.bottomSize)];
+  base.topSize = Math.random(),
+  base.topOffset = [Math.random() * (1-base.topSize),
+                    Math.random() * (1-base.topSize)];
+}
+
+
+function blockGeometryLog(b) {
+  b.vertices = {
+    aPos: [],
+    aLighting: [],
+    aColor: [],
+    aTexCoord: [],
+    indices: [],
+  };
+  /*
+  var r0 = b.radius0, r1 = b.radius1;
+  var cx0 = noise(b.x, 234.567 +  b.y   /5, b.z) % (0.5 - b.radius0) + 0.5;
+  var cx1 = noise(b.x, 234.567 + (b.y+1)/5, b.z) % (0.5 - b.radius1) + 0.5;
+  var cz0 = noise(b.x, 123.456 +  b.y   /5, b.z) % (0.5 - b.radius0) + 0.5;
+  var cz1 = noise(b.x, 123.456 + (b.y+1)/5, b.z) % (0.5 - b.radius1) + 0.5;
+*/
+  function corns(x, y, z, s) {
+    return [[x,   y, z  ],
+            [x+s, y, z  ],
+            [x+s, y, z+s],
+            [x,   y, z+s]];
+  }
+  /*
+  function sq(cx, y, cz, r) {
+    return [[cx - r, y, cz - r],
+            [cx + r, y, cz - r],
+            [cx + r, y, cz + r],
+            [cx - r, y, cz + r]];
+  }
+*/
+  var fs = faces(corns(
+    b.bottomOffset[0], 0, b.bottomOffset[1], b.bottomSize).concat(
+      corns(b.topOffset[0], 1, b.topOffset[1], b.topSize)));
+  geometryBox(b.vertices, {
+    light: b.light,
+    color: [1,1,1],
+    yaw: 0,
+    pitch: 0,
+    x: b.x,
+    y: b.y,
+    z: b.z,
+    tile: b.type,
+    faces: fs
+  });
+}
+
 
 function entityGeometryHash(ntt, vertices) {
   blockGeometryHash(ntt);
@@ -2757,12 +2822,8 @@ function onkeydown(event, count) {
       reload();
 
     if (c === 'C' && PICKED) {
-      // Spawn a drone
-      var f = PICKED.neighbor(PICKED_FACE);
-      new Entity({type: 'drone',
-                  x: f.x + 0.5, 
-                  y: f.y,
-                  z: f.z + 0.5});
+      // Grow a tree
+      buildTree(PICKED.neighbor(PICKED_FACE));
     }
 
     if (c === 'Y') {
@@ -3077,7 +3138,6 @@ ParticleSystem.prototype.spawn = function (init) {
   var TEXDIM = 4;
   p.tile = [p.tile.s * 16 + Math.floor(Math.random() * (15-TEXDIM)),
             p.tile.t * 16 + Math.floor(Math.random() * (15-TEXDIM))],
-  console.log(p.tile);
   this.add(p);
   return p;
 }
