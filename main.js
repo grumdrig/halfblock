@@ -2014,17 +2014,22 @@ function buildTree(base) {
     below = base;
     base = base.neighbor(FACE_TOP);
   }
-  if (below) {
+  function frondize(below) {
     for (var f = 0; f < 6; ++f) {
       if (f != FACE_BOTTOM && f != FACE_TOP) {
-        for (var n = below.neighbor(f), i = 0; i < 2; ++i, n = n.neighbor(f)){
+        for (var n = below.neighbor(f), i = 0; i < 3; ++i, n = n.neighbor(f)){
           n.placeBlock(BLOCK_TYPES.frond);
           if (f === FACE_LEFT || f === FACE_RIGHT)
             n.rotate = true;
+          if (f === FACE_RIGHT || f === FACE_FRONT)
+            n.reverse = true;
+          if (i === 2) n.tip = true;
         }
       }
     }
   }
+  if (below) frondize(below);
+  //if (base && !base.outofbounds) frondize(base);
 }
 
 
@@ -2042,9 +2047,19 @@ function blockGeometryFrond(b) {
   var c = tileCoord(b);
   var corners = [[9,8], [16,7], [16,0], [7,0], [0,1], [0,15], [7,16], 
     [16,16], [16,9]];
+  var tipcorners = [[7,0], [0,1], [0,3], [2,11], [7,16], [9,16], [14,11], 
+    [16,3], [16,0]];
+  if (b.tip) corners = tipcorners;
   for (var i = 0; i < corners.length; ++i) {
-    v.aPos.push(b.x + corners[i][I0] / 16, b.y+0.5, b.z + corners[i][I1]/16);
-    v.aTexCoord.push(c.s + corners[i][0] / 16, c.t + corners[i][1] / 16);
+    var dx = corners[i][I0] / 16;
+    var dz = corners[i][I1] / 16;
+    if (b.reverse) {
+      dx = 1 - dx;
+      dz = 1 - dz;
+    }
+    v.aPos.push(b.x + dx, b.y + 0.5, b.z + dz);
+    v.aTexCoord.push(c.s + 0.01 + 0.98 * corners[i][0] / 16, 
+                     c.t + 0.01 + 0.98 * corners[i][1] / 16);
     v.aLighting = v.aLighting.concat(b.light);
     v.aColor = v.aColor.concat(b.color || b.type.color || [1,1,1]);
   }
