@@ -1986,13 +1986,25 @@ function blockGeometryBlock(b) {
 
 
 function buildTree(base) {
-  base.placeBlock(BLOCK_TYPES.log);
-  base.bottomSize = Math.random(),
-  base.bottomOffset = [Math.random() * (1-base.bottomSize),
-                       Math.random() * (1-base.bottomSize)];
-  base.topSize = Math.random(),
-  base.topOffset = [Math.random() * (1-base.topSize),
-                    Math.random() * (1-base.topSize)];
+  var r0 = 0.6, r1 = 0.2;
+  var h = Math.random() * 5 + 5;
+  var below;
+  for (var i = 0; i < h && !base.outofbounds; ++i) {
+    base.placeBlock(BLOCK_TYPES.log);
+    if (below) {
+      base.bottomSize = below.topSize;
+      base.bottomOffset = below.topOffset;
+    } else {
+      base.bottomSize = r0
+      base.bottomOffset = [Math.random() * (1-base.bottomSize),
+                           Math.random() * (1-base.bottomSize)];
+    }
+    base.topSize = r0 + (r1 - r0) * (i + 1) / h;
+    base.topOffset = [Math.random() * (1-base.topSize),
+                      Math.random() * (1-base.topSize)];
+    below = base;
+    base = base.neighbor(FACE_TOP);
+  }
 }
 
 
