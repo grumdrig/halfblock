@@ -252,8 +252,7 @@ var BLOCK_TYPES = {
   },
   frond: {
     tile: [5,3],
-    billboard: true,
-    scale: 0.5,
+    geometry: blockGeometryFrond,
   },
 };
 for (var i in BLOCK_TYPES)
@@ -2015,12 +2014,40 @@ function buildTree(base) {
     below = base;
     base = base.neighbor(FACE_TOP);
   }
-  if (below)
-    for (var f = 0; f < 6; ++f)
-      if (f != FACE_BOTTOM)
-        below.neighbor(f).placeBlock(BLOCK_TYPES.frond);
+  if (below) {
+    for (var f = 0; f < 6; ++f) {
+      if (f != FACE_BOTTOM && f != FACE_TOP) {
+        for (var n = below.neighbor(f), i = 0; i < 2; ++i, n = n.neighbor(f))
+          n.placeBlock(BLOCK_TYPES.frond); 
+      }
+    }
+  }
 }
 
+
+function blockGeometryFrond(b) {
+  var v = b.vertices = {
+    aPos: [],
+    aLighting: [],
+    aColor: [],
+    aTexCoord: [],
+    indices: [],
+  };
+  
+  var c = tileCoord(b);
+  var corners = [[9,8], [16,7], [16,0], [7,0], [0,1], [0,15], [7,16], 
+    [16,16], [16,9]];
+  for (var i = 0; i < corners.length; ++i) {
+    var dx = corners[i][0] / 16;
+    var dz = corners[i][1] / 16;
+    v.aPos.push(b.x + dx, b.y + 0.5, b.z + dz);
+    v.aTexCoord.push(c.s + dx, c.t + dz);
+    v.aLighting = v.aLighting.concat(b.light);
+    v.aColor = v.aColor.concat(b.color || b.type.color || [1,1,1]);
+  }
+  for (var i = 1; i < corners.length-1; ++i)
+    v.indices.push(0, i, i + 1);
+}
 
 function blockGeometryLog(b) {
   b.vertices = {
