@@ -250,6 +250,11 @@ var BLOCK_TYPES = {
     solid: true,
     geometry: blockGeometryLog,
   },
+  frond: {
+    tile: [5,3],
+    billboard: true,
+    scale: 0.5,
+  },
 };
 for (var i in BLOCK_TYPES)
   BLOCK_TYPES[i].name = i;
@@ -1014,7 +1019,7 @@ var _DX = 1;
 Block.prototype.neighbor = function (face) {
   switch (face) {
   case FACE_FRONT: 
-    return this.z-this.chunk.chunkz > 0 ? 
+    return this.z - this.chunk.chunkz > 0 ? 
       this.chunk.blocks[this.i - _DZ] : block(this.x, this.y,this. z-1);
   case FACE_BACK:  
     return this.z-this.chunk.chunkz < NZ-1 ? 
@@ -1753,6 +1758,7 @@ Block.prototype.breakBlock = function () {
 }
 
 Block.prototype.placeBlock = function (newType, stackPos) {
+  if (this.outofbounds) return;
   if (typeof newType === 'string') BLOCK_TYPES[newType];
   this.type = newType;
   delete this.stackPos;
@@ -1886,6 +1892,8 @@ Block.prototype.buildGeometry = function () {
     // do nothing
   } else if (this.type.geometry) {
     this.type.geometry(this);
+  } else if (this.type.billboard) {
+    blockGeometryBillboard(this);
   } else if (this.type.hashes) {
     blockGeometryHash(this);
   } else {
@@ -2007,6 +2015,10 @@ function buildTree(base) {
     below = base;
     base = base.neighbor(FACE_TOP);
   }
+  if (below)
+    for (var f = 0; f < 6; ++f)
+      if (f != FACE_BOTTOM)
+        below.neighbor(f).placeBlock(BLOCK_TYPES.frond);
 }
 
 
@@ -2073,6 +2085,18 @@ function appendGeometry(v, w, justLighting) {
     for (var i = 0; i < w.indices.length; ++i)
       v.indices.push(pindex + w.indices[i]);
   }
+}
+
+
+function blockGeometryBillboard(b, v) {
+  b.vertices = {
+    aPos: [],
+    aLighting: [],
+    aColor: [],
+    aTexCoord: [],
+    indices: [],
+  };
+  entityGeometryBillboard({x:b.x, y:b.y, z:b.z, type:b.type}, b.vertices);
 }
 
 
