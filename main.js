@@ -1235,12 +1235,16 @@ function processInput(avatar, elapsed) {
 
 
 function togglePointerLock() {
-  if (cancan.requestPointerLock) {
-    if (window.pointerLocked)
-      document.exitPointerLock();
-    else
-      cancan.requestPointerLock();
-  }
+  if (!cancan.requestPointerLock) return;  // not supported
+
+  if (window.pointerLockRequiresFullscreen && 
+      !window.pointerLocked && 
+      !window.fullscreen)
+    cancan.requestFullscreen();
+  else if (!window.pointerLocked)
+    cancan.requestPointerLock();
+  else
+    document.exitPointerLock();
 }
 
 
@@ -2538,6 +2542,7 @@ function onLoad() {
   document.exitPointerLock = document.exitPointerLock ||
     document.mozExitPointerLock ||
     document.webkitExitPointerLock;
+  window.pointerLockRequiresFullscreen = !!cancan.mozRequestPointerLock;
 
   window.addEventListener('keydown', onkeydown, true);
   window.addEventListener('keyup',   onkeyup,   true);
@@ -3055,10 +3060,12 @@ function onmousemove(event) {
   if (window.pointerLocked && GAME && !GAME.loading) {
     var movementX = event.movementX || 
       event.mozMovementX || 
-      event.webkitMovementX;
+      event.webkitMovementX ||
+      0;
     var movementY = event.movementY || 
       event.mozMovementY ||
-      event.webkitMovementY;
+      event.webkitMovementY ||
+      0;
     var spinRate = 0.01;
     AVATAR.yaw += movementX * spinRate;
     AVATAR.pitch += movementY * spinRate;
@@ -3140,9 +3147,14 @@ Stat.prototype.toString = function () {
 }
 
 function fullscreenChange() {
-  AVATAR.fullscreen = (document.webkitFullscreenElement || 
+  window.fullscreen = (document.webkitFullscreenElement || 
                        document.mozFullscreenElement ||
                        document.mozFullScreenElement) === cancan;
+  if (window.pointerLockRequiresFullscreen && 
+      window.fullscreen &&
+      !window.pointerLocked) {
+    togglePointerLock();
+  }
 }
 
 function pointerLockChange() {
