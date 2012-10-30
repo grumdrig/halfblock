@@ -21,8 +21,8 @@ var DB;
 var GAME;
 var AVATAR;  // hack-o alias for GAME.avatar because we use it so much
 
-var GRASSY = false;       // true to use decal-style grass
-var SPREAD_OUT = 3;       // create nearby chunks at this radius
+var GRASSY = false;        // true to use decal-style grass
+var SPREAD_OUT = 16;       // create nearby chunks at this radius
 
 var PICKED = null;
 var PICKED_FACE = 0;
@@ -2907,6 +2907,10 @@ function onkeydown(event, count) {
       // Grow a tree
       buildTree(PICKED.neighbor(PICKED_FACE));
     }
+
+    if (c === '^G')
+      loadNearbyChunks(AVATAR, 64);  // generate lots of terrain
+
 
     if (c === 'Y') {
       // Toggle options page
