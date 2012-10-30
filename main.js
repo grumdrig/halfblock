@@ -689,7 +689,7 @@ Chunk.prototype.generateTerrain = function () {
     var x = xi + this.chunkx;
     for (var zi = 0; zi < NZ; ++zi) {
       var z = zi + this.chunkz;
-      if (noise(x/10,9938,z/10) < -0.3) {
+      if (2 * noise(x/10,9938,z/10) + noise(x/1,9938,z/1) < -0.4) {
         var t = topmost(x, z);
         if (t && t.type.plantable)
           t.neighbor(FACE_TOP).type = BLOCK_TYPES.soybeans;
@@ -706,6 +706,17 @@ Chunk.prototype.generateTerrain = function () {
     var t = topmost(x, z);
     if (t && t.type.plantable)
       t.neighbor(FACE_TOP).type = BLOCK_TYPES.flower;
+  }
+
+  // Plant some trees
+  for (var n = 0; n < 1; ++n) {
+    var x = this.chunkx + 3 +
+      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n+981.1)) * (NX-6));
+    var z = this.chunkz + 3 +
+      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n+123.4)) *(NZ-6));
+    var t = topmost(x, z);
+    if (t && t.type.plantable)
+      buildTree(t.neighbor(FACE_TOP));
   }
 
   // Plant some weeds
