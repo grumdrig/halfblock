@@ -10,9 +10,8 @@ modern, HTML5 technologies:
 - IndexedDB
 
 It's mostly been developed/tested on Google Chrome, and an up-to-date
-version of Chrome is probably required to run it. Firefox and possibly
-Safari might work also, though there will probably be rot on those
-platforms.
+version of Chrome is probably required to run it. Firefox might work
+also though there will probably be rot at any given time.
 
 The goals of the project are to better understand the above APIs, to
 try ways of implementing various game features, be they copied or
