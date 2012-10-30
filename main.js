@@ -689,7 +689,7 @@ Chunk.prototype.generateTerrain = function () {
     var x = xi + this.chunkx;
     for (var zi = 0; zi < NZ; ++zi) {
       var z = zi + this.chunkz;
-      if (2 * noise(x/10,9938,z/10) + noise(x/1,9938,z/1) < -0.4) {
+      if (2 * noise(x/10,9938,z/10) + noise(x/1,9938,z/1) < -0.5) {
         var t = topmost(x, z);
         if (t && t.type.plantable)
           t.neighbor(FACE_TOP).type = BLOCK_TYPES.soybeans;
@@ -697,39 +697,27 @@ Chunk.prototype.generateTerrain = function () {
     }
   }
 
-  // Plant some flowers
-  for (var n = 0; n < 4; ++n) {
-    var x = this.chunkx + 
-      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n)) * NX);
-    var z = this.chunkz + 
-      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n + 23.4)) * NZ);
-    var t = topmost(x, z);
-    if (t && t.type.plantable)
-      t.neighbor(FACE_TOP).type = BLOCK_TYPES.flower;
+  // Plant some plants
+  var chunk = this;
+  function plant(n, howOrWhat, margin) {
+    margin = margin || 0;
+    while (n--) {
+      var x = chunk.chunkx + margin + irand(NX - margin * 2);
+      var z = chunk.chunkz + margin + irand(NZ - margin * 2);
+      var t = topmost(x, z);
+      if (t && t.type.plantable) {
+        t = t.neighbor(FACE_TOP);
+        if (typeof howOrWhat === 'function')
+          howOrWhat(t);
+        else
+          t.type = BLOCK_TYPES[howOrWhat];
+      }
+    }
   }
-
-  // Plant some trees
-  for (var n = 0; n < 1; ++n) {
-    var x = this.chunkx + 3 +
-      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n+981.1)) * (NX-6));
-    var z = this.chunkz + 3 +
-      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n+123.4)) *(NZ-6));
-    var t = topmost(x, z);
-    if (t && t.type.plantable)
-      buildTree(t.neighbor(FACE_TOP));
-  }
-
-  // Plant some weeds
-  for (var n = 0; n < 6; ++n) {
-    var x = this.chunkx + 
-      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n)) * NX);
-    var z = this.chunkz + 
-      Math.round(Math.abs(noise(this.chunkx, this.chunkz, n + 23.4)) * NZ);
-    var t = topmost(x, z);
-    if (t && t.type.plantable)
-      t.neighbor(FACE_TOP).type = BLOCK_TYPES.weeds;
-  }
-
+  plant(4, 'flower');
+  plant(2, buildTree, 3);
+  plant(6, 'weeds');
+  
   // Initial quick lighting update, some of which we can know accurately
   this.nDirty = 0;
   for (var x = 0; x < NX; ++x) {
@@ -2005,7 +1993,7 @@ function blockGeometryBlock(b) {
 
 function buildTree(base) {
   var r0 = 0.6, r1 = 0.2;
-  var h = Math.random() * 5 + 5;
+  var h = Math.random() * 7 + 3;
   var below;
   for (var i = 0; i < h && !base.outofbounds; ++i) {
     base.placeBlock(BLOCK_TYPES.log);
@@ -2089,10 +2077,11 @@ function blockGeometryLog(b) {
     indices: [],
   };
 
-  var cx0 = noise(b.x, 234.567 +  b.y   /10, b.z) % (0.5 - b.radius0) + 0.5;
-  var cx1 = noise(b.x, 234.567 + (b.y+1)/10, b.z) % (0.5 - b.radius1) + 0.5;
-  var cz0 = noise(b.x, 123.456 +  b.y   /10, b.z) % (0.5 - b.radius0) + 0.5;
-  var cz1 = noise(b.x, 123.456 + (b.y+1)/10, b.z) % (0.5 - b.radius1) + 0.5;
+  var SW = 15;
+  var cx0 = noise(b.x, 234.567 +  b.y   /SW, b.z) % (0.5 - b.radius0) + 0.5;
+  var cx1 = noise(b.x, 234.567 + (b.y+1)/SW, b.z) % (0.5 - b.radius1) + 0.5;
+  var cz0 = noise(b.x, 123.456 +  b.y   /SW, b.z) % (0.5 - b.radius0) + 0.5;
+  var cz1 = noise(b.x, 123.456 + (b.y+1)/SW, b.z) % (0.5 - b.radius1) + 0.5;
 
   function sq(cx, y, cz, r) {
     return [[cx - r, y, cz - r],
@@ -3702,6 +3691,10 @@ function rndr(from, to) {
 
 function rnd(max) {
   return Math.floor(Math.random() * (max + 1));
+}
+
+function irand(n) {
+  return Math.floor(Math.random() * n);
 }
 
 var _AUDIO_CONTEXT;
