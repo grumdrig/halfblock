@@ -410,6 +410,22 @@ button {
   text-align: left;
 }
 
+a, a:visited {
+  color: cyan;
+  border: solid 1px cyan;
+  text-decoration: none;
+  text-transformation: uppercase;
+  padding: 0 8px;
+  background-color: rgba(0, 255, 255, .2);
+  border-radius: 10px;
+}
+
+#byline {
+  float: right;
+  margin: 0 20px;
+  font-size: 14px;
+}
+
 </style>
 </head>
 
@@ -449,6 +465,9 @@ button {
       <button id="newgame">New Game</button>
       <button id="newhalfgame">New &half; Game</button>
       <button id="loadgame">Load Game</button>
+      <div id="byline">by Grumdrig 
+        <a href="https://bitbucket.org/grumdrig/halfblock">source code</a>
+      </div>
     </div>
     <div id="pause" class="page">
       <div class="msg">Paused</div>
