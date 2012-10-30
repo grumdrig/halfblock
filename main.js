@@ -2024,7 +2024,7 @@ function buildTree(base) {
           if (f === FACE_RIGHT || f === FACE_FRONT)
             n.reverse = true;
           if (i === 2) n.tip = true;
-          n.sag = i - 1;
+          n.sag = i - 0.5;
         }
       }
     }
