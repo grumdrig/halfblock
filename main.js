@@ -1639,12 +1639,14 @@ function Block(coord, chunk) {
 
 
 Block.prototype.data = function () {
-  return {
+  var result = {
     light: this.light,
     dirtyLight: this.dirtyLight,
     dirtyGeometry: this.dirtyGeometry,
     type: this.type.name,
   };
+  if (typeof this.position != 'undefined') result.position = this.position;
+  if (typeof this.facing != 'undefined') result.facing = this.facing;
 }
 
 
@@ -1728,10 +1730,12 @@ function changeArray(a1, a2) {
 Block.prototype.breakBlock = function () {
   if (this.type.empty) return;
   var type = this.type;
-  var pos = this.stackPos;
+  var pos = this.position;
+  var facing = this.facing;
   var tile = tileCoord(this);
   this.type = BLOCK_TYPES.air;
-  delete this.stackPos;
+  delete this.position;
+  delete this.facing;
   this.invalidateGeometry(true);
   if (!pos) {
     var drop = new Entity({ 
@@ -1759,19 +1763,23 @@ Block.prototype.breakBlock = function () {
   }
 }
 
-Block.prototype.placeBlock = function (newType, stackPos) {
+Block.prototype.placeBlock = function (newType, position, facing) {
   if (this.outofbounds) return;
   if (typeof newType === 'string') BLOCK_TYPES[newType];
+  if (newType.stack) {
+    if (typeof position === 'undefined') position = 0;
+    if (typeof facing === 'undefined') facing = FACE_TOP;
+  }
   this.type = newType;
-  delete this.stackPos;
+  this.position = position;
+  this.facing = facing;
   this.invalidateGeometry(true);
   if (this.type.afterPlacement) 
     this.type.afterPlacement.apply(this);
-  if (this.type.stack) {
-    this.stackPos = stackPos || 0;
-    if (this.stackPos + SY < this.type.stack)
-      this.neighbor(FACE_TOP).placeBlock(newType, this.stackPos + SY);
-  }
+  if (this.type.stack && this.position + DISTANCE[facing] < this.type.stack)
+    this.neighbor(this.facing).placeBlock(newType, 
+                                          position + DISTANCE[facing], 
+                                          facing);
 }
 
 function tileCoord(obj, face) {
@@ -1790,6 +1798,8 @@ Block.prototype.toString = function () {
   var result = this.type.name + 
     ' [' + this.x + ',' + this.y + ',' + this.z + '] ' +
     '&#9788;' + this.light.join(',');
+  if (typeof this.position !== 'undefined') result += ' #' + this.position;
+  if (typeof this.facing !== 'undefined') result += ' ^' + this.facing;
   if (this.outofbounds) result += ' &#9760;';
   if (this.sheltered) result += ' &#9730;';
   return result;
@@ -1967,8 +1977,8 @@ function blockGeometryBlock(b) {
       if (face === FACE_TOP || face === FACE_BOTTOM) {
         bottom = 0;
         top = 1;
-      } else if  (typeof b.stackPos !== 'undefined') {
-        bottom = b.type.stack - b.stackPos - SY;
+      } else if (b.type.stack) {
+        bottom = b.type.stack - b.position - SY;
         top = bottom + SY;
       } else if (SY % 1 === 0) {
         bottom = 0;
@@ -2021,13 +2031,7 @@ function buildTree(base) {
     for (var f = 0; f < 6; ++f) {
       if (f != FACE_BOTTOM && f != FACE_TOP) {
         for (var n = below.neighbor(f), i = 0; i < 3; ++i, n = n.neighbor(f)){
-          n.placeBlock(BLOCK_TYPES.frond);
-          if (f === FACE_LEFT || f === FACE_RIGHT)
-            n.rotate = true;
-          if (f === FACE_RIGHT || f === FACE_FRONT)
-            n.reverse = true;
-          if (i === 2) n.tip = true;
-          n.sag = i - 0.5;
+          n.placeBlock(BLOCK_TYPES.frond, i, f);
         }
       }
     }
@@ -2038,6 +2042,7 @@ function buildTree(base) {
 
 
 function blockGeometryFrond(b) {
+  // TODO: update just lighting when req.
   var v = b.vertices = {
     aPos: [],
     aLighting: [],
@@ -2045,24 +2050,30 @@ function blockGeometryFrond(b) {
     aTexCoord: [],
     indices: [],
   };
+
+  var tip = (b.neighbor(b.facing).type !== b.type);
+  var sag = b.position - 0.5;
+
+  var rotate = (b.facing === FACE_LEFT || b.facing === FACE_RIGHT);
+  var reverse = (b.facing === FACE_RIGHT || b.facing === FACE_FRONT);
   
-  var I0 = b.rotate ? 2 : 0;
-  var I1 = b.rotate ? 0 : 2;
+  var I0 = rotate ? 2 : 0;
+  var I1 = rotate ? 0 : 2;
   var c = tileCoord(b);
   var corners = [[9,0,8], [16,3,7], [16,2,0], [7,0,0], [0,3,1], 
     [0,3,15], [7,0,16], [16,2,16], [16,3,9]];
   var tipcorners = [[7,0,0], [0,3,1], [0,2,3], [2,1,11], [7,1,16], 
     [9,1,16], [14,1,11], [16,2,3], [16,2,0]];
-  if (b.tip) corners = tipcorners;
+  if (tip) corners = tipcorners;
   for (var i = 0; i < corners.length; ++i) {
     var dx = corners[i][I0] / 16;
     var dz = corners[i][I1] / 16;
-    if (b.reverse) {
+    if (reverse) {
       dx = 1 - dx;
       dz = 1 - dz;
     }
-    var sag = (corners[i][1] + 2 * sqr(b.sag + corners[i][2]/16)) / 16;
-    v.aPos.push(b.x + dx, b.y + 1 - sag, b.z + dz);
+    var droop = (corners[i][1] + 2 * sqr(sag + corners[i][2]/16)) / 16;
+    v.aPos.push(b.x + dx, b.y + 1 - droop, b.z + dz);
     v.aTexCoord.push(c.s + 0.01 + 0.98 * corners[i][0] / 16, 
                      c.t + 0.01 + 0.98 * corners[i][2] / 16);
     v.aLighting = v.aLighting.concat(b.light);
@@ -2071,6 +2082,7 @@ function blockGeometryFrond(b) {
   for (var i = 1; i < corners.length-1; ++i)
     v.indices.push(0, i, i + 1);
 }
+
 
 function blockGeometryLog(b) {
   b.vertices = {
