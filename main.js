@@ -71,6 +71,12 @@ var FACE_LEFT = 5;
 
 var DISTANCE = [1, 1, SY, SY, 1, 1];
 
+var OPPOSITE = {};
+var AXIS = {};
+for (var i = 0; i < 6; ++i) {
+  OPPOSITE[i] = i ^ 1;
+  AXIS[i] = 'zyx'[Math.floor(i / 2)];
+}
 
 
 var BLOCK_TYPES = {
@@ -1741,7 +1747,7 @@ Block.prototype.breakBlock = function () {
     var drop = new Entity({ 
       type: type.drop || 'block',
       x: this.x + 0.5, 
-      y: this.y + (this.stack || this.height || SY)/2,
+      y: this.y + (this.height || SY)/2,
       z: this.z + 0.5,
       sourcetype: type,
     }, this);
@@ -1757,9 +1763,9 @@ Block.prototype.breakBlock = function () {
   }
   if (type.stack) {
     if (pos > 0)
-      this.neighbor(FACE_BOTTOM).breakBlock();
+      this.neighbor(OPPOSITE[facing]).breakBlock();
     if (pos + SY < type.stack)
-      this.neighbor(FACE_TOP).breakBlock();
+      this.neighbor(facing).breakBlock();
   }
 }
 
@@ -1777,9 +1783,9 @@ Block.prototype.placeBlock = function (newType, position, facing) {
   if (this.type.afterPlacement) 
     this.type.afterPlacement.apply(this);
   if (this.type.stack && this.position + DISTANCE[facing] < this.type.stack)
-    this.neighbor(this.facing).placeBlock(newType, 
-                                          position + DISTANCE[facing], 
-                                          facing);
+    this.neighbor(facing).placeBlock(newType, 
+                                     position + DISTANCE[facing], 
+                                     facing);
 }
 
 function tileCoord(obj, face) {
@@ -1977,7 +1983,7 @@ function blockGeometryBlock(b) {
       if (face === FACE_TOP || face === FACE_BOTTOM) {
         bottom = 0;
         top = 1;
-      } else if (b.type.stack) {
+      } else if (b.type.stack && AXIS[b.facing] === 'y') {
         bottom = b.type.stack - b.position - SY;
         top = bottom + SY;
       } else if (SY % 1 === 0) {
@@ -2272,10 +2278,11 @@ function geometryBox(v, p) {
     }
 
     var tile = tileCoord(p.tile, face);
-    var top = 0;
+    var top = 0, bottom = p.texheight || 1;
     if (top % 1 === 0) top += ZERO;
-    v.aTexCoord.push(tile.s + ONE,  tile.t + ONE, 
-                     tile.s + ZERO, tile.t + ONE, 
+    if (bottom % 1 === 0) bottom -= ZERO;
+    v.aTexCoord.push(tile.s + ONE,  tile.t + bottom,
+                     tile.s + ZERO, tile.t + bottom,
                      tile.s + ZERO, tile.t + top,
                      tile.s + ONE,  tile.t + top);
 
