@@ -3418,7 +3418,7 @@ function blurryIntro(time) {
 
   // Set up the projection
   var aspectRatio = gl.viewportWidth / gl.viewportHeight;
-  mat4.perspective(Math.PI/3/aspectRatio * 180/Math.PI, 
+  mat4.perspective(110/aspectRatio,
                    aspectRatio,
                    0.1, // near clipping plane
                    10,  // far clipping plane

@@ -185,7 +185,8 @@
   const int kOversampling = 3;
   // The following is about how many screen pixels hit the same skybox texture 
   // pixel along one dimension at the FOV and res we use
-  const float kPanoPixelsPerScreenPixel = 5.0;
+  // (screen width / FOV / pixels at equator of skybox)
+  const float kPanoPixelsPerScreenPixel = 854. / (110. / 360.) / (256. * 4.);
   void main(void) {
     vec4 color = vec4(0);
     for (int i = 0; i < kOversampling; ++i) {
