@@ -323,16 +323,14 @@ function irand(n) {
 
 
 if (typeof importScripts !== 'undefined') {
+  // Web worker interface
+
   importScripts('perlin.js');
 
   self.onmessage = function (event) {
     var chunk = generateChunk(event.data.seed, 
                               event.data.chunkx, 
                               event.data.chunkz);
-    var message = new ArrayBuffer(chunk);
-    if (typeof webkitPostMessage !== 'undefined')
-      webkitPostMessage(message, [message]);
-    else
-      postMessage(message);
+    postMessage(chunk);
   }
 }

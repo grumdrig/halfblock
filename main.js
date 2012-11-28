@@ -945,9 +945,11 @@ function loadNearbyChunks(epicenter, d, limit) {
             if (!GAME.mapgenWorker) {
               GAME.mapgenWorker = new Worker('mapgen.js');
               GAME.mapgenWorker.onmessage = function (event) {
-                new Chunk(event.data);
-                GAME.pendingChunks[event.data.chunkx + ',' + 
-                                   event.data.chunkz] = false;
+                if (!chunk(event.data.chunkx, event.data.chunkz)) {
+                  new Chunk(event.data);
+                  GAME.pendingChunks[event.data.chunkx + ',' + 
+                                     event.data.chunkz] = false;
+                }
               }
             }
             GAME.mapgenWorker.postMessage({seed: GAME.seed, 
