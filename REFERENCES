@@ -63,3 +63,6 @@ http://www.geeks3d.com/20100831/shader-library-noise-and-pseudo-random-number-ge
 Packaged apps
 http://developer.chrome.com/trunk/apps/about_apps.html
 http://stackoverflow.com/questions/12645069/google-chrome-onlaunched-error-in-plugin
+
+Web Workers
+https://developer.mozilla.org/en-US/docs/DOM/Using_web_workers

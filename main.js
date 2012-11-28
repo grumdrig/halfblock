@@ -922,12 +922,35 @@ function updateWorld() {
 
 
 function loadNearbyChunks(epicenter, d, limit) {
+  if (!GAME.pendingChunks) GAME.pendingChunks = {};
+  var async = !limit;  // more by coincidence than anything else
   limit = limit || 1000;
   for (var dx = -d; dx <= d; dx += Math.min(NX, 2*d)) {
     for (var dz = -d; dz <= d; dz += Math.min(NZ, 2*d)) {
-      if (makeChunk(epicenter.x + dx, epicenter.z + dz)) {
-        if (--limit <= 0) 
-          return true;
+      var chunkx = (epicenter.x + dx) & ~(NX - 1);
+      var chunkz = (epicenter.z + dz) & ~(NZ - 1);
+      if (!chunk(chunkx, chunkz)) {
+        if (async) {
+          var key = chunkx + ',' + chunkz;
+          if (!GAME.pendingChunks[key]) {
+            GAME.pendingChunks[key] = true;
+            if (!GAME.mapgenWorker) {
+              GAME.mapgenWorker = new Worker('mapgen.js');
+              GAME.mapgenWorker.onmessage = function (event) {
+                new Chunk(event.data);
+                GAME.pendingChunks[event.data.chunkx + ',' + 
+                                   event.data.chunkz] = false;
+              }
+            }
+            GAME.mapgenWorker.postMessage({seed: GAME.seed, 
+                                           chunkx: chunkx, 
+                                           chunkz: chunkz});
+          }
+        } else {
+          makeChunk(chunkx, chunkz);
+          if (--limit <= 0) 
+            return true;
+        }
       }
     }
   }
@@ -3426,10 +3449,6 @@ function rndr(from, to) {
 
 function rnd(max) {
   return Math.floor(Math.random() * (max + 1));
-}
-
-function irand(n) {
-  return Math.floor(Math.random() * n);
 }
 
 var _AUDIO_CONTEXT;

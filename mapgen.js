@@ -206,7 +206,7 @@ function generateBlock(seed, x, y, z) {
   if (y < 0.75 + 2 * noise(x * 23.2, y * 938.2, z * 28.1)) {
     type = 'bedrock';
   } else {
-    var n = pinkNoise(x, y, z + GAME.seed, 32, 2) + 
+    var n = pinkNoise(x, y, z + seed, 32, 2) + 
       (2 * y/SY - NY) / NY;
     if (n < -0.2) type = 'rock';
     else if (n < -0.1) type = 'dirt';
@@ -215,11 +215,11 @@ function generateBlock(seed, x, y, z) {
     else if (y < HY / 2) type = 'water';
     else type = 'air';
 
-    if (Math.pow(noise(x/20 + GAME.seed, y/20, z/20 + 1000), 3) < -0.2)
+    if (Math.pow(noise(x/20 + seed, y/20, z/20 + 1000), 3) < -0.2)
       type = 'candy';
 
     // Caves
-    if (Math.pow(noise(x/20, y/20 + GAME.seed, z/20), 3) < -0.1)
+    if (Math.pow(noise(x/20, y/20 + seed, z/20), 3) < -0.1)
       type = 'air';
   }
   return type;
@@ -313,4 +313,21 @@ function generateChunk(seed, chunkx, chunkz) {
   //  this.updateLight();
 
   return result;
+}
+
+
+function irand(n) {
+  return Math.floor(Math.random() * n);
+}
+
+
+
+if (typeof importScripts !== 'undefined') {
+  importScripts('perlin.js');
+
+  self.onmessage = function (event) {
+    postMessage(generateChunk(event.data.seed, 
+                              event.data.chunkx, 
+                              event.data.chunkz));
+  }
 }
