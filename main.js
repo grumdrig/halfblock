@@ -444,8 +444,10 @@ function Chunk(data) {
       this.nDirty++;
   }
 
-  if (!data.blocks) {
-    // Chunk just generated. Plant some trees.
+  if (data.blocks) {
+    // Chunk just generated. More initialization needed.
+
+    // Plant some trees.
     var margin = 3;
     for (var n = 0; n < 2; ++n) {
       var ix = margin + irand(NX - margin * 2);
@@ -454,6 +456,8 @@ function Chunk(data) {
       if (b && b.type.plantable)
         buildTree(b.neighbor(FACE_TOP));
     }
+
+    invalidateEdgesNeighboringChunk(this);
   }
 
   for (var i in data.entities||{})
@@ -703,27 +707,31 @@ function makeChunk(chunkx, chunkz) {
 
     // Invalidate edges of neighboring chunks. Have to invalidate the 
     // whole geometry or the light and other arrays will be out of sync
-    if (chunk(chunkx - NX, chunkz))
-      for (var y = 0; y < NY; ++y)
-        for (var z = 0; z < NZ; ++z)
-          block(chunkx - 1, y*SY, chunkz + z).invalidateGeometry();
-    if (chunk(chunkx + NX, chunkz))
-      for (var y = 0; y < NY; ++y)
-        for (var z = 0; z < NZ; ++z)
-          block(chunkx + NX, y*SY, chunkz + z).invalidateGeometry();
-    if (chunk(chunkx, chunkz - NZ))
-      for (var y = 0; y < NY; ++y)
-        for (var x = 0; x < NX; ++x)
-          block(chunkx + x, y*SY, chunkz - 1).invalidateGeometry();
-    if (chunk(chunkx, chunkz + NZ))
-      for (var y = 0; y < NY; ++y)
-        for (var x = 0; x < NX; ++x)
-          block(chunkx + x, y*SY, chunkz + NZ).invalidateGeometry();
+    invalidateEdgesNeighboringChunk(result);
     GEN_STAT.end();
   }
   return result;
 }
 
+function invalidateEdgesNeighboringChunk(c) {
+  var chunkx = c.chunkx, chunkz = c.chunkz;
+  if (chunk(chunkx - 1, chunkz))
+    for (var y = 0; y < NY; ++y)
+      for (var z = 0; z < NZ; ++z)
+        block(chunkx - 1, y*SY, chunkz + z).invalidateGeometry();
+  if (chunk(chunkx + NX, chunkz))
+    for (var y = 0; y < NY; ++y)
+      for (var z = 0; z < NZ; ++z)
+        block(chunkx + NX, y*SY, chunkz + z).invalidateGeometry();
+  if (chunk(chunkx, chunkz - 1))
+    for (var y = 0; y < NY; ++y)
+      for (var x = 0; x < NX; ++x)
+        block(chunkx + x, y*SY, chunkz - 1).invalidateGeometry();
+  if (chunk(chunkx, chunkz + NZ))
+    for (var y = 0; y < NY; ++y)
+      for (var x = 0; x < NX; ++x)
+        block(chunkx + x, y*SY, chunkz + NZ).invalidateGeometry();
+}
 
 function block(x, y, z) {
   var co = coords(x, y, z);
