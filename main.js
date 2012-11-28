@@ -119,7 +119,7 @@ var BLOCK_TYPES = {
     tile: 8,
     hashes: 1,
     scale: 0.6,
-    update: updatePlant,
+    upon: 'plantable',
   },
   grassy: {
     tile: [4,2],
@@ -129,13 +129,13 @@ var BLOCK_TYPES = {
   soybeans: {
     tile: [7,2],
     hashes: 2,
-    update: updatePlant,
+    upon: 'plantable',
     drop: 'soybean',
   },
   weeds: {
     tile: [11,2],
     hashes: 3,
-    update: updatePlant,
+    upon: 'plantable',
     onstep: function (ntt) {
       if (ntt.type === ENTITY_TYPES.player &&
           (!this.lastSpawn || this.lastSpawn + 60 < GAME.clock)) {
@@ -155,7 +155,7 @@ var BLOCK_TYPES = {
     hashes: 1,
     luminosity: [8,2,2],
     scale: 0.6,
-    update: updateResting,
+    upon: 'solid',
   },
   candy: {
     tile: 10,
@@ -240,11 +240,11 @@ var BLOCK_TYPES = {
   log: {
     tile: [4,3, 4,4],
     solid: true,
-    geometry: blockGeometryLog,
+    geometry: 'log',
   },
   frond: {
     tile: [5,3],
-    geometry: blockGeometryFrond,
+    geometry: 'frond',
   },
 };
 for (var i in BLOCK_TYPES)
@@ -470,17 +470,6 @@ function hopEntity(ntt, power) {
   ntt.dz = 2 * tweak() * power;
   ntt.dy = 6 * power;
   ntt.falling = true;
-}
-
-function updateResting() {
-  if (!this.neighbor(FACE_BOTTOM).type.solid)
-    this.breakBlock();
-}
-
-
-function updatePlant() {
-  if (!this.neighbor(FACE_BOTTOM).type.plantable)
-    this.breakBlock();
 }
 
 
@@ -756,6 +745,9 @@ Chunk.prototype.update = function (force) {
       b.sheltered = !!tops[xz];
       if (!b.sheltered && b.type.opaque)
         tops[xz] = b;
+      // Some things need to be resting on other things
+      if (b.type.upon && !b.neighbor(FACE_BOTTOM).type[b.type.upon])
+        b.breakBlock();
       if (b.type.update)
         b.type.update.apply(b);
       if (b.dirtyLight || b.dirtyGeometry) {
@@ -1781,12 +1773,16 @@ function faces(corners) {
 
 var _FACES = faces(_CORNERS);
 
+var _block_geometries = {
+  log: blockGeometryLog,
+  frond: blockGeometryFrond,
+};
 
 Block.prototype.buildGeometry = function () {
   if (this.type.empty) {
     // do nothing
   } else if (this.type.geometry) {
-    this.type.geometry(this);
+    _block_geometries[this.type.geometry](this);
   } else if (this.type.billboard) {
     blockGeometryBillboard(this);
   } else if (this.type.hashes) {
