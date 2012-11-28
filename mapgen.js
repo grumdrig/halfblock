@@ -326,8 +326,13 @@ if (typeof importScripts !== 'undefined') {
   importScripts('perlin.js');
 
   self.onmessage = function (event) {
-    postMessage(generateChunk(event.data.seed, 
+    var chunk = generateChunk(event.data.seed, 
                               event.data.chunkx, 
-                              event.data.chunkz));
+                              event.data.chunkz);
+    var message = new ArrayBuffer(chunk);
+    if (typeof webkitPostMessage !== 'undefined')
+      webkitPostMessage(message, [message]);
+    else
+      postMessage(message);
   }
 }
