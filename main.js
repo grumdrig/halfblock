@@ -21,7 +21,6 @@ var DB;
 var GAME;
 var AVATAR;  // hack-o alias for GAME.avatar because we use it so much
 
-var GRASSY = false;        // true to use decal-style grass
 var SPREAD_OUT = 16;       // create nearby chunks at this radius
 
 var PICKED = null;
@@ -36,17 +35,6 @@ var KEYS = {};
 
 var DB_VERSION = '8';
 
-// Map chunk dimensions
-var LOGNX = 4;
-var LOGNY = 5;
-var LOGNZ = 4;
-var NX = 1 << LOGNX;
-var NY = 1 << LOGNY;
-var NZ = 1 << LOGNZ;
-var CHUNK_RADIUS = Math.sqrt(NX * NX + NZ * NZ);
-var SY = 1;        // vertical size of blocks
-var HY = NY * SY;  // vertical height of chunk in m
-
 var GEN_STAT = new Stat('Chunk-gen');
 var RENDER_STAT = new Stat('Render');
 var UPDATE_STAT = new Stat('Update');
@@ -57,8 +45,6 @@ var GRAVITY = 23;  // m/s/s
 var PARTICLE_GRAVITY = 6.4; // m/s/s
 var DRAG = 20;  // m/s/s
 var VJUMP = 7.7;   // m/s
-
-var LIGHT_SUN = 6;
 
 var DARKFACE = 0.5;
 
@@ -641,16 +627,17 @@ function Chunk(data) {
 
   GAME.chunks[this.chunkx + ',' + this.chunkz] = this;
 
-  if (data.blocks) {
-    // Loading from storage
-    for (var i = 0; i < NX * NY * NZ; ++i) {
-      var c = coords(i);
-      c = coords(this.chunkx + c.x, c.y, this.chunkz + c.z);
-      c.data = data.blocks[i];
-      this.blocks[i] = new Block(c, this);
-      if (this.blocks[i].dirtyLight || this.blocks[i].dirtyGeometry)
-        this.nDirty++;
-    }
+  data.blocks;
+  if (!data.block) 
+    data.blocks = generateChunk(GAME.seed, this.chunkx, this.chunkz).blocks;
+
+  for (var i = 0; i < NX * NY * NZ; ++i) {
+    var c = coords(i);
+    c = coords(this.chunkx + c.x, c.y, this.chunkz + c.z);
+    c.data = data.blocks[i];
+    this.blocks[i] = new Block(c, this);
+    if (this.blocks[i].dirtyLight || this.blocks[i].dirtyGeometry)
+      this.nDirty++;
   }
 
   for (var i in data.entities||{})
@@ -673,93 +660,6 @@ Chunk.prototype.data = function () {
     result.entities[i] = ntt.data();
   }
   return result;
-}
-
-
-Chunk.prototype.generateTerrain = function () {
-  // Generate blocks
-  for (var ix = 0; ix < NX; ++ix) {
-    var x = ix + this.chunkx;
-    for (var y = 0; y < NY; ++y) {
-      for (var iz = 0; iz < NZ; ++iz) {
-        var z = iz + this.chunkz;
-        var c = coords(x, y*SY, z);
-        var b = this.blocks[c.i] = new Block(c, this);
-        b.generateTerrain();
-      }
-    }
-  }
-
-  // Plant some soybeans
-  for (var xi = 0; xi < NX; ++xi) {
-    var x = xi + this.chunkx;
-    for (var zi = 0; zi < NZ; ++zi) {
-      var z = zi + this.chunkz;
-      if (2 * noise(x/10,9938,z/10) + noise(x/1,9938,z/1) < -0.5) {
-        var t = topmost(x, z);
-        if (t && t.type.plantable)
-          t.neighbor(FACE_TOP).type = BLOCK_TYPES.soybeans;
-      }
-    }
-  }
-
-  // Plant some plants
-  var chunk = this;
-  function plant(n, howOrWhat, margin) {
-    margin = margin || 0;
-    while (n--) {
-      var x = chunk.chunkx + margin + irand(NX - margin * 2);
-      var z = chunk.chunkz + margin + irand(NZ - margin * 2);
-      var t = topmost(x, z);
-      if (t && t.type.plantable) {
-        t = t.neighbor(FACE_TOP);
-        if (typeof howOrWhat === 'function')
-          howOrWhat(t);
-        else
-          t.type = BLOCK_TYPES[howOrWhat];
-      }
-    }
-  }
-  plant(4, 'flower');
-  plant(2, buildTree, 3);
-  plant(6, 'weeds');
-  
-  // Initial quick lighting update, some of which we can know accurately
-  this.nDirty = 0;
-  for (var x = 0; x < NX; ++x) {
-    for (var z = 0; z < NZ; ++z) {
-      var sheltered = false;
-      for (var y = NY-1; y >= 0; --y) {
-        var c = coords(x, y*SY, z);
-        var b = this.blocks[c.i];
-        b.light[0] = b.light[1] = b.light[2] = 0;
-        b.light[3] = b.type.opaque ? 0 : sheltered ? 0 : LIGHT_SUN;
-        b.dirtyLight = false;
-        if (b.type.luminosity) b.dirtyLight = true;
-        if (sheltered && !b.type.opaque) b.dirtyLight = true;
-        if (b.dirtyLight) ++this.nDirty;
-        b.sheltered = sheltered;
-        sheltered = sheltered || b.type.opaque || b.type.translucent;
-      }
-    }
-  }
-
-  // Plant grass
-  if (GRASSY) {
-    for (var i = 0; i < NX; ++i) {
-      for (var j = 0; j < NZ; ++j) {
-        var t = topmost(this.chunkx + i, this.chunkz + j);
-        if (t && t.y < HY-SY && t.type === BLOCK_TYPES.dirt)
-          t.neighbor(FACE_TOP).type = BLOCK_TYPES.grassy;
-      }
-    }
-  }
-  
-
-  // Do a few updates to avoid having to recreate the geometry a bunch of 
-  // times when we're updating in bulk
-  //for (var i = 0; i < 10 && this.nDirty > 50; ++i)
-  //  this.updateLight();
 }
 
 
@@ -981,7 +881,6 @@ function makeChunk(chunkx, chunkz) {
     // New chunk needed
     GEN_STAT.start();
     result = new Chunk({chunkx:chunkx, chunkz:chunkz});
-    result.generateTerrain();
 
     // Invalidate edges of neighboring chunks. Have to invalidate the 
     // whole geometry or the light and other arrays will be out of sync
@@ -1655,28 +1554,6 @@ Block.prototype.data = function () {
   if (typeof this.facing != 'undefined') result.facing = this.facing;
 }
 
-
-Block.prototype.generateTerrain = function () {
-  if (this.y < 0.75 + 2*noise(this.x * 23.2, this.y * 938.2, this.z * 28.1)) {
-    this.type = BLOCK_TYPES.bedrock;
-  } else {
-    var n = pinkNoise(this.x, this.y, this.z + GAME.seed, 32, 2) + 
-      (2 * this.y/SY - NY) / NY;
-    if (n < -0.2) this.type = BLOCK_TYPES.rock;
-    else if (n < -0.1) this.type = BLOCK_TYPES.dirt;
-    else if (n < 0) this.type = GRASSY ? BLOCK_TYPES.dirt : BLOCK_TYPES.grass;
-    else if (this.y < HY / 4) this.type = BLOCK_TYPES['apricot jelly'];
-    else if (this.y < HY / 2) this.type = BLOCK_TYPES['water'];
-    else this.type = BLOCK_TYPES.air;
-
-    if (Math.pow(noise(this.x/20 + GAME.seed, this.y/20, this.z/20 + 1000), 3) < -0.2)
-      this.type = BLOCK_TYPES.candy;
-
-    // Caves
-    if (Math.pow(noise(this.x/20, this.y/20 + GAME.seed, this.z/20), 3) < -0.1)
-      this.type = BLOCK_TYPES.air;
-  }
-}
 
 Block.prototype.invalidateLight = function (andNeighbors) {
   if (!this.dirtyLight) {
