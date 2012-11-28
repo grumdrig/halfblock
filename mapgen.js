@@ -276,7 +276,7 @@ function generateChunk(seed, chunkx, chunkz) {
   }
 
   // Plant some plants
-  function plant(n, howOrWhat, margin) {
+  function plant(n, what, margin) {
     margin = margin || 0;
     while (n--) {
       var ix = margin + irand(NX - margin * 2);
@@ -284,15 +284,11 @@ function generateChunk(seed, chunkx, chunkz) {
       var t = top(ix, iz);
       if (t && t.iy < NY-1 && BLOCK_TYPES[t.b.type].plantable) {
         t = block(ix, t.iy+1, iz);
-        if (typeof howOrWhat === 'function')
-          howOrWhat(t);
-        else
-          t.type = howOrWhat;
+        t.type = what;
       }
     }
   }
   plant(4, 'flower');
-  //plant(2, buildTree, 3);
   plant(6, 'weeds');
   
   // Initial quick lighting update, some of which we can know accurately

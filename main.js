@@ -431,17 +431,29 @@ function Chunk(data) {
 
   GAME.chunks[this.chunkx + ',' + this.chunkz] = this;
 
-  data.blocks;
-  if (!data.block) 
-    data.blocks = generateChunk(GAME.seed, this.chunkx, this.chunkz).blocks;
+  var blocks = data.blocks;
+  if (!blocks)
+    blocks = generateChunk(GAME.seed, this.chunkx, this.chunkz).blocks;
 
   for (var i = 0; i < NX * NY * NZ; ++i) {
     var c = coords(i);
     c = coords(this.chunkx + c.x, c.y, this.chunkz + c.z);
-    c.data = data.blocks[i];
+    c.data = blocks[i];
     this.blocks[i] = new Block(c, this);
     if (this.blocks[i].dirtyLight || this.blocks[i].dirtyGeometry)
       this.nDirty++;
+  }
+
+  if (!data.blocks) {
+    // Chunk just generated. Plant some trees.
+    var margin = 3;
+    for (var n = 0; n < 2; ++n) {
+      var ix = margin + irand(NX - margin * 2);
+      var iz = margin + irand(NZ - margin * 2);
+      var b = topmost(this.chunkx + ix, this.chunkz + iz);
+      if (b && b.type.plantable)
+        buildTree(b.neighbor(FACE_TOP));
+    }
   }
 
   for (var i in data.entities||{})
