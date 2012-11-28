@@ -1008,6 +1008,8 @@ function togglePointerLock() {
 function ballistics(e, elapsed) {
   // Apply the laws of pseudo-physics
 
+  var origin = {x: e.x, y: e.y, z: e.z};
+
   e.swimming = e.falling && block(e).type.liquid;
 
   if (e.ddx || e.ddz) {
@@ -1166,6 +1168,8 @@ function ballistics(e, elapsed) {
     e.y = Math.min(e.y, SY * Math.floor((e.y + e.height)/SY) - e.height);
     e.dy = 0;
   }
+
+  e.travelled += distance(e, origin);
 
   if (blocke.type.onstep)
     blocke.type.onstep.call(blocke, e);
@@ -2143,6 +2147,7 @@ function Entity(init1, init2) {
   init('pitch', 0);
   init('dyaw', 0);
   init('dpitch', 0);
+  init('travelled', 0);
   //init('falling', false);
   init('birthday', GAME.clock);
   init('id', function () { return GAME.nextEntityID++} );
@@ -2162,7 +2167,7 @@ function Entity(init1, init2) {
 
 Entity.prototype.data = function () {
   var result = {};
-  var keeps = 'x y z dx dy dz yaw pitch dyaw dpitch birthday id'.split(' ');
+  var keeps = 'x y z dx dy dz yaw pitch dyaw dpitch travelled birthday id'.split(' ');
   for (var i = 0; i < keeps.length; ++i) {
     var k = keeps[i];
     result[k] = this[k];
