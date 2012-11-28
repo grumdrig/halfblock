@@ -4017,7 +4017,7 @@ var THROBBERS = [
   'Lots of candy!',
   'Halfsize blocks!',
   '<!DOCTYPE html>!',
-  'Some mining, but no crafting!',
+  'Little mining, little crafting!',
   'Mostly 3D!',
   'Worse than wolves!',
   'Japanese food!',
@@ -4031,5 +4031,12 @@ var THROBBERS = [
   'No multiplayer!',
   'WebGL!',
   'Custom shaders!',
+  'Almost awesome!',
+  'Halfblock!',
+  'Flavors of jelly!',
+  'Web workers!',
+  'Made by Grumdrig!',
+  'JSON! JSON! JSON!',
+  'You need not update your Flash player!',
 ];
 
