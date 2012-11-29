@@ -130,10 +130,8 @@
 <script id="twodee-vs" type="x-shader/x-vertex">
   attribute vec2 aPosition;
   uniform vec2 uResolution;
-  uniform float uPointsize;
   void main() {
-    gl_PointSize = uPointsize;
-    vec2 reposition = 2.0 * aPosition * vec2(1,-1) / uResolution - 1.0;
+    vec2 reposition = (2.0 * aPosition / uResolution - 1.0) * vec2(1,-1);
     gl_Position = vec4(reposition, 0, 1);
   }
 </script>
@@ -307,16 +305,6 @@ button {
   margin-top: 30%;
 }
 
-#reticule {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 24px;
-  height: 24px;
-  margin-top: -12px;
-  margin-left: -12px;
-}
-
 .logo {
   position: absolute;
   left: 50%;
@@ -436,9 +424,6 @@ a, a:visited {
   <div id="cancan">
     <canvas id="canvas" width="854" height="480"></canvas>
     <div id="hud" class="page">
-      <div id="reticule">
-        <img src="reticule.png" height="24" width="24"> 
-      </div>
       <div id="chat"><div id="clog">&nbsp;</div></div>
     </div>
     <div id="stats" class="page"></div>
