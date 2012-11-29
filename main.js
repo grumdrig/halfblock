@@ -3,8 +3,6 @@
 // TODO: flags
 // TODO: tonkatsu
 // TODO: rice
-// TODO: edamame
-// TODO: miso soup
 
 document.addEventListener('DOMContentLoaded', onLoad, false);
 
