@@ -779,7 +779,7 @@ Block.prototype.eachNeighbor = function (callback) {
 
 
 
-function drawScene(camera, showWireframe) {
+function drawScene(camera, showInterface) {
 
   RENDER_STAT.start();
 
@@ -876,8 +876,12 @@ function drawScene(camera, showWireframe) {
   gl.mainShader.disuse();
 
   // Render block selection indicator
-  if (PICKED && showWireframe)
+  if (PICKED && showInterface)
     gl.wireframe.render();
+
+  // Render reticule
+  if (showInterface)
+    gl.reticule.render();
 
   RENDER_STAT.end();
 }
@@ -2090,6 +2094,38 @@ Wireframe.prototype.render = function () {
 }
 
 
+function Reticule() {
+  this.shader = new Shader('twodee');
+  
+  var cx = gl.viewportWidth / 2, cy = gl.viewportHeight / 2;
+  var s = 10;
+  var vertices = [ 
+    cx-s, cy, cx+s, cy,
+    cx, cy-s, cx, cy+s,
+  ];
+  this.aPosition = makeBuffer(vertices, 2);
+}
+
+Reticule.prototype.render = function () {
+  this.shader.use();
+
+  gl.uniform2f(this.shader.uniforms.uResolution, 
+               gl.viewportWidth, gl.viewportHeight);
+  gl.uniform4f(this.shader.uniforms.uColor, 1,1,1,1);
+
+  gl.lineWidth(2);
+
+  gl.blendFunc(gl.ONE_MINUS_DST_COLOR, gl.ZERO);
+  gl.enable(gl.BLEND);
+
+  pointToAttribute(this.shader, this, 'aPosition');
+  gl.drawArrays(gl.LINES, 0, this.aPosition.numItems);
+
+  gl.disable(gl.BLEND);
+
+  this.shader.disuse();
+}
+
 function Skybox(vs, fs) {
   this.shader = new Shader(vs, fs);
   this.buffer = makeBuffer([-1,-1, +1,-1, +1,+1, -1,+1], 2);
@@ -2379,6 +2415,7 @@ function newGame(sy) {
   HY = NY * SY;
 
   gl.wireframe = new Wireframe();
+  gl.reticule = new Reticule();
 
   // Create game
   GAME = new Game();
