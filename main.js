@@ -397,15 +397,12 @@ Shader.prototype.disuse = function () {
 
 
 function mvPushMatrix() {
-  var copy = mat4.create();
-  mat4.set(mvMatrix, copy);
-  mvMatrixStack.push(copy);
+  mvMatrixStack.push(mat4.clone(mvMatrix));
 }
 
 function mvPopMatrix() {
-  if (mvMatrixStack.length == 0) {
+  if (mvMatrixStack.length == 0)
     throw 'Invalid popMatrix!';
-  }
   mvMatrix = mvMatrixStack.pop();
 }
 
@@ -795,31 +792,31 @@ function drawScene(camera, showInterface) {
   // Set up the projection
   var aspectRatio = camera.aspectRatio || 
     (gl.viewportWidth / gl.viewportHeight);
-  mat4.perspective(camera.horizontalFieldOfView/aspectRatio * 180/Math.PI, 
+  mat4.perspective(pMatrix,
+                   camera.horizontalFieldOfView/aspectRatio,
                    aspectRatio,
-                   0.1,                  // near clipping plane
-                   camera.viewDistance,  // far clipping plane
-                   pMatrix);
+                   0.1,                   // near clipping plane
+                   camera.viewDistance);  // far clipping plane
 
   // Position for camera
   mat4.identity(mvMatrix);
-  mat4.rotateX(mvMatrix, camera.pitch);
-  mat4.rotateY(mvMatrix, camera.yaw);
+  mat4.rotateX(mvMatrix, mvMatrix, camera.pitch);
+  mat4.rotateY(mvMatrix, mvMatrix, camera.yaw);
 
   // Sky box / title demo
   // Position for camera
   mat4.identity(mvMatrix);
-  mat4.rotateX(mvMatrix, camera.pitch);
-  mat4.rotateY(mvMatrix, camera.yaw);
-  //mat4.rotateX(mvMatrix, GAME.timeOfDay);
+  mat4.rotateX(mvMatrix, mvMatrix, camera.pitch);
+  mat4.rotateY(mvMatrix, mvMatrix, camera.yaw);
+  //mat4.rotateX(mvMatrix, mvMatrix, GAME.timeOfDay);
   gl.sky.render();
 
   // Position for camera
   mat4.identity(mvMatrix);
-  mat4.rotateX(mvMatrix, camera.pitch);
-  mat4.rotateY(mvMatrix, camera.yaw);
-  mat4.translate(mvMatrix, [-camera.x, -camera.y, -camera.z]);
-  mat4.translate(mvMatrix, [0, -camera.eyeHeight, 0]);
+  mat4.rotateX(mvMatrix, mvMatrix, camera.pitch);
+  mat4.rotateY(mvMatrix, mvMatrix, camera.yaw);
+  mat4.translate(mvMatrix, mvMatrix, [-camera.x, -camera.y, -camera.z]);
+  mat4.translate(mvMatrix, mvMatrix, [0, -camera.eyeHeight, 0]);
 
   // Render the world
 
@@ -1712,8 +1709,8 @@ function blockGeometryBlock(b) {
         else
           v.aLighting = v.aLighting.concat(n.light);
         var color = b.type.color || [1,1,1];        
-        v.aColor = v.aColor.concat(vclamp(vec3.add(color, tweaker(coord), 
-                                                   [0,0,0])));
+        v.aColor = v.aColor.concat(vclamp(vec3.add([0,0,0], 
+                                                   color, tweaker(coord))));
       }
        
       // Set textures per vertex: one ST pair for each vertex
@@ -1917,20 +1914,19 @@ function entityGeometryBillboard(b, v) {
   var light = block(b).light;
 
   // "Look" vector pointing at player
-  var l = vec3.create([
+  var l = [
     AVATAR.x - b.x, 
     AVATAR.y + AVATAR.eyeHeight - b.y, 
-    AVATAR.z - b.z]);
-  vec3.normalize(l);
+    AVATAR.z - b.z];
+  vec3.normalize(l, l);
 
   // "Right" vector projected on y plane perp to l
-  var r = vec3.create([l[2], 0, -l[0]]);
-  vec3.normalize(r);
+  var r = [l[2], 0, -l[0]];
+  vec3.normalize(r, r);
 
   // "Up" vector
-  var u = vec3.cross(l, r, vec3.create());
-  vec3.normalize(u);  // probably already unit though, eh?
-  //var trans = mat3.create(r.concat(u, l));
+  var u = vec3.cross(vec3.create(), l, r);
+  vec3.normalize(u, u);  // probably already unit though, eh?
 
   var S = b.type.scale || 0.25;
   var quad = [-S,-S, S,-S, S,S, -S,S];
@@ -2072,7 +2068,7 @@ function Wireframe() {
 
 Wireframe.prototype.render = function () {
   mvPushMatrix();
-  mat4.translate(mvMatrix, [PICKED.x, PICKED.y, PICKED.z]);
+  mat4.translate(mvMatrix, mvMatrix, [PICKED.x, PICKED.y, PICKED.z]);
   
   this.shader.use();
   
@@ -2131,6 +2127,48 @@ function Skybox(vs, fs) {
   this.buffer = makeBuffer([-1,-1, +1,-1, +1,+1, -1,+1], 2);
 }
 
+/**
+ * Calculates the inverse of the upper 3x3 elements of a mat4 and copies the result into a mat3
+ * The resulting matrix is useful for calculating transformed normals
+ *
+ * Params:
+ * @param {mat4} mat mat4 containing values to invert and copy
+ * @param {mat3} [dest] mat3 receiving values
+ *
+ * @returns {mat3} dest is specified, a new mat3 otherwise, null if the matrix cannot be inverted
+ */
+mat4.toInverseMat3 = function (mat, dest) {
+    // Cache the matrix values (makes for huge speed increases!)
+    var a00 = mat[0], a01 = mat[1], a02 = mat[2],
+        a10 = mat[4], a11 = mat[5], a12 = mat[6],
+        a20 = mat[8], a21 = mat[9], a22 = mat[10],
+
+        b01 = a22 * a11 - a12 * a21,
+        b11 = -a22 * a10 + a12 * a20,
+        b21 = a21 * a10 - a11 * a20,
+
+        d = a00 * b01 + a01 * b11 + a02 * b21,
+        id;
+
+    if (!d) { return null; }
+    id = 1 / d;
+
+    if (!dest) { dest = mat3.create(); }
+
+    dest[0] = b01 * id;
+    dest[1] = (-a22 * a01 + a02 * a21) * id;
+    dest[2] = (a12 * a01 - a02 * a11) * id;
+    dest[3] = b11 * id;
+    dest[4] = (a22 * a00 - a02 * a20) * id;
+    dest[5] = (-a12 * a00 + a02 * a10) * id;
+    dest[6] = b21 * id;
+    dest[7] = (-a21 * a00 + a01 * a20) * id;
+    dest[8] = (a11 * a00 - a01 * a10) * id;
+
+    return dest;
+};
+
+
 Skybox.prototype.render = function () {
   this.shader.use();
   gl.disable(gl.DEPTH_TEST);
@@ -2143,8 +2181,8 @@ Skybox.prototype.render = function () {
     gl.uniform1f(this.shader.uniforms.uTimeOfDay, GAME.timeOfDay);
   }
 
-  var invViewRot = mat4.toInverseMat3(mvMatrix, mat3.create());
-  var invProj = mat4.inverse(pMatrix, mat4.create());
+  var invViewRot = mat4.toInverseMat3(mvMatrix);
+  var invProj = mat4.invert(mat4.create(), pMatrix);
   gl.uniformMatrix3fv(this.shader.uniforms.uInvViewRot, false, invViewRot);
   gl.uniformMatrix4fv(this.shader.uniforms.uInvProj, false, invProj);
   gl.uniform2f(this.shader.uniforms.uViewport, 
@@ -3453,16 +3491,16 @@ function blurryIntro(time) {
 
   // Set up the projection
   var aspectRatio = gl.viewportWidth / gl.viewportHeight;
-  mat4.perspective(110/aspectRatio,
+  mat4.perspective(pMatrix, 
+                   110*Math.PI/180/aspectRatio,
                    aspectRatio,
                    0.1, // near clipping plane
-                   10,  // far clipping plane
-                   pMatrix);
+                   10); // far clipping plane
 
   // Position for camera
   mat4.identity(mvMatrix);
-  mat4.rotateX(mvMatrix, Math.cos(time / 20) / 10);
-  mat4.rotateY(mvMatrix, time / 4 / 20);
+  mat4.rotateX(mvMatrix, mvMatrix, Math.cos(time / 20) / 10);
+  mat4.rotateY(mvMatrix, mvMatrix, time / 4 / 20);
 
   if (gl.textures.panorama.loaded)
     gl.panorama.render();
