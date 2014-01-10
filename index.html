@@ -72,11 +72,13 @@
 
 <!-- Primary geometry shader -->
 <script id="main-vs" type="x-shader/x-vertex">
+  precision mediump float;
+
   attribute vec3 aPos;
   attribute vec2 aTexCoord;
   attribute vec4 aLighting;
   attribute vec3 aColor;
-  
+
   uniform mat4 uMVMatrix;
   uniform mat4 uPMatrix;
   uniform float uFogDistance;
@@ -84,19 +86,19 @@
 
   const float lightScale = 7.8;
   const vec3 minLight = vec3(0.2, 0.2, 0.2);
-  
+
   varying vec2 vTexCoord;
   varying vec3 vLighting;
   varying float vFog;
-  
+
   void main(void) {
     gl_Position = uPMatrix * uMVMatrix * vec4(aPos, 1.0);
     vTexCoord = aTexCoord / 16.0;
     vTexCoord.t = 1.0 - vTexCoord.t;
     vLighting = minLight +
       aColor * max(aLighting.xyz,
-                   uSunlight * vec3(aLighting.w, 
-                                    aLighting.w, 
+                   uSunlight * vec3(aLighting.w,
+                                    aLighting.w,
                                     aLighting.w)) / lightScale;
     float z = abs(gl_Position.z);  // Use length() if not enough fog at corners
     vFog = clamp(1.0 - exp(-z*z / (uFogDistance * uFogDistance)),
@@ -109,7 +111,7 @@
   varying vec2 vTexCoord;
   varying vec3 vLighting;
   varying float vFog;
-  
+
   uniform sampler2D uSampler;
   uniform float uSunlight;
 
@@ -159,7 +161,7 @@
   uniform vec2 uResolution;
   varying vec2 vTexCoord;
   void main() {
-    gl_FragColor = 
+    gl_FragColor =
       4.0/9.0 * texture2D(uSrc, vTexCoord + vec2(-0.5, -0.5) / uResolution) +
       2.0/9.0 * texture2D(uSrc, vTexCoord + vec2(-0.5, +0.5) / uResolution) +
       2.0/9.0 * texture2D(uSrc, vTexCoord + vec2(+0.5, -0.5) / uResolution) +
@@ -181,7 +183,7 @@
   uniform mat3 uInvViewRot;
   uniform samplerCube uSampler;
   const int kOversampling = 3;
-  // The following is about how many screen pixels hit the same skybox texture 
+  // The following is about how many screen pixels hit the same skybox texture
   // pixel along one dimension at the FOV and res we use
   // (screen width / FOV / pixels at equator of skybox)
   const float kPanoPixelsPerScreenPixel = 854. / (110. / 360.) / (256. * 4.);
@@ -255,7 +257,7 @@ body {
   height: 100%;
 }
 
-div.page { 
+div.page {
   display: none;
   font-size: 18px;
   position: absolute;
@@ -336,15 +338,15 @@ button {
 @keyframes pulse {
   0% {   transform: scale(1,1)       rotate(-19deg); }
   100% { transform: scale(1.07,1.07) rotate(-19deg); }
-} 
+}
 @-webkit-keyframes pulse {
   0% {   -webkit-transform: scale(1,1)       rotate(-19deg); }
   100% { -webkit-transform: scale(1.07,1.07) rotate(-19deg); }
-} 
+}
 @-moz-keyframes pulse {
   0% {   -moz-transform: scale(1,1)       rotate(-19deg); }
   100% { -moz-transform: scale(1.07,1.07) rotate(-19deg); }
-} 
+}
 
 .toolbox {
   position: absolute;
@@ -449,7 +451,7 @@ a, a:visited {
       <button id="newgame">New Game</button>
       <button id="newhalfgame">New &half; Game</button>
       <button id="loadgame">Load Game</button>
-      <div id="byline">by Grumdrig 
+      <div id="byline">by Grumdrig
         <a href="https://bitbucket.org/grumdrig/halfblock">source code</a>
       </div>
     </div>

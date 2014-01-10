@@ -83,7 +83,7 @@ var ENTITY_TYPES = {
       var b = topmost(this.x, this.z);
       if (b)
         this.y = b.y + 1;
-      else 
+      else
         this.flying = true;
       if (window.panoramaMode) {
         this.horizontalFieldOfView = Math.PI / 2;
@@ -161,8 +161,8 @@ var ENTITY_TYPES = {
         // Need to do some of this every tick, not every update
         for (var i = 0; i < 10; ++i) {
           gl.particles.spawn({
-            x0: this.x, 
-            y0: this.y, 
+            x0: this.x,
+            y0: this.y,
             z0: this.z,
             dy: this.dy - 2,
             tile: {s: 2, t: 3},
@@ -215,7 +215,7 @@ var ENTITY_TYPES = {
     },
     update: function () {
       this.tile = this.falling ? 12 : 11;
-      if (this.falling) 
+      if (this.falling)
         this.landed = GAME.clock;
       else if (block(this).type === BLOCK_TYPES.weeds && this.age() > 2)
         this.die();
@@ -363,8 +363,8 @@ function Shader(shaders, fragShader) {
   gl.linkProgram(this.program);
 
   if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
-    alert('Could not initialize shaders');
-  }
+    alert('Could not initialize shaders: ' + gl.getProgramInfoLog(this.program));
+}
 
   // Locate all attributes
   this.attributes = {};
@@ -485,7 +485,7 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
   for (var i = 0; i < this.blocks.length; ++i) {
     var b = this.blocks[i];
     if (!b.type.empty) {
-      if (!b.vertices) 
+      if (!b.vertices)
         b.buildGeometry();
       var dest = b.type.translucent ? translucents : opaques;
       if (!dest.indices) {
@@ -498,7 +498,7 @@ Chunk.prototype.generateBuffers = function (justUpdateLight) {
       appendGeometry(dest, b.vertices, justUpdateLight);
     }
   }
-  
+
   if (justUpdateLight) {
     this.opaqueBuffers.updateLight(opaques);
     this.translucentBuffers.updateLight(translucents);
@@ -529,7 +529,7 @@ Chunk.prototype.tick = function (elapsed) {
         var d = distance(center(AVATAR), ntt);
         if (d < AVATAR.type.radius) {
           new Sound('pop');
-          AVATAR.gain(ntt.type.name === 'block' ? 
+          AVATAR.gain(ntt.type.name === 'block' ?
                       ntt.sourcetype.name : ntt.type.name);
           redisplayInventory(AVATAR);
           pickTool(AVATAR.slot);
@@ -556,15 +556,15 @@ Chunk.prototype.updatePeriod = function () {
 }
 
 Chunk.prototype.update = function (force) {
-  if (this.nDirty > 0 && 
+  if (this.nDirty > 0 &&
       (force || GAME.clock > this.lastUpdate + this.updatePeriod())) {
     this.nDirty = 0;
     var uplights = 0, upgeoms = 0;
-    
+
     // This shitty method will propagate block updates faster in some
     // directions than others
     var tops = {};
-    for (var i = this.blocks.length-1; i >= 0; --i) {  
+    for (var i = this.blocks.length-1; i >= 0; --i) {
       // iteration runs from high y's to low
       var b = this.blocks[i];
       var xz = b.x + NX * b.z;
@@ -585,7 +585,7 @@ Chunk.prototype.update = function (force) {
 
     this.lastUpdate = GAME.clock;
     this.generateBuffers(upgeoms === 0);
-    //message('Update: ', this.chunkx, this.chunkz, ':', 
+    //message('Update: ', this.chunkx, this.chunkz, ':',
     //        uplights, upgeoms, '->', this.nDirty);
   } else {
     // Update some random block in this chunk
@@ -610,13 +610,13 @@ Chunk.prototype.centerPoint = function () {
 
 
 function hDistance(p, q) {
-  return Math.sqrt((p.x - q.x) * (p.x - q.x) + 
+  return Math.sqrt((p.x - q.x) * (p.x - q.x) +
                    (p.z - q.z) * (p.z - q.z));
 }
 
 function distance(p, q) {
-  return Math.sqrt((p.x - q.x) * (p.x - q.x) + 
-                   (p.y - q.y) * (p.y - q.y) + 
+  return Math.sqrt((p.x - q.x) * (p.x - q.x) +
+                   (p.y - q.y) * (p.y - q.y) +
                    (p.z - q.z) * (p.z - q.z));
 }
 
@@ -700,7 +700,7 @@ function makeChunk(chunkx, chunkz) {
     GEN_STAT.start();
     result = new Chunk({chunkx:chunkx, chunkz:chunkz});
 
-    // Invalidate edges of neighboring chunks. Have to invalidate the 
+    // Invalidate edges of neighboring chunks. Have to invalidate the
     // whole geometry or the light and other arrays will be out of sync
     invalidateEdgesNeighboringChunk(result);
     GEN_STAT.end();
@@ -743,23 +743,23 @@ var _DY = NX;
 var _DX = 1;
 Block.prototype.neighbor = function (face) {
   switch (face) {
-  case FACE_FRONT: 
-    return this.z - this.chunk.chunkz > 0 ? 
+  case FACE_FRONT:
+    return this.z - this.chunk.chunkz > 0 ?
       this.chunk.blocks[this.i - _DZ] : block(this.x, this.y,this. z-1);
-  case FACE_BACK:  
-    return this.z-this.chunk.chunkz < NZ-1 ? 
+  case FACE_BACK:
+    return this.z-this.chunk.chunkz < NZ-1 ?
       this.chunk.blocks[this.i + _DZ] : block(this.x, this.y, this.z+1);
   case FACE_BOTTOM:
-    return this.y > 0 ? 
+    return this.y > 0 ?
       this.chunk.blocks[this.i - _DY] : block(this.x, this.y-SY, this.z);
-  case FACE_TOP:   
-    return this.y < HY-SY ? 
+  case FACE_TOP:
+    return this.y < HY-SY ?
       this.chunk.blocks[this.i + _DY] : block(this.x, this.y+SY, this.z);
-  case FACE_RIGHT: 
-    return this.x-this.chunk.chunkx > 0 ? 
+  case FACE_RIGHT:
+    return this.x-this.chunk.chunkx > 0 ?
       this.chunk.blocks[this.i - _DX] : block(this.x-1, this.y, this.z);
-  case FACE_LEFT:  
-    return this.x-this.chunk.chunkx < NX-1 ? 
+  case FACE_LEFT:
+    return this.x-this.chunk.chunkx < NX-1 ?
       this.chunk.blocks[this.i + _DX] : block(this.x+1, this.y, this.z);
   }
 }
@@ -782,15 +782,15 @@ function drawScene(camera, showInterface) {
 
   // Start from scratch
   if (camera.y + camera.eyeHeight >= 0)
-    gl.clearColor(0.5 * GAME.sunlight, 
-                  0.8 * GAME.sunlight, 
+    gl.clearColor(0.5 * GAME.sunlight,
+                  0.8 * GAME.sunlight,
                   0.98 * GAME.sunlight, 1);  // Clear color is sky blue
   else
     gl.clearColor(0,0,0,1);  // Look into the void
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Set up the projection
-  var aspectRatio = camera.aspectRatio || 
+  var aspectRatio = camera.aspectRatio ||
     (gl.viewportWidth / gl.viewportHeight);
   mat4.perspective(pMatrix,
                    camera.horizontalFieldOfView/aspectRatio,
@@ -838,11 +838,11 @@ function drawScene(camera, showInterface) {
     $('hud').style.backgroundColor = '';
   }
   $('pause').style.backgroundColor = $('hud').style.backgroundColor;
-  
+
   // Set matrix uniforms
   gl.uniformMatrix4fv(gl.mainShader.uniforms.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(gl.mainShader.uniforms.uMVMatrix, false, mvMatrix);
-  
+
   // Render opaque blocks
   gl.disable(gl.CULL_FACE);  // don't cull backfaces (decals are 1-sided)
   for (var i in GAME.chunks) {
@@ -912,17 +912,17 @@ function updateWorld() {
   var waspicked = PICKED;
   var wasface = PICKED_FACE;
   PICKED = pickp();
-  
-  if (SPREAD_OUT) 
+
+  if (SPREAD_OUT)
     loadNearbyChunks(AVATAR, SPREAD_OUT);
-  
+
   for (var i in GAME.chunks) {
     var c = GAME.chunks[i];
-    c.hdistance = 
+    c.hdistance =
       Math.max(0, hDistance(AVATAR, c.centerPoint())-CHUNK_RADIUS);
     c.visible = (c.hdistance < AVATAR.viewDistance);
     c.update();
-  }  
+  }
 
   UPDATE_STAT.end();
 }
@@ -946,18 +946,18 @@ function loadNearbyChunks(epicenter, d, limit) {
               GAME.mapgenWorker.onmessage = function (event) {
                 if (!chunk(event.data.chunkx, event.data.chunkz)) {
                   new Chunk(event.data);
-                  GAME.pendingChunks[event.data.chunkx + ',' + 
+                  GAME.pendingChunks[event.data.chunkx + ',' +
                                      event.data.chunkz] = false;
                 }
               }
             }
-            GAME.mapgenWorker.postMessage({seed: GAME.seed, 
-                                           chunkx: chunkx, 
+            GAME.mapgenWorker.postMessage({seed: GAME.seed,
+                                           chunkx: chunkx,
                                            chunkz: chunkz});
           }
         } else {
           makeChunk(chunkx, chunkz);
-          if (--limit <= 0) 
+          if (--limit <= 0)
             return true;
         }
       }
@@ -978,7 +978,7 @@ function processInput(avatar, elapsed) {
   if (KEYS.A) avatar.ddx -= avatar.type.acceleration;
   if (KEYS.S) avatar.ddz += avatar.type.acceleration;
   if (KEYS.D) avatar.ddx += avatar.type.acceleration;
-  
+
   avatar.ddy = 0;
   if (avatar.flying || avatar.swimming) {
     // Fly up and down
@@ -993,8 +993,8 @@ function processInput(avatar, elapsed) {
 function togglePointerLock() {
   if (!cancan.requestPointerLock) return;  // not supported
 
-  if (window.pointerLockRequiresFullscreen && 
-      !window.pointerLocked && 
+  if (window.pointerLockRequiresFullscreen &&
+      !window.pointerLocked &&
       !window.fullscreen)
     cancan.requestFullscreen();
   else if (!window.pointerLocked)
@@ -1031,7 +1031,7 @@ function ballistics(e, elapsed) {
     e.dy += elapsed * e.ddy;
   } else if (e.flying || e.swimming) {
     // Drag
-    if (e.dy > 0) 
+    if (e.dy > 0)
       e.dy = Math.max(0, e.dy - elapsed * (e.type.acceleration||DRAG));
     else
       e.dy = Math.min(0, e.dy + elapsed * (e.type.acceleration||DRAG));
@@ -1041,7 +1041,7 @@ function ballistics(e, elapsed) {
   var h = sqr(e.dx) + sqr(e.dz);
   if (e.flying || e.swimming) h += sqr(e.dy);
   h = Math.sqrt(h);
-  
+
   var vmax = e.flying ? e.type.fly_max : e.type.walk_max;
   if (typeof vmax !== 'undefined') {
     vmax *= 1 - (block(e).type.viscosity||0);
@@ -1063,12 +1063,12 @@ function ballistics(e, elapsed) {
     e.z += e.dz * elapsed;
 
     var stepup = (!e.swimming && (e.falling || e.flying)) ? 0 : 0.5;
-    function blocked(x,y,z) { 
+    function blocked(x,y,z) {
       for (var i = SY*Math.floor((y+stepup)/SY); i < y + e.height; i += SY)
         if (block(x, i, z).type.solid)
           return true;
-      if (stepup && 
-          block(x, y, z).type.solid && 
+      if (stepup &&
+          block(x, y, z).type.solid &&
           block(x, y + e.height + stepup, z).type.solid)
         return true;  // Special case for steppin' up to not quite enough room
       return false;
@@ -1090,7 +1090,7 @@ function ballistics(e, elapsed) {
       e.z = Math.min(e.z, Math.ceil(e.z) - radius);
       e.dz = (e.rebound || 0) * -e.dz;
     }
-    
+
     // Check corner collisions
     var cw = (e.dx < 0 && frac(e.x) < radius);
     var ce = (e.dx > 0 && carf(e.x) > radius);
@@ -1160,7 +1160,7 @@ function ballistics(e, elapsed) {
     e.y = SY * Math.floor(e.y/SY) - 0.001;  // be in empty block below
     e.dy = 0;
   }
-  
+
   if ((e.flying || e.falling) &&
       (e.dy > 0 && block(e.x, e.y + e.height, e.z).type.solid)) {
     // Bump head
@@ -1178,11 +1178,11 @@ function ballistics(e, elapsed) {
 }
 
 
-function pickp() { 
-  return pick(AVATAR.x, 
-              AVATAR.y + AVATAR.eyeHeight, 
-              AVATAR.z, 
-              AVATAR.pitch, 
+function pickp() {
+  return pick(AVATAR.x,
+              AVATAR.y + AVATAR.eyeHeight,
+              AVATAR.z,
+              AVATAR.pitch,
               AVATAR.yaw);
 }
 function pick(x, y, z, pitch, yaw) {
@@ -1194,12 +1194,12 @@ function pick(x, y, z, pitch, yaw) {
 
   var dist = 0;
 
-  function next(w, pw) { 
+  function next(w, pw) {
     return pw * (pw < 0 ? Math.ceil(w-1) - w : Math.floor(w+1) - w);
   }
   function upy(y) { return SY*Math.ceil(y/SY-1) }
   function dny(y) { return SY*Math.floor(y/SY+1) }
-  
+
   for (var i = 0; i < 3000; ++i) {
     // check out of bounds
     if (py < 0 ? y < 0 : y >= HY)
@@ -1207,7 +1207,7 @@ function pick(x, y, z, pitch, yaw) {
     if (dist > PICK_MAX)
       break;
     var b = block(x,y,z);
-    if (b && !b.type.empty && !b.type.unpickable) 
+    if (b && !b.type.empty && !b.type.unpickable)
       return b;
 
     var dx = next(x, px);
@@ -1248,13 +1248,13 @@ function tick() {
   var elapsed = timeNow - window.lastFrame;
   FPS_STAT.add(elapsed);
   window.lastFrame = timeNow;
-    
+
   if (!GAME || GAME.loading) {
     blurryIntro.time = (blurryIntro.time||0) + elapsed * (KEYS.S ? 20 : 1);
     blurryIntro(blurryIntro.time);
 
   } else if (window.mode !== 'pause' || GAME.multiplayer) {
-    
+
     if (elapsed > 0.1) elapsed = 0.05;  // Limit lagdeath
     GAME.clock += elapsed;
 
@@ -1262,36 +1262,36 @@ function tick() {
       gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
       drawScene(AVATAR, !$('hud').hide);
     }
-    
+
     processInput(AVATAR, elapsed);
-    
+
     for (var i in GAME.chunks) {
       var c = GAME.chunks[i];
       c.tick(elapsed);
     }
-    
+
     gl.particles.tick(elapsed);
-    
+
     if (timeNow > GAME.lastUpdate + GAME.UPDATE_PERIOD) {
       updateWorld();
       GAME.lastUpdate = timeNow;
     }
   }
- 
+
   if (!$('stats').hide)
     $('stats').innerHTML = feedback();
 }
 
 
 function feedback() {
-  var result = 
-    FPS_STAT + '<br>' + 
+  var result =
+    FPS_STAT + '<br>' +
     GEN_STAT + '<br>' +
-    //RENDER_STAT + '<br>' + 
+    //RENDER_STAT + '<br>' +
     UPDATE_STAT + '<br>' +
     'Player: ' + AVATAR + '<br>';
   if (GAME)
-    result += 'Time: ' + readableTime(GAME.timeOfDay) + ' &#9788;' + 
+    result += 'Time: ' + readableTime(GAME.timeOfDay) + ' &#9788;' +
               GAME.sunlight.toFixed(2);
   if (PICKED) {
     result += '<br>Picked: ' + PICKED + ' @' + PICKED_FACE;
@@ -1346,14 +1346,14 @@ function loadTexture(filename, cubemap) {
         can.width = texture.image.height;
         can.height = texture.image.height;
         var ctx = can.getContext('2d');
-        ctx.drawImage(texture.image, 
+        ctx.drawImage(texture.image,
                       i * can.width, 0, can.width, can.height,
                       0, 0, can.width, can.height);
-        gl.texImage2D(facings[i], 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, 
+        gl.texImage2D(facings[i], 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
                       can);
       }
     } else {
-      gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, 
+      gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
                     texture.image);
     }
     gl.bindTexture(target, null);
@@ -1476,9 +1476,9 @@ Block.prototype.breakBlock = function () {
   delete this.facing;
   this.invalidateGeometry(true);
   if (!pos) {
-    var drop = new Entity({ 
+    var drop = new Entity({
       type: type.drop || 'block',
-      x: this.x + 0.5, 
+      x: this.x + 0.5,
       y: this.y + (this.height || SY)/2,
       z: this.z + 0.5,
       sourcetype: type,
@@ -1486,8 +1486,8 @@ Block.prototype.breakBlock = function () {
   }
   for (var i = 0; i < 20; ++i) {
     var p = gl.particles.spawn({
-      x0: this.x + 0.5, 
-      y0: this.y + 0.5, 
+      x0: this.x + 0.5,
+      y0: this.y + 0.5,
       z0: this.z + 0.5,
       tile: tile,
     });
@@ -1512,11 +1512,11 @@ Block.prototype.placeBlock = function (newType, position, facing) {
   this.position = position;
   this.facing = facing;
   this.invalidateGeometry(true);
-  if (this.type.afterPlacement) 
+  if (this.type.afterPlacement)
     this.type.afterPlacement.apply(this);
   if (this.type.stack && this.position + DISTANCE[facing] < this.type.stack)
-    this.neighbor(facing).placeBlock(newType, 
-                                     position + DISTANCE[facing], 
+    this.neighbor(facing).placeBlock(newType,
+                                     position + DISTANCE[facing],
                                      facing);
 }
 
@@ -1533,7 +1533,7 @@ function tileCoord(obj, face) {
 }
 
 Block.prototype.toString = function () {
-  var result = this.type.name + 
+  var result = this.type.name +
     ' [' + this.x + ',' + this.y + ',' + this.z + '] ' +
     '&#9788;' + this.light.join(',');
   if (typeof this.position !== 'undefined') result += ' #' + this.position;
@@ -1583,9 +1583,9 @@ function blockGeometryHash(b) {
     if (top % 1 === 0) top += ZERO;
 
     for (var j = 0; j < 2; ++j)
-      v.aTexCoord.push(tile.s + ZERO, tile.t + bottom, 
-                       tile.s + ONE,  tile.t + bottom, 
-                       tile.s + ONE,  tile.t + top, 
+      v.aTexCoord.push(tile.s + ZERO, tile.t + bottom,
+                       tile.s + ONE,  tile.t + bottom,
+                       tile.s + ONE,  tile.t + top,
                        tile.s + ZERO, tile.t + top);
   }
   for (var i = 0; i < v.aPos.length/3; ++i) {
@@ -1607,12 +1607,12 @@ function tweaker(pos) {
   if (key in _TWEAKERS)
     return _TWEAKERS[key];
   else
-    return _TWEAKERS[key] = 
+    return _TWEAKERS[key] =
   */
   return [
       0.25 * pinkNoise(pos[0], pos[1], pos[2]+1593.1, 4, 1),
-      0.25 * pinkNoise(pos[0], pos[1], pos[2]+2483.7, 4, 1), 
-      0.25 * pinkNoise(pos[0], pos[1], pos[2]+9384.3, 4, 1) 
+      0.25 * pinkNoise(pos[0], pos[1], pos[2]+2483.7, 4, 1),
+      0.25 * pinkNoise(pos[0], pos[1], pos[2]+9384.3, 4, 1)
     ];
 }
 
@@ -1672,7 +1672,7 @@ Entity.prototype.buildGeometry = function (vertices) {
 Entity.prototype.gain = function (itemtype, qty) {
   if (typeof qty === 'undefined') qty = 1;
   for (var i = 0; i < this.inventory.length; ++i)
-    if (this.inventory[i] && this.inventory[i].type === itemtype) 
+    if (this.inventory[i] && this.inventory[i].type === itemtype)
       return this.inventory[i].qty += qty;
   for (var i = 0; i < this.inventory.length; ++i)
     if (!this.inventory[i] || !this.inventory[i].type)
@@ -1708,11 +1708,11 @@ function blockGeometryBlock(b) {
                            n.light[3] * DARKFACE);
         else
           v.aLighting = v.aLighting.concat(n.light);
-        var color = b.type.color || [1,1,1];        
-        v.aColor = v.aColor.concat(vclamp(vec3.add([0,0,0], 
+        var color = b.type.color || [1,1,1];
+        v.aColor = v.aColor.concat(vclamp(vec3.add([0,0,0],
                                                    color, tweaker(coord))));
       }
-       
+
       // Set textures per vertex: one ST pair for each vertex
       var tile = tileCoord(b, face);
       var bottom, top;
@@ -1729,14 +1729,14 @@ function blockGeometryBlock(b) {
         bottom = SY - frac(b.y);
         top = bottom + SY;
       }
-      
+
       // Keep away from edges of texture so as to not bleed neighboring
       if (bottom % 1 === 0) bottom += ZERO;
       if (top % 1 === 0) top -= ZERO;
 
-      v.aTexCoord.push(tile.s + ONE,  tile.t + bottom, 
-                       tile.s + ZERO, tile.t + bottom, 
-                       tile.s + ZERO, tile.t + top, 
+      v.aTexCoord.push(tile.s + ONE,  tile.t + bottom,
+                       tile.s + ZERO, tile.t + bottom,
+                       tile.s + ZERO, tile.t + top,
                        tile.s + ONE,  tile.t + top);
 
       // Describe triangles
@@ -1798,13 +1798,13 @@ function blockGeometryFrond(b) {
 
   var rotate = (b.facing === FACE_LEFT || b.facing === FACE_RIGHT);
   var reverse = (b.facing === FACE_RIGHT || b.facing === FACE_FRONT);
-  
+
   var I0 = rotate ? 2 : 0;
   var I1 = rotate ? 0 : 2;
   var c = tileCoord(b);
-  var corners = [[9,0,8], [16,3,7], [16,2,0], [7,0,0], [0,3,1], 
+  var corners = [[9,0,8], [16,3,7], [16,2,0], [7,0,0], [0,3,1],
     [0,3,15], [7,0,16], [16,2,16], [16,3,9]];
-  var tipcorners = [[7,0,0], [0,3,1], [0,2,3], [2,1,11], [7,1,16], 
+  var tipcorners = [[7,0,0], [0,3,1], [0,2,3], [2,1,11], [7,1,16],
     [9,1,16], [14,1,11], [16,2,3], [16,2,0]];
   if (tip) corners = tipcorners;
   for (var i = 0; i < corners.length; ++i) {
@@ -1816,7 +1816,7 @@ function blockGeometryFrond(b) {
     }
     var droop = (corners[i][1] + 2 * sqr(sag + corners[i][2]/16)) / 16;
     v.aPos.push(b.x + dx, b.y + 1 - droop, b.z + dz);
-    v.aTexCoord.push(c.s + 0.01 + 0.98 * corners[i][0] / 16, 
+    v.aTexCoord.push(c.s + 0.01 + 0.98 * corners[i][0] / 16,
                      c.t + 0.01 + 0.98 * corners[i][2] / 16);
     v.aLighting = v.aLighting.concat(b.light);
     v.aColor = v.aColor.concat(b.color || b.type.color || [1,1,1]);
@@ -1848,7 +1848,7 @@ function blockGeometryLog(b) {
             [cx - r, y, cz + r]];
   }
 
-  var fs = faces(sq(cx0, 0, cz0, b.radius0).concat( 
+  var fs = faces(sq(cx0, 0, cz0, b.radius0).concat(
                  sq(cx1, 1, cz1, b.radius1)));
 
   geometryBox(b.vertices, {
@@ -1908,15 +1908,15 @@ function blockGeometryBillboard(b, v) {
 function entityGeometryBillboard(b, v) {
   var pindex = v.aPos.length / 3;
   v.aColor.push(1,1,1, 1,1,1, 1,1,1, 1,1,1);
-  v.indices.push(pindex + 0, pindex + 1, pindex + 2, 
+  v.indices.push(pindex + 0, pindex + 1, pindex + 2,
                  pindex + 0, pindex + 2, pindex + 3);
 
   var light = block(b).light;
 
   // "Look" vector pointing at player
   var l = [
-    AVATAR.x - b.x, 
-    AVATAR.y + AVATAR.eyeHeight - b.y, 
+    AVATAR.x - b.x,
+    AVATAR.y + AVATAR.eyeHeight - b.y,
     AVATAR.z - b.z];
   vec3.normalize(l, l);
 
@@ -1938,11 +1938,11 @@ function entityGeometryBillboard(b, v) {
       v.aPos.push(x * r[t] + y * u[t] + p[t]);
     v.aLighting.append(light);
   }
-    
+
   var tile = tileCoord(b);
-  v.aTexCoord.push(tile.s + ZERO, tile.t + ONE, 
-                   tile.s + ONE,  tile.t + ONE, 
-                   tile.s + ONE,  tile.t + ZERO, 
+  v.aTexCoord.push(tile.s + ZERO, tile.t + ONE,
+                   tile.s + ONE,  tile.t + ONE,
+                   tile.s + ONE,  tile.t + ZERO,
                    tile.s + ZERO, tile.t + ZERO);
 }
 
@@ -1989,7 +1989,7 @@ function geometryCylinder(v, p) {
   }
     v.indices.push(southpole, pi + 2*n,     pi + 2 * ((n + 1) % p.sides));
     v.indices.push(northpole, pi + 2*n + 1, pi + 2 * ((n + 1) % p.sides) + 1);
-    
+
   }
 }
 */
@@ -2046,7 +2046,7 @@ function entityGeometryBlock(ntt, v) {
     z: ntt.z,
     tile: ntt,
   });
-}                    
+}
 
 
 function Wireframe() {
@@ -2069,20 +2069,20 @@ function Wireframe() {
 Wireframe.prototype.render = function () {
   mvPushMatrix();
   mat4.translate(mvMatrix, mvMatrix, [PICKED.x, PICKED.y, PICKED.z]);
-  
+
   this.shader.use();
-  
+
   gl.lineWidth(2);
-  
+
   gl.uniformMatrix4fv(this.shader.uniforms.uPMatrix,  false,  pMatrix);
   gl.uniformMatrix4fv(this.shader.uniforms.uMVMatrix, false, mvMatrix);
-  
+
   pointToAttribute(this.shader, this, 'aPos');
-  
+
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indices);
   gl.drawElements(gl.LINES, this.indices.numItems, gl.UNSIGNED_SHORT, 0);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-  
+
   this.shader.disuse();
 
   gl.enable(gl.DEPTH_TEST);
@@ -2092,10 +2092,10 @@ Wireframe.prototype.render = function () {
 
 function Reticule() {
   this.shader = new Shader('twodee');
-  
+
   var cx = gl.viewportWidth / 2, cy = gl.viewportHeight / 2;
   var s = 10;
-  var vertices = [ 
+  var vertices = [
     cx-s, cy, cx+s, cy,
     cx, cy-s, cx, cy+s,
   ];
@@ -2105,7 +2105,7 @@ function Reticule() {
 Reticule.prototype.render = function () {
   this.shader.use();
 
-  gl.uniform2f(this.shader.uniforms.uResolution, 
+  gl.uniform2f(this.shader.uniforms.uResolution,
                gl.viewportWidth, gl.viewportHeight);
   gl.uniform4f(this.shader.uniforms.uColor, 1,1,1,1);
 
@@ -2185,7 +2185,7 @@ Skybox.prototype.render = function () {
   var invProj = mat4.invert(mat4.create(), pMatrix);
   gl.uniformMatrix3fv(this.shader.uniforms.uInvViewRot, false, invViewRot);
   gl.uniformMatrix4fv(this.shader.uniforms.uInvProj, false, invProj);
-  gl.uniform2f(this.shader.uniforms.uViewport, 
+  gl.uniform2f(this.shader.uniforms.uViewport,
                gl.viewportWidth, gl.viewportHeight);
 
   pointToAttribute(this.shader, {aPos: this.buffer}, 'aPos');
@@ -2225,9 +2225,9 @@ function Entity(init1, init2) {
   init('id', function () { return GAME.nextEntityID++} );
   init('type');
   init('sourcetype', {});
-  if (typeof this.type === 'string') 
+  if (typeof this.type === 'string')
     this.type = ENTITY_TYPES[this.type];
-  if (typeof this.sourcetype === 'string') 
+  if (typeof this.sourcetype === 'string')
     this.sourcetype = BLOCK_TYPES[this.sourcetype];
   this.height = this.type.height || this.type.scale;
   this.flying = this.falling = false;
@@ -2260,7 +2260,7 @@ Entity.prototype.toString = function () {
   var result = '[' + this.x.toFixed(2) + ',' + this.y.toFixed(2) + ',' +
                  this.z.toFixed(2) + '] ';
   result += '&lt;' + this.yaw.toFixed(2) + ',' + this.pitch.toFixed(2) + '&gt';
-  result += ' +[' + this.dx.toFixed(2) + ',' + this.dy.toFixed(2) + ',' + 
+  result += ' +[' + this.dx.toFixed(2) + ',' + this.dy.toFixed(2) + ',' +
                 this.dz.toFixed(2) + '] ';
   result += (this.flying ? 'F' : this.falling ? 'f' : 'w');
   if (this.swimming) result += 's';
@@ -2332,19 +2332,19 @@ function takePanorama() {
     }
   }
   snap();
-}  
+}
 
 
 
 function onLoad() {
-  $('throbber').innerText = 
+  $('throbber').innerText =
     THROBBERS[Math.floor(Math.random()*THROBBERS.length)];
 
   var cancan = $('cancan');
   var canvas = $('canvas');
 
   var glopts = {};
-  
+
   // Skybox-screenshottable with takePanorama()
   // then copypaste into acorn
   if (window.location.search === '?shot') {
@@ -2359,14 +2359,14 @@ function onLoad() {
   }
 
   // Polyfills
-  cancan.requestFullscreen = 
-    cancan.requestFullscreen || 
-    cancan.mozRequestFullscreen || 
+  cancan.requestFullscreen =
+    cancan.requestFullscreen ||
+    cancan.mozRequestFullscreen ||
     cancan.mozRequestFullScreen ||
     cancan.webkitRequestFullscreen;
   cancan.requestPointerLock =
     cancan.requestPointerLock ||
-    cancan.mozRequestPointerLock || 
+    cancan.mozRequestPointerLock ||
     cancan.webkitRequestPointerLock;
   document.exitPointerLock = document.exitPointerLock ||
     document.mozExitPointerLock ||
@@ -2383,11 +2383,11 @@ function onLoad() {
   document.addEventListener('fullscreenchange', fullscreenChange, false);
   document.addEventListener('mozfullscreenchange', fullscreenChange, false);
   document.addEventListener('webkitfullscreenchange', fullscreenChange, false);
-  
+
   document.addEventListener('pointerlockchange', pointerLockChange, false);
   document.addEventListener('mozpointerlockchange', pointerLockChange, false);
   document.addEventListener('webkitpointerlockchange',pointerLockChange,false);
-  
+
   document.addEventListener('pointerlockerror', pointerLockError, false);
   document.addEventListener('mozpointerlockerror', pointerLockError, false);
   document.addEventListener('webkitpointerlockerror', pointerLockError,false);
@@ -2418,7 +2418,7 @@ function onLoad() {
     var b = topmost(AVATAR.x, AVATAR.z);
     if (b)
       AVATAR.y = b.y + 1;
-    else 
+    else
       AVATAR.flying = true;
     AVATAR.yaw = AVATAR.pitch = 0;
     chunk(0,0).entities[AVATAR.id] = AVATAR;
@@ -2426,7 +2426,7 @@ function onLoad() {
   }
 
   $('savegame').onclick = function () {
-    GAME.save(function () { 
+    GAME.save(function () {
       message('Saved.');
       GAME = null;
       AVATAR = null;
@@ -2474,11 +2474,11 @@ function newGame(sy) {
     } else {
       // Create player
       new Entity({type:'player', x:NX/2 - 0.5, y:HY/2, z:NZ/2 + 0.5});
-      GAME.loading = false; 
+      GAME.loading = false;
       showAndHideUI();
     }
   }
-  
+
   togglePointerLock();
   makeChunk(0,0);
   forceUpdate();
@@ -2588,7 +2588,7 @@ function createInventoryUI() {
   rarr.style.top = 16 + 58 * 1 + 'px';
   rarr.style.fontSize = '48px';
   $('inventory').appendChild(rarr);
-  
+
   var crafted = makeItemSlot('crafted');
   crafted.style.left = 240 + 58 * 4 + 'px';
   crafted.style.top = 16 + 58 * 1 + 'px';
@@ -2596,7 +2596,7 @@ function createInventoryUI() {
     e.preventDefault();
     if (!CRAFTABLE) return;
     for (var i = 0; i < 9; ++i)
-      if (CRAFT[i] && CRAFT[i].qty) 
+      if (CRAFT[i] && CRAFT[i].qty)
         if (--CRAFT[i].qty < 1)
           CRAFT[i] = null;
     if (!HELD)
@@ -2627,7 +2627,7 @@ function onkeydown(event, count) {
   if (112 <= k && k < 124)
     c = 'F' + (k - 111);
 
-  if (typeof count === 'undefined') 
+  if (typeof count === 'undefined')
     count = (KEYS[k] || 0) + 1;
 
   if (event.ctrlKey) {
@@ -2677,7 +2677,7 @@ function onkeydown(event, count) {
       if (GAME && !GAME.loading && AVATAR) {
         if (event.shiftKey) {
           // Rotate inventory
-          Array.prototype.push.apply(AVATAR.inventory, 
+          Array.prototype.push.apply(AVATAR.inventory,
                                      AVATAR.inventory.splice(0, 9));
           redisplayInventory(AVATAR);
         } else {
@@ -2760,7 +2760,7 @@ function onkeydown(event, count) {
     // right paren/brace/bracket means select next tool
     if (k === 190 || k === 221)
       pickTool((AVATAR.slot + 1) % 9);
-    
+
     // Left paren/brace//bracket means select previous tool
     if (k === 188 || k === 219)
       pickTool((AVATAR.slot + 8) % 9);
@@ -2771,7 +2771,7 @@ function onkeydown(event, count) {
 
     if (c === '^L') {
       loadGame(1);
-    } 
+    }
 
     if (c === '^0') {
       AVATAR.yaw = AVATAR.pitch = 0;
@@ -2846,7 +2846,7 @@ function renderInventoryItem(can, item) {
   if (type) {
     type = BLOCK_TYPES[type] || ENTITY_TYPES[type];
     var tile = tileCoord(type);
-    ctx.drawImage($('terrain'), 
+    ctx.drawImage($('terrain'),
                   16 * tile.s, 16 * tile.t,  16, 16,
                   0, 0,                      can.width, can.height);
     if (type.color) {
@@ -2870,7 +2870,7 @@ function renderInventoryItem(can, item) {
   }
 }
 
- 
+
 function redisplayInventory(whom) {
   if (window.mode === 'inventory')
     renderInventoryItem($('held'), HELD);
@@ -2892,11 +2892,11 @@ function redisplayInventory(whom) {
 
 function onmousemove(event) {
   if (window.pointerLocked && GAME && !GAME.loading) {
-    var movementX = event.movementX || 
-      event.mozMovementX || 
+    var movementX = event.movementX ||
+      event.mozMovementX ||
       event.webkitMovementX ||
       0;
-    var movementY = event.movementY || 
+    var movementY = event.movementY ||
       event.mozMovementY ||
       event.webkitMovementY ||
       0;
@@ -2925,7 +2925,7 @@ function onmousedown(event) {
         if (!b.outofbounds && tool) {
           if (tool.isEntity)
             new Entity({type: tool,
-                        x: b.x + 0.5, 
+                        x: b.x + 0.5,
                         y: b.y,
                         z: b.z + 0.5});
           else
@@ -2962,9 +2962,9 @@ Stat.prototype.end = function (startTime) {
 
 Stat.prototype.add = function (value) {
   this.value = this.alpha * this.value + (1-this.alpha) * value;
-  this.low = value < this.low ? value : 
+  this.low = value < this.low ? value :
     this.beta * this.low + (1 - this.beta) * this.value;
-  this.high = value > this.high ? value : 
+  this.high = value > this.high ? value :
     this.beta * this.high + (1 - this.beta) * this.value;
 }
 
@@ -2976,15 +2976,15 @@ Stat.prototype.toString = function () {
     h = 1/l;
     l = t;
   }
-  return this.name + ': ' + v.toFixed(this.places) +  
+  return this.name + ': ' + v.toFixed(this.places) +
     ' (' + l.toFixed(this.places) + ' ' + h.toFixed(this.places) + ')';
 }
 
 function fullscreenChange() {
-  window.fullscreen = (document.webkitFullscreenElement || 
+  window.fullscreen = (document.webkitFullscreenElement ||
                        document.mozFullscreenElement ||
                        document.mozFullScreenElement) === cancan;
-  if (window.pointerLockRequiresFullscreen && 
+  if (window.pointerLockRequiresFullscreen &&
       window.fullscreen &&
       !window.pointerLocked) {
     togglePointerLock();
@@ -2998,7 +2998,7 @@ function pointerLockChange() {
     window.showOptions = false;
     var rdist = document.getElementsByName("rdist");
     for (var i = 0; i < rdist.length; i++)
-      if (rdist[i].checked) 
+      if (rdist[i].checked)
         SPREAD_OUT = parseInt(rdist[i].value);
   }
   showAndHideUI();
@@ -3094,7 +3094,7 @@ ParticleSystem.prototype.bounceParticle = function (p) {
   // Collide with whatever face will get hit first
   var tx = ((p.dx > 0) ? carf(p.x0) : frac(p.x0)) / p.dx;
   var tz = ((p.dz > 0) ? carf(p.z0) : frac(p.z0)) / p.dz;
-  var ty = p.dy + Math.sqrt(p.dy * p.dy + 2 * PARTICLE_GRAVITY * frac(p.y0)) / 
+  var ty = p.dy + Math.sqrt(p.dy * p.dy + 2 * PARTICLE_GRAVITY * frac(p.y0)) /
     2 * PARTICLE_GRAVITY;
   var t = Math.min(tx, ty, tz);
   if (t < p.life) {
@@ -3135,7 +3135,7 @@ function updateBuffer(buffer, data, itemsize, elementArray) {
     return null;
   var type = elementArray ? gl.ELEMENT_ARRAY_BUFFER : gl.ARRAY_BUFFER;
   var Type = elementArray ? Uint16Array : Float32Array;
-  if (!buffer || 
+  if (!buffer ||
       buffer.itemSize !== itemsize ||
       buffer.itemSize * buffer.numItems < data.length) {
     buffer = gl.createBuffer();
@@ -3152,7 +3152,7 @@ function updateBuffer(buffer, data, itemsize, elementArray) {
 }
 
 // Encapsulates the set of buffers needed to render the world
-function BufferSet(arrays) { 
+function BufferSet(arrays) {
   this.elementCount = 0;
   if (arrays) this.update(arrays);
 }
@@ -3216,7 +3216,7 @@ ParticleSystem.prototype.render = function () {
   gl.bindTexture(gl.TEXTURE_2D, gl.textures.terrain);
   var ext = gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic");
   if (ext)
-    gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 
+    gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT,
                      $('anisotropic').checked ? 4 : 1);
   gl.uniform1i(this.shader.uniforms.uSampler, 0);
 
@@ -3246,7 +3246,7 @@ function resizeCanvas(w, h) {
 function pickTool(slot) {
   AVATAR.slot = slot;
   for (var i = 0; i < 9; ++i)
-    $('hud'+i).parentNode.style.borderColor = 
+    $('hud'+i).parentNode.style.borderColor =
       (i === slot) ? 'white' : 'rgb(128, 128, 128)';
 }
 
@@ -3257,7 +3257,7 @@ function sqr(x) { return x * x }
 function Game(data) {
   data = data || {};
   var game = this;
-  function init(key, defa) { 
+  function init(key, defa) {
     game[key] = (data.hasOwnProperty(key)) ? data[key] : defa;
   }
   init('seed', Math.random() * 9999999);
@@ -3302,15 +3302,15 @@ Game.prototype.save = function (callback) {
     var chunks = trans.objectStore('chunks');
     var ckeys = Object.keys(game.chunks);
     var data = game.data();
-    var req = (typeof GAME.id === 'undefined') ? 
-      games.add(data) : 
+    var req = (typeof GAME.id === 'undefined') ?
+      games.add(data) :
       games.put(data, GAME.id);
     function putone() {
       if (ckeys.length > 0)
         saveChunk(game.chunks[ckeys.pop()], putone);
       else
         callback();
-    }        
+    }
     req.onsuccess = putone;
   });
 }
@@ -3339,23 +3339,23 @@ function loadGame(gameid, callback) {
           cursor.continue();
         } else {
           GAME.loading = false;
-          message('Game loaded.'); 
+          message('Game loaded.');
           showAndHideUI();
           if (callback) callback();
         }
       };
-    };      
+    };
   });
 }
-    
- 
- 
+
+
+
 function prepStorage(callback) {
   if (DB) {
     setTimeout(callback, 0);
     return;
   }
-  window.indexedDB = window.indexedDB || window.webkitIndexedDB || 
+  window.indexedDB = window.indexedDB || window.webkitIndexedDB ||
     window.mozIndexedDB || window.msIndexedDB;
   var req = window.indexedDB.open('halfblock', 'Halfblock');
   req.onsuccess = function (e) {
@@ -3382,7 +3382,7 @@ function resetStorage(callback) {
 
     DB.createObjectStore('chunks', { keyPath: 'key' });
     DB.createObjectStore('games', { autoIncrement: true });
-    
+
     // now call the handler outside of the 'versionchange' callstack
     var transaction = e.target.result;
     transaction.oncomplete = callback;
@@ -3423,22 +3423,22 @@ function makeFramebuffer(w, h, depthBuffer, mipmap) {
   var fbt = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, fbt);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, 
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
                    mipmap ? gl.LINEAR_MIPMAP_NEAREST : gl.LINEAR);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fb.width, fb.height, 0, 
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fb.width, fb.height, 0,
                 gl.RGBA, gl.UNSIGNED_BYTE, null);
   if (mipmap)  gl.generateMipmap(gl.TEXTURE_2D);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
                           gl.TEXTURE_2D, fbt, 0);
   fb.texture = fbt;
-  
+
   if (depthBuffer) {
     var rb = gl.createRenderbuffer();
     gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
-    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16,
                            fb.width, fb.height);
 
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, 
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
                                gl.RENDERBUFFER, rb);
   }
 
@@ -3455,14 +3455,14 @@ function makeFramebufferForTile(texture, s, t) {
   fb.top = (15-t) * 16 + 2;
   fb.width = 16 - 4;
   fb.height = 16 - 4;
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
                           gl.TEXTURE_2D, texture, 0);
 
   var rb = gl.createRenderbuffer();
   gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
-  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16,
                          texture.image.width, texture.image.height);
-  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, 
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
                              gl.RENDERBUFFER, rb);
 
   gl.bindRenderbuffer(gl.RENDERBUFFER, null);
@@ -3491,7 +3491,7 @@ function blurryIntro(time) {
 
   // Set up the projection
   var aspectRatio = gl.viewportWidth / gl.viewportHeight;
-  mat4.perspective(pMatrix, 
+  mat4.perspective(pMatrix,
                    110*Math.PI/180/aspectRatio,
                    aspectRatio,
                    0.1, // near clipping plane
@@ -3509,7 +3509,7 @@ function blurryIntro(time) {
 
 function vmult(v, w, result) {
   result = result || Array(v.length);
-  for (var i = 0; i < v.length; ++i) 
+  for (var i = 0; i < v.length; ++i)
     result[i] = v[i] * w[i];
   return result;
 }
@@ -3563,17 +3563,17 @@ function Sound(sound) {
 
 Sound.prototype.initForRepeat = function(ps) {
   this.elapsedSinceRepeat = 0;
-  
+
   this.period = OVERSAMPLING * 44100 / ps.frequency;
   this.periodMax = OVERSAMPLING * 44100 / ps.frequencyMin;
   this.enableFrequencyCutoff = (ps.frequencyMin > 0);
   this.periodMult = Math.pow(.5, ps.frequencySlide / 44100);
   this.periodMultSlide = ps.frequencySlideSlide * Math.pow(2, -44101/44100)
     / -44100;
-  
+
   this.dutyCycle = ps.dutyCycle;
   this.dutyCycleSlide = ps.dutyCycleSweep / (OVERSAMPLING * 44100);
-  
+
   this.arpeggioMultiplier = 1 / ps.arpeggioFactor;
   this.arpeggioTime = ps.arpeggioDelay * 44100;
 }
@@ -3653,16 +3653,16 @@ Sound.prototype.generate = function (buffer) {
   var it = 0;
   for(; !this.done && it < buffer.length; ++this.t, ++it) {
     // Repeats
-    if (this.repeatTime != 0 && 
+    if (this.repeatTime != 0 &&
         ++this.elapsedSinceRepeat >= this.repeatTime)
       this.initForRepeat(this.params);
-    
+
     // Arpeggio (single)
     if(this.arpeggioTime != 0 && this.t >= this.arpeggioTime) {
       this.arpeggioTime = 0;
       this.period *= this.arpeggioMultiplier;
     }
-    
+
     // Frequency slide, and frequency slide slide!
     this.periodMult += this.periodMultSlide;
     this.period *= this.periodMult;
@@ -3821,8 +3821,8 @@ var defaultKnobs = {
   vibratoRate:  10, // Hz
 
   arpeggioFactor: 1,   // multiple of frequency
-  arpeggioDelay:  0.1, // sec  
-  
+  arpeggioDelay:  0.1, // sec
+
   dutyCycle:      0.5, // proportion of wavelength
   dutyCycleSweep: 0,   // proportion/second
 
@@ -3837,7 +3837,7 @@ var defaultKnobs = {
 
   highPassFrequency: 0, // Hz
   highPassSweep:     0, // ^sec
-  
+
   gain: -10, // dB
 
   sampleRate: 44100, // Hz
