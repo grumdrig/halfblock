@@ -2981,7 +2981,8 @@ Stat.prototype.toString = function () {
 }
 
 function fullscreenChange() {
-  window.fullscreen = (document.webkitFullscreenElement ||
+  window.fullscreen = (document.fullscreenElement ||
+                       document.webkitFullscreenElement ||
                        document.mozFullscreenElement ||
                        document.mozFullScreenElement) === cancan;
   if (window.pointerLockRequiresFullscreen &&
@@ -2992,7 +2993,8 @@ function fullscreenChange() {
 }
 
 function pointerLockChange() {
-  window.pointerLocked = (document.mozPointerLockElement ||
+  window.pointerLocked = (document.pointerLockElement ||
+                          document.mozPointerLockElement ||
                           document.webkitPointerLockElement) === cancan;
   if (window.pointerLocked && window.showOptions) {
     window.showOptions = false;
@@ -3355,8 +3357,10 @@ function prepStorage(callback) {
     setTimeout(callback, 0);
     return;
   }
-  window.indexedDB = window.indexedDB || window.webkitIndexedDB ||
-    window.mozIndexedDB || window.msIndexedDB;
+  window.indexedDB = (window.indexedDB ||
+                      window.webkitIndexedDB ||
+                      window.mozIndexedDB ||
+                      window.msIndexedDB);
   var req = window.indexedDB.open('halfblock', 'Halfblock');
   req.onsuccess = function (e) {
     DB = e.target.result;
@@ -3550,7 +3554,7 @@ function Sound(sound) {
   this.init(k);
   if (!_AUDIO_CONTEXT)
     _AUDIO_CONTEXT = new webkitAudioContext();
-  var node = _AUDIO_CONTEXT.createJavaScriptNode(4096, 0, 1);
+  var node = _AUDIO_CONTEXT.createScriptProcessor(4096, 0, 1);
   node.connect(_AUDIO_CONTEXT.destination);
   node.onaudioprocess = function (e) {
     if (that.done) node.disconnect();
