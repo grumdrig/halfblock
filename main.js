@@ -203,6 +203,17 @@ var ENTITY_TYPES = {
     billboard: true,
     bob: 1/8,
   },
+  ruby: {
+    tile: [6,4],
+    scale: 0.25,
+    fly_max: 20, // m/s
+    collectable: true,
+    init: function () {
+      hopEntity(this);
+    },
+    billboard: true,
+    bob: 1/8,
+  },
   chumpa: {
     tile: 11,
     billboard: true,

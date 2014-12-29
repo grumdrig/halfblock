@@ -26,6 +26,12 @@ var BLOCK_TYPES = {
     solid: true,
     opaque: true,
   },
+  'ruby ore': {
+    tile: [6,3],
+    solid: true,
+    opaque: true,
+    drop: 'ruby',
+  },
   dirt: {
     tile: 1,
     color: [233/255, 107/255, 0/255],
@@ -91,9 +97,9 @@ var BLOCK_TYPES = {
           (!this.lastSpawn || this.lastSpawn + 60 < GAME.clock)) {
         // Spawn chumpa opposite ntt
         new Entity({
-          type: 'chumpa', 
+          type: 'chumpa',
           x: this.x + 1 - frac(ntt.x),
-          y: this.y, 
+          y: this.y,
           z: this.z + 1 - frac(ntt.z),
         });
         this.lastSpawn = GAME.clock;
@@ -206,7 +212,7 @@ function generateBlock(seed, x, y, z) {
   if (y < 0.75 + 2 * noise(x * 23.2, y * 938.2, z * 28.1)) {
     type = 'bedrock';
   } else {
-    var n = pinkNoise(x, y, z + seed, 32, 2) + 
+    var n = pinkNoise(x, y, z + seed, 32, 2) +
       (2 * y/SY - NY) / NY;
     if (n < -0.2) type = 'rock';
     else if (n < -0.1) type = 'dirt';
@@ -290,7 +296,7 @@ function generateChunk(seed, chunkx, chunkz) {
   }
   plant(4, 'flower');
   plant(6, 'weeds');
-  
+
   // Initial quick lighting update, some of which we can know accurately
   for (var ix = 0; ix < NX; ++ix) {
     for (var iz = 0; iz < NZ; ++iz) {
@@ -307,7 +313,7 @@ function generateChunk(seed, chunkx, chunkz) {
     }
   }
 
-  // Do a few updates to avoid having to recreate the geometry a bunch of 
+  // Do a few updates to avoid having to recreate the geometry a bunch of
   // times when we're updating in bulk
   //for (var i = 0; i < 10 && this.nDirty > 50; ++i)
   //  this.updateLight();
@@ -328,8 +334,8 @@ if (typeof importScripts !== 'undefined') {
   importScripts('perlin.js');
 
   self.onmessage = function (event) {
-    var chunk = generateChunk(event.data.seed, 
-                              event.data.chunkx, 
+    var chunk = generateChunk(event.data.seed,
+                              event.data.chunkx,
                               event.data.chunkz);
     postMessage(chunk);
   }
