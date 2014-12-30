@@ -453,7 +453,7 @@ function Chunk(data) {
       this.nDirty++;
   }
 
-  if (data.blocks) {
+  if (data.blocks && !GAME.loading) {
     // Chunk just generated. More initialization needed.
 
     // Plant some trees.
@@ -1403,11 +1403,9 @@ function Block(coord, chunk) {
 
   this.type = BLOCK_TYPES.air;
 
-  if (coord.data) {
-    this.light = coord.data.light;
-    this.dirtyLight = coord.data.dirtyLight;
-    this.dirtyGeometry = coord.data.dirtyGeometry;
-    this.type = BLOCK_TYPES[coord.data.type];
+  for (var d in coord.data) {
+    this[d] = coord.data[d];
+    if (d == 'type') this.type = BLOCK_TYPES[this.type];
   }
 }
 
@@ -1419,8 +1417,8 @@ Block.prototype.data = function () {
     dirtyGeometry: this.dirtyGeometry,
     type: this.type.name,
   };
-  if (typeof this.position != 'undefined') result.position = this.position;
-  if (typeof this.facing != 'undefined') result.facing = this.facing;
+  if (typeof this.position !== 'undefined') result.position = this.position;
+  if (typeof this.facing !== 'undefined') result.facing = this.facing;
   return result;
 }
 
