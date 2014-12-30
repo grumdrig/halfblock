@@ -31,7 +31,7 @@ var CRAFTABLE;
 
 var KEYS = {};
 
-var DB_VERSION = '8';
+var DB_VERSION = '11';
 
 var GEN_STAT = new Stat('Chunk-gen');
 var RENDER_STAT = new Stat('Render');
@@ -321,6 +321,9 @@ function initGL(canvas, opts) {
       panorama: loadTexture('panorama.png', true),
       terrain:  loadTexture('terrain.png')
     };
+
+    gl.wireframe = new Wireframe();
+    gl.reticule = new Reticule();
 
     return gl;
   }
@@ -1418,6 +1421,7 @@ Block.prototype.data = function () {
   };
   if (typeof this.position != 'undefined') result.position = this.position;
   if (typeof this.facing != 'undefined') result.facing = this.facing;
+  return result;
 }
 
 
@@ -2463,9 +2467,6 @@ function newGame(sy) {
   SY = sy;
   HY = NY * SY;
 
-  gl.wireframe = new Wireframe();
-  gl.reticule = new Reticule();
-
   // Create game
   GAME = new Game();
   GAME.loading = true;
@@ -2660,7 +2661,7 @@ function onkeydown(event, count) {
     if (c === 'L' && cancan.requestFullscreen)
       cancan.requestFullscreen();
 
-    if (c === 'F3') {
+    if (c === '^T') {
       var stats = $('stats');
       stats.hide = !stats.hide;
       showAndHideUI();
@@ -3372,35 +3373,23 @@ function prepStorage(callback) {
                       window.webkitIndexedDB ||
                       window.mozIndexedDB ||
                       window.msIndexedDB);
-  var req = window.indexedDB.open('halfblock', 'Halfblock');
+  var req = window.indexedDB.open('halfblock', DB_VERSION);
   req.onsuccess = function (e) {
     DB = e.target.result;
     DB.onerror = function (e) {
       console.log('STORAGE ERROR: ' + e.target.errorCode, e);
     };
-    if (DB.version === DB_VERSION) {
-      setTimeout(callback, 0);
-    } else {
-      resetStorage(callback);
-    }
-  }
-}
+    setTimeout(callback, 0);
+  };
+  req.onupgradeneeded = function(e) {
+    var db = e.target.result;
 
-function resetStorage(callback) {
-  var req = DB.setVersion(DB_VERSION);
-  req.onsuccess = function(e) {
-    // remove the store if it exists
-    if (DB.objectStoreNames.contains('games'))
-      DB.deleteObjectStore('games');
-    if (DB.objectStoreNames.contains('chunks'))
-      DB.deleteObjectStore('chunks');
-
-    DB.createObjectStore('chunks', { keyPath: 'key' });
-    DB.createObjectStore('games', { autoIncrement: true });
-
-    // now call the handler outside of the 'versionchange' callstack
-    var transaction = e.target.result;
-    transaction.oncomplete = callback;
+    if (db.objectStoreNames.contains('games'))
+      db.deleteObjectStore('games');
+    if (db.objectStoreNames.contains('chunks'))
+      db.deleteObjectStore('chunks');
+    db.createObjectStore('games', { autoIncrement: true });
+    db.createObjectStore('chunks', { keyPath: 'key' });
   };
 }
 
