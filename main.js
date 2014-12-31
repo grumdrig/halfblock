@@ -91,7 +91,24 @@ var ENTITY_TYPES = {
       }
       pickTool(0);
     },
+    update: function () {
+      var d = this.viewDistance * 1.25;
+      if (this.y < -d) {
+        // Create a new world under this one
+        this.y = d;
+        GAME.seed += 1;
+        var that = this;
+        setTimeout(function () {
+          that.y = d;
+          GAME.chunks = {};
+          makeChunk(0,0);
+          chunk(0,0).entities[AVATAR.id] = AVATAR;
+          chunk(0,0).update();
+        }, 0);
+      }
+    },
   },
+
   drone: {
     tile: [3,2, 1,3, 3,1, 3,1, 1,3, 1,3],
     radius: 0.35,
@@ -3279,7 +3296,6 @@ function Game(data) {
   init('clock', 0);
   this.lastUpdate = this.clock;
   this.chunks = {};
-  this.entities = {};
   this.calcSunlight();
 
   this.UPDATE_PERIOD = 0.1; // sec
@@ -4114,5 +4130,6 @@ var THROBBERS = [
   'Made by Grumdrig!',
   'JSON! JSON! JSON!',
   'You need not update your Flash player!',
+  'Designed by kinders!',
 ];
 
