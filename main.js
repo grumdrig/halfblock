@@ -1410,15 +1410,15 @@ function Block(coord, chunk) {
 }
 
 
+var BLOCK_SAVE = 'light dirtyLight dirtyGeometry position facing radius0 radius1'.split(' ');
 Block.prototype.data = function () {
   var result = {
-    light: this.light,
-    dirtyLight: this.dirtyLight,
-    dirtyGeometry: this.dirtyGeometry,
     type: this.type.name,
   };
-  if (typeof this.position !== 'undefined') result.position = this.position;
-  if (typeof this.facing !== 'undefined') result.facing = this.facing;
+  for (var i = 0; i < BLOCK_SAVE.length; ++i) {
+    var p = BLOCK_SAVE[i];
+    if (typeof this[p] !== 'undefined') result[p] = this[p];
+  }
   return result;
 }
 
@@ -1779,6 +1779,7 @@ function buildTree(base) {
                       Math.random() * (1-base.topSize)];
     base.radius0 = base.bottomSize / 2;
     base.radius1 = base.topSize / 2;
+
     below = base;
     base = base.neighbor(FACE_TOP);
   }
