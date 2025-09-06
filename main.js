@@ -1353,6 +1353,7 @@ function loadTexture(filename, cubemap) {
   var target = cubemap ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
   var texture = gl.createTexture();
   texture.image = new Image();
+  texture.image.crossOrigin = "anonymous";
   texture.image.onload = function() {
     gl.bindTexture(target, texture);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, !cubemap);
@@ -3568,7 +3569,7 @@ function Sound(sound) {
   }
   this.init(k);
   if (!_AUDIO_CONTEXT)
-    _AUDIO_CONTEXT = new webkitAudioContext();
+    _AUDIO_CONTEXT = new AudioContext();
   var node = _AUDIO_CONTEXT.createScriptProcessor(4096, 0, 1);
   node.connect(_AUDIO_CONTEXT.destination);
   node.onaudioprocess = function (e) {
